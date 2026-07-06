@@ -2,6 +2,10 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  admins: defineTable({
+    email: v.string(),
+  }).index("by_email", ["email"]),
+
   events: defineTable({
     name: v.string(),
     slug: v.string(),

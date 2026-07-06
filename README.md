@@ -23,6 +23,7 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 - `/<slug>` — public claim page for an event
 - `/admin` — admin dashboard (Clerk-protected): create events
 - `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats
+- `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)
 
 ## Setup
 
@@ -41,8 +42,16 @@ npm run dev                  # in another
    npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-app>.clerk.accounts.dev
    ```
 
-Any signed-in Clerk user is treated as an admin — restrict sign-ups in the Clerk dashboard (e.g. invite-only) to control who can administer events.
+### Admin allowlist
+
+Admin access is controlled by an email allowlist stored in Convex (`admins` table), managed at `/admin/admins`:
+
+- **Bootstrap**: while the list is empty, any signed-in Clerk user is an admin. Sign in and add your own email to lock it down (the app forces your own email to be first, so you can't lock yourself out).
+- Once the list has entries, only listed emails can use the admin dashboard or call admin Convex functions. The last remaining admin can't be removed.
+- Emergency access: if you ever do get locked out, delete all rows from the `admins` table in the Convex dashboard to re-enter bootstrap mode.
+
+The allowlist is per Convex deployment (dev and prod each have their own `admins` table).
 
 ## Deploy (Vercel)
 
-Set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and `CLERK_SECRET_KEY` in Vercel, and use `npx convex deploy --cmd 'npm run build'` as the build command (with `CONVEX_DEPLOY_KEY` set) per the [Convex Vercel guide](https://docs.convex.dev/production/hosting/vercel).
+Set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` in Vercel, and use `npx convex deploy --cmd 'npm run build'` as the build command (with `CONVEX_DEPLOY_KEY` set) per the [Convex Vercel guide](https://docs.convex.dev/production/hosting/vercel).

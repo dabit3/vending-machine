@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireAdmin } from "./events";
+import { requireAdmin } from "./admins";
 
 export const list = query({
   args: { eventId: v.id("events") },

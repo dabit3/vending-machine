@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
+import AdminGate from "@/components/AdminGate";
 
 export default function AdminLayout({
   children,
@@ -28,12 +29,18 @@ export default function AdminLayout({
             >
               Events
             </Link>
+            <Link
+              href="/admin/admins"
+              className="text-sm text-muted transition-colors hover:text-foreground"
+            >
+              Admins
+            </Link>
             <UserButton />
           </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
-        {children}
+        <AdminGate>{children}</AdminGate>
       </main>
     </div>
   );

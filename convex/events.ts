@@ -1,13 +1,6 @@
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) {
-    throw new Error("Not authenticated");
-  }
-  return identity;
-}
+import { requireAdmin } from "./admins";
 
 function slugify(name: string): string {
   return name
