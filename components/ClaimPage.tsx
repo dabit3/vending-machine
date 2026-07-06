@@ -32,6 +32,13 @@ type ClaimResult =
   | { ok: true; code: string; alreadyClaimed: boolean }
   | { ok: false; error: string };
 
+// creditAmount is free text; prefix "$" only when it starts with a number
+// so already-prefixed values ("$100") or other currencies stay untouched.
+function formatCredits(amount: string) {
+  const trimmed = amount.trim();
+  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+}
+
 export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
@@ -101,7 +108,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                   {event.creditAmount ? (
                     <span className="eyebrow flex items-center gap-2 text-muted-foreground">
                       <span className="inline-block size-1.5 rounded-full bg-brand" />
-                      {event.creditAmount} in credits
+                      {formatCredits(event.creditAmount)} in credits
                     </span>
                   ) : null}
                 </div>
@@ -223,7 +230,7 @@ function Receipt({
           </h1>
           {creditAmount ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              {creditAmount} in credits
+              {formatCredits(creditAmount)} in credits
             </p>
           ) : null}
         </div>

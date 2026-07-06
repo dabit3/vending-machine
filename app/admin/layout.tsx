@@ -17,7 +17,7 @@ export default function AdminLayout({
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
           <div className="flex items-center gap-3">
             <Link href="/" className="group flex items-center gap-2.5">
-              <BrandMark className="size-[18px] transition-transform duration-300 group-hover:-rotate-6" />
+              <BrandMark className="size-5 transition-transform duration-300 group-hover:-rotate-6" />
               <span className="eyebrow text-foreground transition-colors group-hover:text-brand">
                 Credit—Dispenser
               </span>

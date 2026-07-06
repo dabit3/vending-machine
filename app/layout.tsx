@@ -25,15 +25,21 @@ export const metadata: Metadata = {
   description: "Claim credits for hackathons, conferences, and meetups.",
 };
 
-const clerkAppearance = {
+// Clerk v7 appearance variables, mapped to the app's design tokens.
+const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] = {
   variables: {
-    colorBackground: "#111111",
-    colorInputBackground: "#0a0a0a",
-    colorText: "#f5f5f5",
-    colorTextSecondary: "#a3a3a3",
-    colorPrimary: "#f5f5f5",
-    colorInputText: "#f5f5f5",
+    colorBackground: "#111111", // --surface
+    colorForeground: "#f5f5f5", // --foreground
+    colorMutedForeground: "#a3a3a3", // --muted-foreground
+    colorMuted: "#161616", // --surface-hover
+    colorInput: "#0a0a0a", // --background
+    colorInputForeground: "#f5f5f5",
+    colorBorder: "#262626", // --border
     colorNeutral: "#f5f5f5",
+    colorPrimary: "#2200ff", // --brand
+    colorPrimaryForeground: "#ffffff", // --brand-foreground
+    colorRing: "#2200ff",
+    colorModalBackdrop: "rgba(0, 0, 0, 0.73)",
     colorDanger: "#ff5f57",
     borderRadius: "0.5rem",
     fontFamily: "var(--font-geist-sans), system-ui, sans-serif",

@@ -20,7 +20,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader admin />
+      <SiteHeader />
       <main className="flex-1">
         <section className="border-b border-border bg-dotgrid">
           <div className="mx-auto max-w-5xl px-6 py-20 sm:py-28">

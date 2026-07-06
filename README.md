@@ -54,4 +54,24 @@ The allowlist is per Convex deployment (dev and prod each have their own `admins
 
 ## Deploy (Vercel)
 
-Set `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, and `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in` in Vercel, and use `npx convex deploy --cmd 'npm run build'` as the build command (with `CONVEX_DEPLOY_KEY` set) per the [Convex Vercel guide](https://docs.convex.dev/production/hosting/vercel).
+Use `npx convex deploy --cmd 'npm run build'` as the build command (with `CONVEX_DEPLOY_KEY` set to a production deploy key) per the [Convex Vercel guide](https://docs.convex.dev/production/hosting/vercel) — it pushes functions to the prod Convex deployment and injects `NEXT_PUBLIC_CONVEX_URL` at build time.
+
+### Going to production checklist
+
+Dev and prod are fully separate instances in both Clerk and Convex — none of the dev config carries over. The "Development mode" badge in the Clerk UI goes away once the app runs on production (`pk_live_`) keys.
+
+**Clerk (dashboard → create Production instance):**
+
+1. Set your production domain; add the DNS records Clerk asks for (`clerk.<domain>` Frontend API CNAME, plus the email DNS records if you use email-code sign-in).
+2. Google OAuth in production requires your own credentials: create a Google OAuth client and paste its ID/secret into Clerk's Google connection (dev instances use Clerk's shared ones).
+3. Recreate the `convex` JWT template on the production instance (same claims as dev — see Clerk + Convex auth above).
+4. In Vercel, set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_live_...`), `CLERK_SECRET_KEY` (`sk_live_...`), and `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`.
+
+**Convex (prod deployment):**
+
+5. Set the issuer domain on the prod deployment — for a Clerk production instance this is your custom domain, not `*.clerk.accounts.dev`:
+   ```bash
+   npx convex env set CLERK_JWT_ISSUER_DOMAIN https://clerk.<your-domain> --prod
+   ```
+6. The prod `admins` table starts empty (bootstrap mode: any signed-in user is admin) — sign in and add your email first thing.
+7. Events, emails, and codes live per deployment; re-create/upload them in prod.
