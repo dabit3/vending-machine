@@ -2,11 +2,21 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const claim = mutation({
-  args: { slug: v.string(), email: v.string() },
+  args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      return { ok: false as const, error: "Please enter a valid email address." };
+    // Codes are only dispensed to the signed-in user's verified email, so
+    // knowing someone else's registered address is not enough to take their code.
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { ok: false as const, error: "Sign in to claim your code." };
+    }
+    const email = identity.email?.trim().toLowerCase();
+    if (!email || identity.emailVerified !== true) {
+      return {
+        ok: false as const,
+        error:
+          "Your account has no verified email address. Sign in with the email you registered with.",
+      };
     }
 
     const event = await ctx.db
@@ -26,8 +36,7 @@ export const claim = mutation({
     if (!allowed) {
       return {
         ok: false as const,
-        error:
-          "This email is not on the participant list for this event. Please check that you used the email you registered with.",
+        error: `${email} is not on the participant list for this event. Sign in with the email you registered with.`,
       };
     }
 

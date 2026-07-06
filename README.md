@@ -13,14 +13,14 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 
 1. Admin creates an event (slug auto-generated from the name, or set/edited manually).
 2. Admin pastes in the list of eligible emails and the pool of unique codes.
-3. Attendees visit `/<slug>` and enter their email.
-4. If the email is on the list, they're assigned an unclaimed code (idempotent — the same email always gets the same code back).
+3. Attendees visit `/<slug>` and sign in with Clerk (Google or email code) to prove they own their email address.
+4. If the verified sign-in email is on the list, they're assigned an unclaimed code (idempotent — the same email always gets the same code back).
 5. If not, they can't claim.
 
 ## Routes
 
 - `/` — public list of events (newest first)
-- `/<slug>` — public claim page for an event
+- `/<slug>` — claim page for an event (requires signing in to verify email ownership)
 - `/admin` — admin dashboard (Clerk-protected): create events
 - `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats
 - `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)

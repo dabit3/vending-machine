@@ -1,9 +1,33 @@
 "use client";
 
 import { useState } from "react";
+import { ShieldAlert, UserPlus, X } from "lucide-react";
+import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminsPage() {
   const admins = useQuery(api.admins.list);
@@ -11,104 +35,152 @@ export default function AdminsPage() {
   const removeAdmin = useMutation(api.admins.remove);
 
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
-    setError(null);
     try {
       await addAdmin({ email });
+      toast.success(`${email.trim().toLowerCase()} is now an admin`);
       setEmail("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add admin");
+      toast.error(err instanceof Error ? err.message : "Failed to add admin");
     } finally {
       setSubmitting(false);
     }
   }
 
-  async function handleRemove(id: Id<"admins">, isSelf: boolean) {
-    if (
-      isSelf &&
-      !confirm("Remove yourself? You will immediately lose admin access.")
-    ) {
-      return;
-    }
-    setError(null);
+  async function handleRemove(id: Id<"admins">) {
     try {
       await removeAdmin({ id });
+      toast.success("Admin removed");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove admin");
+      toast.error(err instanceof Error ? err.message : "Failed to remove admin");
     }
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-2xl">
       <div className="mb-10">
-        <h1 className="text-2xl font-semibold tracking-tight">Admins</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Only these emails can access the admin dashboard and manage events.
+        <p className="eyebrow flex items-center gap-2 text-muted-foreground">
+          <span className="inline-block size-1.5 rounded-full bg-brand" />
+          Access control
+        </p>
+        <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+          Admins
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Only these emails can access the control room and manage events.
         </p>
       </div>
 
       {admins !== undefined && admins.length === 0 ? (
-        <div className="mb-6 rounded-lg border border-dashed border-border-strong p-4 text-sm text-muted-foreground">
-          The admin list is empty, so <strong>any signed-in user</strong>{" "}
-          currently has admin access. Add your own email to lock it down.
-        </div>
+        <Alert variant="destructive" className="mb-8">
+          <ShieldAlert />
+          <AlertTitle>The admin list is empty</AlertTitle>
+          <AlertDescription>
+            Any signed-in user currently has admin access. Add your own email
+            to lock it down.
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <form onSubmit={handleAdd} className="mb-10 flex gap-3">
-        <input
-          required
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="admin@example.com"
-          className="w-full max-w-sm rounded-md border border-border-strong bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-dim focus:border-foreground"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-        >
-          {submitting ? "Adding..." : "Add admin"}
-        </button>
+      <form onSubmit={handleAdd} className="mb-10">
+        <Field>
+          <FieldLabel htmlFor="admin-email">Add an admin</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id="admin-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@example.com"
+              className="font-mono text-sm"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton
+                type="submit"
+                variant="brand"
+                size="xs"
+                disabled={submitting}
+              >
+                <UserPlus data-icon="inline-start" />
+                {submitting ? "Adding..." : "Add"}
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
       </form>
 
-      {error ? <p className="mb-6 text-sm text-muted-foreground">{error}</p> : null}
-
       {admins === undefined ? (
-        <div className="space-y-3">
-          {[0, 1].map((i) => (
-            <div
-              key={i}
-              className="h-12 animate-pulse rounded-lg border border-border bg-surface"
-            />
-          ))}
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-12 rounded-md" />
+          <Skeleton className="h-12 rounded-md" />
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-border rounded-lg border border-border">
           {admins.map((admin) => (
             <li
               key={admin._id}
-              className="group flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+              className="group flex min-h-12 items-center justify-between gap-3 px-4 py-2"
             >
-              <span className="flex items-center gap-3">
-                <span className="font-mono text-sm">{admin.email}</span>
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="truncate font-mono text-sm">{admin.email}</span>
                 {admin.isSelf ? (
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">
-                    you
-                  </span>
+                  <Badge
+                    variant="outline"
+                    className="eyebrow shrink-0 border-brand/40 text-brand"
+                  >
+                    You
+                  </Badge>
                 ) : null}
               </span>
-              <button
-                onClick={() => handleRemove(admin._id, admin.isSelf)}
-                className="text-xs text-muted-dim opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-              >
-                Remove
-              </button>
+              {admin.isSelf ? (
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={`Remove ${admin.email}`}
+                        className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                      />
+                    }
+                  >
+                    <X />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remove yourself?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You will immediately lose admin access, and only another
+                        admin can add you back.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() => handleRemove(admin._id)}
+                      >
+                        Remove me
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Remove ${admin.email}`}
+                  onClick={() => handleRemove(admin._id)}
+                  className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                >
+                  <X />
+                </Button>
+              )}
             </li>
           ))}
         </ul>

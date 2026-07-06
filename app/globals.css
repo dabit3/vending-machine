@@ -5,7 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /* The app is dark-only: :root carries the original monochrome palette plus
-   shadcn tokens set to their dark (neutral) values. */
+   shadcn tokens set to their dark (neutral) values. One electric-blue accent
+   (--brand) threads through focus rings, selection, and key CTAs. */
 :root {
   --surface: #111111;
   --surface-hover: #161616;
@@ -17,7 +18,7 @@
   --foreground: #f5f5f5;
   --card: #111111;
   --card-foreground: #f5f5f5;
-  --popover: #111111;
+  --popover: #161616;
   --popover-foreground: #f5f5f5;
   --primary: #f5f5f5;
   --primary-foreground: #0a0a0a;
@@ -28,13 +29,15 @@
   --accent-foreground: #f5f5f5;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --brand: #2200ff;
+  --brand-foreground: #ffffff;
+  --ring: #2200ff;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: #111111;
   --sidebar-foreground: #f5f5f5;
   --sidebar-primary: #f5f5f5;
@@ -56,7 +59,9 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-bricolage);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -98,8 +103,30 @@ body {
 }
 
 ::selection {
-  background: #f5f5f5;
-  color: #0a0a0a;
+  background: var(--brand);
+  color: var(--brand-foreground);
+}
+
+/* Micro-label: the recurring uppercase mono eyebrow used across the app. */
+@utility eyebrow {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Faint dot grid backdrop for hero surfaces. */
+@utility bg-dotgrid {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+/* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
+@utility receipt-edge {
+  mask-image: radial-gradient(circle at 8px 100%, transparent 5px, black 5.5px);
+  mask-size: 16px 100%;
+  mask-repeat: repeat-x;
 }
 
 .dark {

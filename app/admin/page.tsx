@@ -3,15 +3,121 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function AdminDashboard() {
   const events = useQuery(api.events.list);
+
+  return (
+    <div>
+      <div className="mb-10 flex items-end justify-between gap-6">
+        <div>
+          <p className="eyebrow flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block size-1.5 rounded-full bg-brand" />
+            Control room
+          </p>
+          <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+            Events
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Create events and manage their emails and codes.
+          </p>
+        </div>
+        <NewEventDialog />
+      </div>
+
+      {events === undefined ? (
+        <div className="flex flex-col gap-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-16 rounded-xl" />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <Empty className="border border-dashed border-border-strong py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <CalendarPlus />
+            </EmptyMedia>
+            <EmptyTitle>No events yet</EmptyTitle>
+            <EmptyDescription>
+              Create your first event to start dispensing codes.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      ) : (
+        <ul className="border-t border-border">
+          {events.map((event, index) => (
+            <li key={event._id} className="border-b border-border">
+              <Link
+                href={`/admin/events/${event._id}`}
+                className="group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface sm:px-4"
+              >
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
+                    {event.name}
+                  </div>
+                </div>
+                <span className="hidden font-mono text-xs text-muted-dim sm:inline">
+                  /{event.slug}
+                </span>
+                <span className="hidden font-mono text-xs text-muted-dim tabular-nums md:inline">
+                  {new Date(event._creationTime).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "2-digit",
+                    year: "numeric",
+                  })}
+                </span>
+                <ArrowRight
+                  className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+                  aria-hidden
+                />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function NewEventDialog() {
   const createEvent = useMutation(api.events.create);
   const router = useRouter();
 
-  const [showForm, setShowForm] = useState(false);
+  const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -30,6 +136,7 @@ export default function AdminDashboard() {
         description: description || undefined,
         creditAmount: creditAmount || undefined,
       });
+      toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create event");
@@ -38,123 +145,91 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div>
-      <div className="mb-10 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create events and manage their emails and codes.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowForm((s) => !s)}
-          className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
-        >
-          {showForm ? "Cancel" : "New event"}
-        </button>
-      </div>
-
-      {showForm ? (
-        <form
-          onSubmit={handleCreate}
-          className="mb-10 rounded-lg border border-border bg-surface p-6"
-        >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium">Name</label>
-              <input
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button variant="brand" />}>
+        <Plus data-icon="inline-start" />
+        New event
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-heading tracking-tight">
+            New event
+          </DialogTitle>
+          <DialogDescription>
+            Name it, and the claim page URL is generated for you.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleCreate} className="flex flex-col gap-6">
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="event-name">Name</FieldLabel>
+              <Input
+                id="event-name"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Hackathon 1"
-                className="mt-1.5 w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-dim focus:border-foreground"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                Slug{" "}
-                <span className="font-normal text-muted-dim">
-                  (optional — generated from name)
-                </span>
-              </label>
-              <input
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-slug">Slug</FieldLabel>
+              <Input
+                id="event-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
                 placeholder="hackathon-1"
-                className="mt-1.5 w-full rounded-md border border-border-strong bg-background px-3 py-2 font-mono text-sm outline-none placeholder:text-muted-dim focus:border-foreground"
+                className="font-mono"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                Description{" "}
-                <span className="font-normal text-muted-dim">(optional)</span>
-              </label>
-              <input
+              <FieldDescription>
+                Optional — generated from the name.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-description">Description</FieldLabel>
+              <Input
+                id="event-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Shown on the event page"
-                className="mt-1.5 w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-dim focus:border-foreground"
+                placeholder="Shown on the claim page"
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">
-                Credit amount{" "}
-                <span className="font-normal text-muted-dim">(optional)</span>
-              </label>
-              <input
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-credit">Credit amount</FieldLabel>
+              <Input
+                id="event-credit"
                 value={creditAmount}
                 onChange={(e) => setCreditAmount(e.target.value)}
                 placeholder="$100"
-                className="mt-1.5 w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-dim focus:border-foreground"
               />
-            </div>
-          </div>
-          {error ? <p className="mt-4 text-sm text-muted-foreground">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={submitting}
-            className="mt-6 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {submitting ? "Creating..." : "Create event"}
-          </button>
+            </Field>
+          </FieldGroup>
+          {error ? (
+            <Alert variant="destructive">
+              <OctagonX />
+              <AlertTitle>{error}</AlertTitle>
+            </Alert>
+          ) : null}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" variant="brand" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Spinner data-icon="inline-start" />
+                  Creating...
+                </>
+              ) : (
+                "Create event"
+              )}
+            </Button>
+          </DialogFooter>
         </form>
-      ) : null}
-
-      {events === undefined ? (
-        <div className="space-y-3">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="h-16 animate-pulse rounded-lg border border-border bg-surface"
-            />
-          ))}
-        </div>
-      ) : events.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border-strong p-12 text-center text-sm text-muted-foreground">
-          No events yet. Create your first event to get started.
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {events.map((event) => (
-            <li key={event._id}>
-              <Link
-                href={`/admin/events/${event._id}`}
-                className="group flex items-center justify-between rounded-lg border border-border bg-surface p-4 transition-colors hover:border-border-strong hover:bg-surface-hover"
-              >
-                <div className="font-medium tracking-tight">{event.name}</div>
-                <div className="flex items-center gap-4">
-                  <span className="font-mono text-xs text-muted-dim">
-                    /{event.slug}
-                  </span>
-                  <span className="text-muted-dim transition-transform group-hover:translate-x-0.5 group-hover:text-foreground">
-                    →
-                  </span>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

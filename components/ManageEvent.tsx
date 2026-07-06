@@ -3,15 +3,54 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  Inbox,
+  Ticket,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { fileToItems } from "@/lib/spreadsheet";
-
-const inputClass =
-  "mt-1.5 w-full rounded-md border border-border-strong bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-dim focus:border-foreground";
-const primaryButtonClass =
-  "rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
 
@@ -26,28 +65,39 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
-  const [codeStatus, setCodeStatus] = useState<string | null>(null);
-  const [emailUploading, setEmailUploading] = useState(false);
-  const [codeUploading, setCodeUploading] = useState(false);
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [codeBusy, setCodeBusy] = useState(false);
 
   if (event === undefined) {
     return (
-      <div className="h-64 animate-pulse rounded-lg border border-border bg-surface" />
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-24 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
     );
   }
   if (event === null) {
-    return <p className="text-sm text-muted-foreground">Event not found.</p>;
+    return (
+      <Empty className="border border-dashed border-border-strong py-16">
+        <EmptyHeader>
+          <EmptyDescription>Event not found.</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
   }
 
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
+  const codeCount = codes?.length ?? 0;
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
     const list = emailInput.split(/[\n,;\s]+/).filter(Boolean);
     if (list.length === 0) return;
     const { added, skipped } = await addEmails({ eventId: id, emails: list });
-    setEmailStatus(`Added ${added}, skipped ${skipped} (duplicates/invalid).`);
+    toast.success(`Added ${added} emails`, {
+      description: skipped ? `Skipped ${skipped} (duplicates/invalid).` : undefined,
+    });
     setEmailInput("");
   }
 
@@ -56,7 +106,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     const list = codeInput.split(/[\n,;\s]+/).filter(Boolean);
     if (list.length === 0) return;
     const { added, skipped } = await addCodes({ eventId: id, codes: list });
-    setCodeStatus(`Added ${added}, skipped ${skipped} (duplicates).`);
+    toast.success(`Added ${added} codes`, {
+      description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
+    });
     setCodeInput("");
   }
 
@@ -64,217 +116,274 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     file: File,
     kind: "emails" | "codes",
     send: (items: string[]) => Promise<{ added: number; skipped: number }>,
-    setStatus: (status: string | null) => void,
-    setUploading: (uploading: boolean) => void,
-    skipNote: string
+    setBusy: (busy: boolean) => void
   ) {
-    setUploading(true);
+    setBusy(true);
+    const toastId = toast.loading(`Reading ${file.name}...`);
     try {
       const items = await fileToItems(file, kind);
       if (items.length === 0) {
-        setStatus(`Nothing to import found in ${file.name}.`);
+        toast.warning(`Nothing to import found in ${file.name}`, { id: toastId });
         return;
       }
       let added = 0;
       let skipped = 0;
       for (let i = 0; i < items.length; i += UPLOAD_CHUNK_SIZE) {
-        setStatus(`Uploading ${i + 1}–${Math.min(i + UPLOAD_CHUNK_SIZE, items.length)} of ${items.length}...`);
+        toast.loading(
+          `Uploading ${Math.min(i + UPLOAD_CHUNK_SIZE, items.length)} / ${items.length}...`,
+          { id: toastId }
+        );
         const res = await send(items.slice(i, i + UPLOAD_CHUNK_SIZE));
         added += res.added;
         skipped += res.skipped;
       }
-      setStatus(`Added ${added}, skipped ${skipped} ${skipNote} from ${file.name}.`);
+      toast.success(`Added ${added} from ${file.name}`, {
+        id: toastId,
+        description: skipped ? `Skipped ${skipped} duplicates or invalid rows.` : undefined,
+      });
     } catch {
-      setStatus(`Could not read ${file.name}. Upload a .csv or .xlsx file, or try again.`);
+      toast.error(`Could not read ${file.name}`, {
+        id: toastId,
+        description: "Upload a .csv or .xlsx file, or try again.",
+      });
     } finally {
-      setUploading(false);
+      setBusy(false);
     }
   }
 
-  function handleEmailFile(file: File) {
-    void importFile(
-      file,
-      "emails",
-      (emails) => addEmails({ eventId: id, emails }),
-      setEmailStatus,
-      setEmailUploading,
-      "(duplicates/invalid)"
-    );
-  }
-
-  function handleCodeFile(file: File) {
-    void importFile(
-      file,
-      "codes",
-      (codes) => addCodes({ eventId: id, codes }),
-      setCodeStatus,
-      setCodeUploading,
-      "(duplicates)"
-    );
-  }
-
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <Link
-            href="/admin"
-            className="text-xs text-muted-dim transition-colors hover:text-foreground"
-          >
-            ← All events
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">
+    <div className="flex flex-col gap-8">
+      <div>
+        <Button
+          variant="ghost"
+          size="xs"
+          className="-ml-2 text-muted-foreground"
+          render={<Link href="/admin" />}
+          nativeButton={false}
+        >
+          <ArrowLeft data-icon="inline-start" />
+          All events
+        </Button>
+        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+          <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
             {event.name}
           </h1>
+          <Button
+            variant="outline"
+            render={<Link href={`/${event.slug}`} target="_blank" />}
+            nativeButton={false}
+          >
+            <span className="font-mono text-xs">/{event.slug}</span>
+            <ArrowUpRight data-icon="inline-end" />
+          </Button>
         </div>
-        <Link
-          href={`/${event.slug}`}
-          className="rounded-md border border-border-strong px-4 py-2 font-mono text-xs text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
-        >
-          /{event.slug} ↗
-        </Link>
       </div>
 
-      <div className="mb-8 grid grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <div className="text-2xl font-semibold">{emails?.length ?? "—"}</div>
-          <div className="mt-1 text-xs text-muted-foreground">Eligible emails</div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <div className="text-2xl font-semibold">{codes?.length ?? "—"}</div>
-          <div className="mt-1 text-xs text-muted-foreground">Codes</div>
-        </div>
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <div className="text-2xl font-semibold">{codes ? claimedCount : "—"}</div>
-          <div className="mt-1 text-xs text-muted-foreground">Claimed</div>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatCard label="Eligible emails" value={emails?.length} />
+        <StatCard label="Codes in pool" value={codes?.length} />
+        <Card className="gap-2">
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between">
+              <span className="eyebrow text-muted-foreground">Claimed</span>
+              <span className="font-mono text-xs text-muted-dim tabular-nums">
+                {codeCount > 0
+                  ? `${Math.round((claimedCount / codeCount) * 100)}%`
+                  : "—"}
+              </span>
+            </div>
+            <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+              {codes ? claimedCount : "—"}
+              <span className="text-base text-muted-dim"> / {codes ? codeCount : "—"}</span>
+            </div>
+            <Progress
+              value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
+              className="w-full"
+            />
+          </CardContent>
+        </Card>
       </div>
 
       <EventDetailsForm key={event._id} event={event} />
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium tracking-tight">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Inbox className="size-4 text-muted-dim" aria-hidden />
               Eligible emails
-            </h2>
-            <UploadButton uploading={emailUploading} onFile={handleEmailFile} />
-          </div>
-          <form onSubmit={handleAddEmails} className="mt-4">
-            <textarea
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              rows={4}
-              placeholder={"one@example.com\ntwo@example.com"}
-              className={`${inputClass} resize-y font-mono`}
+            </CardTitle>
+            <CardDescription>
+              Only these addresses can claim a code.
+            </CardDescription>
+            <CardAction>
+              <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
+              <Textarea
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                rows={4}
+                placeholder={"one@example.com\ntwo@example.com"}
+                className="resize-y font-mono text-sm"
+              />
+              <Button type="submit" variant="secondary" className="self-start">
+                Add emails
+              </Button>
+            </form>
+            <RowList
+              items={emails?.map((e) => ({
+                key: e._id,
+                label: e.email,
+                onRemove: () => removeEmail({ id: e._id }),
+              }))}
+              emptyText="No emails yet."
             />
-            {emailStatus ? (
-              <p className="mt-2 text-xs text-muted-foreground">{emailStatus}</p>
-            ) : null}
-            <button type="submit" className={`${primaryButtonClass} mt-3`}>
-              Add emails
-            </button>
-          </form>
-          <ul className="mt-5 max-h-72 space-y-1 overflow-y-auto">
-            {emails?.map((e) => (
-              <li
-                key={e._id}
-                className="group flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
-              >
-                <span className="font-mono text-xs">{e.email}</span>
-                <button
-                  onClick={() => removeEmail({ id: e._id })}
-                  className="text-xs text-muted-dim opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-            {emails && emails.length === 0 ? (
-              <li className="py-2 text-xs text-muted-dim">No emails yet.</li>
-            ) : null}
-          </ul>
-        </section>
+          </CardContent>
+        </Card>
 
-        <section className="rounded-lg border border-border bg-surface p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium tracking-tight">Codes</h2>
-            <UploadButton uploading={codeUploading} onFile={handleCodeFile} />
-          </div>
-          <form onSubmit={handleAddCodes} className="mt-4">
-            <textarea
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              rows={4}
-              placeholder={"CODE-001\nCODE-002"}
-              className={`${inputClass} resize-y font-mono`}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ticket className="size-4 text-muted-dim" aria-hidden />
+              Codes
+            </CardTitle>
+            <CardDescription>
+              Each email is assigned one unclaimed code.
+            </CardDescription>
+            <CardAction>
+              <UploadButton busy={codeBusy} onFile={(f) => importFile(f, "codes", (items) => addCodes({ eventId: id, codes: items }), setCodeBusy)} />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
+              <Textarea
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                rows={4}
+                placeholder={"CODE-001\nCODE-002"}
+                className="resize-y font-mono text-sm"
+              />
+              <Button type="submit" variant="secondary" className="self-start">
+                Add codes
+              </Button>
+            </form>
+            <RowList
+              items={codes?.map((c) => ({
+                key: c._id,
+                label: c.code,
+                claimedBy: c.claimedBy ?? undefined,
+                onRemove: c.claimedBy ? undefined : () => removeCode({ id: c._id }),
+              }))}
+              emptyText="No codes yet."
             />
-            {codeStatus ? (
-              <p className="mt-2 text-xs text-muted-foreground">{codeStatus}</p>
-            ) : null}
-            <button type="submit" className={`${primaryButtonClass} mt-3`}>
-              Add codes
-            </button>
-          </form>
-          <ul className="mt-5 max-h-72 space-y-1 overflow-y-auto">
-            {codes?.map((c) => (
-              <li
-                key={c._id}
-                className="group flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
-              >
-                <span className="font-mono text-xs">{c.code}</span>
-                <span className="flex items-center gap-3">
-                  {c.claimedBy ? (
-                    <span className="font-mono text-xs text-muted-dim">
-                      claimed by {c.claimedBy}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => removeCode({ id: c._id })}
-                      className="text-xs text-muted-dim opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </span>
-              </li>
-            ))}
-            {codes && codes.length === 0 ? (
-              <li className="py-2 text-xs text-muted-dim">No codes yet.</li>
-            ) : null}
-          </ul>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
+function StatCard({ label, value }: { label: string; value?: number }) {
+  return (
+    <Card className="gap-2">
+      <CardContent className="flex flex-col gap-3">
+        <span className="eyebrow text-muted-foreground">{label}</span>
+        <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+          {value ?? "—"}
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
+
 function UploadButton({
-  uploading,
+  busy,
   onFile,
 }: {
-  uploading: boolean;
+  busy: boolean;
   onFile: (file: File) => void;
 }) {
   return (
-    <label
-      className={`cursor-pointer rounded-md border border-border-strong px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-foreground hover:text-foreground ${
-        uploading ? "pointer-events-none opacity-50" : ""
-      }`}
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={busy}
+      render={<label />}
+      nativeButton={false}
     >
-      {uploading ? "Uploading..." : "Upload CSV/XLSX"}
+      {busy ? (
+        <Spinner data-icon="inline-start" />
+      ) : (
+        <Upload data-icon="inline-start" />
+      )}
+      CSV / XLSX
       <input
         type="file"
         accept=".csv,.txt,.xlsx,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        className="hidden"
-        disabled={uploading}
+        className="sr-only"
+        disabled={busy}
         onChange={(e) => {
           const file = e.target.files?.[0];
           e.target.value = "";
           if (file) onFile(file);
         }}
       />
-    </label>
+    </Button>
+  );
+}
+
+function RowList({
+  items,
+  emptyText,
+}: {
+  items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
+  emptyText: string;
+}) {
+  if (!items) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-9 rounded-md" />
+        <Skeleton className="h-9 rounded-md" />
+      </div>
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+        {emptyText}
+      </p>
+    );
+  }
+  return (
+    <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
+      {items.map((item) => (
+        <li
+          key={item.key}
+          className="group flex min-h-10 items-center justify-between gap-3 px-3 py-1.5 transition-colors hover:bg-surface"
+        >
+          <span className="truncate font-mono text-xs">{item.label}</span>
+          {item.claimedBy ? (
+            <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
+              <Check data-icon="inline-start" />
+              {item.claimedBy}
+            </Badge>
+          ) : item.onRemove ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Remove ${item.label}`}
+              onClick={item.onRemove}
+              className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+            >
+              <X />
+            </Button>
+          ) : null}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -287,90 +396,119 @@ function EventDetailsForm({ event }: { event: Doc<"events"> }) {
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaveError(null);
-    setSaved(false);
+    setSaving(true);
     try {
-      await updateEvent({
+      const { slug: savedSlug } = await updateEvent({
         id: event._id,
         name,
         slug,
         description: description || undefined,
         creditAmount: creditAmount || undefined,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      setSlug(savedSlug);
+      toast.success("Event saved");
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save");
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleDelete() {
-    if (!confirm("Delete this event and all of its emails and codes?")) return;
     await removeEvent({ id: event._id });
+    toast.success(`Event "${event.name}" deleted`);
     router.push("/admin");
   }
 
   return (
-    <form
-      onSubmit={handleSave}
-      className="mb-8 rounded-lg border border-border bg-surface p-6"
-    >
-      <h2 className="text-sm font-medium tracking-tight">Event details</h2>
-      <div className="mt-4 grid gap-5 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm text-muted-foreground">Name</label>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-muted-foreground">Slug</label>
-          <input
-            required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            className={`${inputClass} font-mono`}
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-muted-foreground">Description</label>
-          <input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={inputClass}
-          />
-        </div>
-        <div>
-          <label className="block text-sm text-muted-foreground">Credit amount</label>
-          <input
-            value={creditAmount}
-            onChange={(e) => setCreditAmount(e.target.value)}
-            placeholder="$100"
-            className={inputClass}
-          />
-        </div>
-      </div>
-      {saveError ? <p className="mt-4 text-sm text-muted-foreground">{saveError}</p> : null}
-      <div className="mt-5 flex items-center gap-4">
-        <button type="submit" className={primaryButtonClass}>
-          {saved ? "Saved" : "Save changes"}
-        </button>
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="text-sm text-muted-dim transition-colors hover:text-foreground"
-        >
-          Delete event
-        </button>
-      </div>
-    </form>
+    <Card>
+      <CardHeader>
+        <CardTitle>Event details</CardTitle>
+        <CardDescription>
+          The slug is the public claim URL — changing it moves the page.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="flex flex-col gap-6">
+          <FieldGroup className="grid gap-5 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="detail-name">Name</FieldLabel>
+              <Input
+                id="detail-name"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="detail-slug">Slug</FieldLabel>
+              <Input
+                id="detail-slug"
+                required
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                className="font-mono"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="detail-description">Description</FieldLabel>
+              <Input
+                id="detail-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="detail-credit">Credit amount</FieldLabel>
+              <Input
+                id="detail-credit"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(e.target.value)}
+                placeholder="$100"
+              />
+              <FieldDescription>Shown on the claim page.</FieldDescription>
+            </Field>
+          </FieldGroup>
+          <div className="flex items-center justify-between gap-4">
+            <Button type="submit" disabled={saving}>
+              {saving ? (
+                <>
+                  <Spinner data-icon="inline-start" />
+                  Saving...
+                </>
+              ) : (
+                "Save changes"
+              )}
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger render={<Button variant="destructive" />}>
+                <Trash2 data-icon="inline-start" />
+                Delete event
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete “{event.name}”?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently removes the event along with all of its
+                    eligible emails and codes. Attendees will no longer be able
+                    to claim or re-view their codes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction variant="destructive" onClick={handleDelete}>
+                    Delete event
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

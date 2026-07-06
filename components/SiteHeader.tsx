@@ -1,20 +1,27 @@
 import Link from "next/link";
+import BrandMark from "@/components/BrandMark";
+import { Button } from "@/components/ui/button";
 
 export default function SiteHeader({ admin = false }: { admin?: boolean }) {
   return (
-    <header className="border-b border-border">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="inline-block h-2 w-2 bg-foreground" />
-          <span className="text-sm font-medium tracking-tight">
-            Credit Dispenser
+        <Link href="/" className="group flex items-center gap-2.5">
+          <BrandMark className="size-[18px] transition-transform duration-300 group-hover:-rotate-6" />
+          <span className="eyebrow text-foreground transition-colors group-hover:text-brand">
+            Credit—Dispenser
           </span>
         </Link>
-        <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+        <nav className="flex items-center gap-2">
           {admin ? (
-            <Link href="/admin" className="transition-colors hover:text-foreground">
+            <Button
+              variant="ghost"
+              size="sm"
+              render={<Link href="/admin" />}
+              nativeButton={false}
+            >
               Admin
-            </Link>
+            </Button>
           ) : null}
         </nav>
       </div>

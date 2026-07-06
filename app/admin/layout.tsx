@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 import AdminGate from "@/components/AdminGate";
+import AdminNav from "@/components/AdminNav";
+import BrandMark from "@/components/BrandMark";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 export default function AdminLayout({
   children,
@@ -9,32 +13,25 @@ export default function AdminLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-border">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
-              <span className="inline-block h-2 w-2 bg-foreground" />
-              <span className="text-sm font-medium tracking-tight">
-                Credit Dispenser
+          <div className="flex items-center gap-3">
+            <Link href="/" className="group flex items-center gap-2.5">
+              <BrandMark className="size-[18px] transition-transform duration-300 group-hover:-rotate-6" />
+              <span className="eyebrow text-foreground transition-colors group-hover:text-brand">
+                Credit—Dispenser
               </span>
             </Link>
-            <span className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground">
+            <Badge
+              variant="outline"
+              className="eyebrow border-brand/40 text-brand"
+            >
               Admin
-            </span>
+            </Badge>
           </div>
-          <div className="flex items-center gap-6">
-            <Link
-              href="/admin"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Events
-            </Link>
-            <Link
-              href="/admin/admins"
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Admins
-            </Link>
+          <div className="flex items-center gap-4">
+            <AdminNav />
+            <Separator orientation="vertical" className="!h-5" />
             <UserButton />
           </div>
         </div>
@@ -42,6 +39,12 @@ export default function AdminLayout({
       <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-12">
         <AdminGate>{children}</AdminGate>
       </main>
+      <footer className="border-t border-border">
+        <div className="mx-auto flex h-12 max-w-5xl items-center justify-between px-6">
+          <span className="eyebrow text-muted-dim">Control room</span>
+          <span className="eyebrow text-muted-dim">Credit—Dispenser</span>
+        </div>
+      </footer>
     </div>
   );
 }
