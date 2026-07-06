@@ -237,7 +237,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               items={emails?.map((e) => ({
                 key: e._id,
                 label: e.email,
-                onRemove: () => removeEmail({ id: e._id }),
+                onRemove: () =>
+                  removeEmail({ id: e._id }).catch(() =>
+                    toast.error("Failed to remove email")
+                  ),
               }))}
               emptyText="No emails yet."
             />
@@ -275,7 +278,16 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
-                onRemove: c.claimedBy ? undefined : () => removeCode({ id: c._id }),
+                onRemove: c.claimedBy
+                  ? undefined
+                  : () =>
+                      removeCode({ id: c._id }).catch((err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to remove code"
+                        )
+                      ),
               }))}
               emptyText="No codes yet."
             />

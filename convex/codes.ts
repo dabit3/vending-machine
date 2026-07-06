@@ -42,6 +42,13 @@ export const remove = mutation({
   args: { id: v.id("codes") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const code = await ctx.db.get(args.id);
+    if (!code) return;
+    if (code.claimedBy) {
+      throw new Error(
+        `Cannot remove ${code.code} — it was already dispensed to ${code.claimedBy}. Deleting it would let them claim a second code.`
+      );
+    }
     await ctx.db.delete(args.id);
   },
 });
