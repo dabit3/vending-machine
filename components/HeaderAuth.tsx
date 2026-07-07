@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { SignInButton, UserButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -18,8 +19,13 @@ export default function HeaderAuth() {
   if (!isAuthenticated) {
     return (
       <SignInButton mode="modal">
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" className="text-muted-foreground">
           Sign in
+          <ArrowRight
+            data-icon="inline-end"
+            aria-hidden
+            className="text-muted-dim transition-all group-hover/button:translate-x-0.5 group-hover/button:text-brand"
+          />
         </Button>
       </SignInButton>
     );
