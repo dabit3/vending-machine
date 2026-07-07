@@ -3,7 +3,7 @@
 export default function DevinCredit() {
   return (
     <a
-      href="https://devin.ai"
+      href="https://github.com/dabit3/vending-machine"
       target="_blank"
       rel="noreferrer"
       className="group flex items-center gap-2 text-muted-dim transition-colors hover:text-brand"
