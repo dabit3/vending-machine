@@ -128,6 +128,7 @@ function NewEventDialog() {
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
+  const [eventUrl, setEventUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -141,6 +142,7 @@ function NewEventDialog() {
         slug: slug || undefined,
         description: description || undefined,
         creditAmount: creditAmount || undefined,
+        eventUrl: eventUrl || undefined,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -207,6 +209,19 @@ function NewEventDialog() {
                 onChange={(e) => setCreditAmount(e.target.value)}
                 placeholder="$100"
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-url">Event URL</FieldLabel>
+              <Input
+                id="event-url"
+                value={eventUrl}
+                onChange={(e) => setEventUrl(e.target.value)}
+                placeholder="https://tokyohackathon.com"
+                className="font-mono"
+              />
+              <FieldDescription>
+                Optional — linked from the claim page.
+              </FieldDescription>
             </Field>
           </FieldGroup>
           {error ? (

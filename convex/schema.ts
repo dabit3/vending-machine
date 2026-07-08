@@ -19,6 +19,7 @@ export default defineSchema({
     slug: v.string(),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
+    eventUrl: v.optional(v.string()),
   }).index("by_slug", ["slug"]),
 
   emails: defineTable({

@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Check, Copy, LogIn, OctagonX, SearchX } from "lucide-react";
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  Check,
+  Copy,
+  LogIn,
+  OctagonX,
+  SearchX,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
@@ -37,6 +45,14 @@ type ClaimResult =
 function formatCredits(amount: string) {
   const trimmed = amount.trim();
   return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+}
+
+function urlLabel(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
 }
 
 export default function ClaimPage({ slug }: { slug: string }) {
@@ -114,6 +130,20 @@ export default function ClaimPage({ slug }: { slug: string }) {
                   <CardDescription className="text-sm leading-relaxed">
                     {event.description}
                   </CardDescription>
+                ) : null}
+                {event.eventUrl ? (
+                  <a
+                    href={event.eventUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group flex w-fit items-center gap-1.5 font-mono text-xs text-muted-foreground transition-colors hover:text-brand"
+                  >
+                    {urlLabel(event.eventUrl)}
+                    <ArrowUpRight
+                      className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                      aria-hidden
+                    />
+                  </a>
                 ) : null}
               </CardHeader>
               <CardContent className="py-(--card-spacing)">
