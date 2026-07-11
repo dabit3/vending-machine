@@ -627,12 +627,14 @@ function EventDetailsForm({
                 className="font-mono"
               />
             </Field>
-            <Field>
+            <Field className="sm:col-span-2">
               <FieldLabel htmlFor="detail-description">Description</FieldLabel>
-              <Input
+              <Textarea
                 id="detail-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                className="resize-y"
               />
             </Field>
             <Field>

@@ -34,6 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
@@ -194,11 +195,13 @@ function NewEventDialog() {
             </Field>
             <Field>
               <FieldLabel htmlFor="event-description">Description</FieldLabel>
-              <Input
+              <Textarea
                 id="event-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Shown on the claim page"
+                rows={4}
+                className="resize-y"
               />
             </Field>
             <Field>
