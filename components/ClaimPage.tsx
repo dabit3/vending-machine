@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   BadgeCheck,
@@ -10,12 +10,19 @@ import {
   LogIn,
   OctagonX,
   SearchX,
+  Timer,
+  TimerOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
+import {
+  claimWindowStatus,
+  formatClaimTime,
+  formatCountdown,
+} from "@/lib/claim-window";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -62,6 +69,16 @@ function urlLabel(url: string) {
   }
 }
 
+function useNow(enabled: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!enabled) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [enabled]);
+  return now;
+}
+
 export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
@@ -70,6 +87,14 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [copied, setCopied] = useState(false);
+
+  const hasWindow =
+    event != null &&
+    (event.claimStart !== undefined || event.claimEnd !== undefined);
+  const now = useNow(hasWindow);
+  const windowStatus = event
+    ? claimWindowStatus(now, event.claimStart, event.claimEnd)
+    : "open";
 
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
 
@@ -161,6 +186,14 @@ export default function ClaimPage({ slug }: { slug: string }) {
                 ) : null}
               </CardHeader>
               <CardContent className="py-(--card-spacing)">
+                {hasWindow && event ? (
+                  <ClaimWindowBanner
+                    status={windowStatus}
+                    now={now}
+                    claimStart={event.claimStart}
+                    claimEnd={event.claimEnd}
+                  />
+                ) : null}
                 {authLoading ? (
                   <div className="flex flex-col gap-3">
                     <Skeleton className="h-12 rounded-md" />
@@ -210,7 +243,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                     <Button
                       variant="brand"
                       size="lg"
-                      disabled={submitting}
+                      disabled={submitting || windowStatus === "before"}
                       className="w-full"
                       onClick={handleClaim}
                       aria-busy={submitting}
@@ -221,6 +254,10 @@ export default function ClaimPage({ slug }: { slug: string }) {
                           <Spinner data-icon="inline-start" />
                           Checking the list...
                         </>
+                      ) : windowStatus === "before" ? (
+                        "Claims open soon"
+                      ) : windowStatus === "closed" ? (
+                        "View my claimed code"
                       ) : (
                         "Dispense my code"
                       )}
@@ -235,6 +272,72 @@ export default function ClaimPage({ slug }: { slug: string }) {
       <SiteFooter />
     </div>
   );
+}
+
+function ClaimWindowBanner({
+  status,
+  now,
+  claimStart,
+  claimEnd,
+}: {
+  status: "before" | "open" | "closed";
+  now: number;
+  claimStart?: number;
+  claimEnd?: number;
+}) {
+  if (status === "before" && claimStart !== undefined) {
+    return (
+      <div className="mb-6 flex flex-col gap-1 rounded-md border border-border bg-background px-4 py-3">
+        <span className="flex items-center gap-1.5 eyebrow text-muted-foreground">
+          <Timer className="size-3.5" aria-hidden />
+          Claims open in
+        </span>
+        <span
+          className="font-mono text-xl font-medium tabular-nums"
+          aria-live="off"
+        >
+          {formatCountdown(claimStart - now)}
+        </span>
+        <span className="font-mono text-xs text-muted-dim">
+          Opens {formatClaimTime(claimStart)}
+        </span>
+      </div>
+    );
+  }
+  if (status === "closed" && claimEnd !== undefined) {
+    return (
+      <div className="mb-6 flex flex-col gap-1 rounded-md border border-border bg-background px-4 py-3">
+        <span className="flex items-center gap-1.5 eyebrow text-muted-foreground">
+          <TimerOff className="size-3.5" aria-hidden />
+          Claims closed
+        </span>
+        <span className="font-mono text-xs text-muted-dim">
+          The claim window ended {formatClaimTime(claimEnd)}. Already claimed a
+          code? Sign in and dispense to view it again.
+        </span>
+      </div>
+    );
+  }
+  if (status === "open" && claimEnd !== undefined) {
+    return (
+      <div className="mb-6 flex flex-col gap-1 rounded-md border border-border bg-background px-4 py-3">
+        <span className="flex items-center gap-1.5 eyebrow text-muted-foreground">
+          <Timer className="size-3.5" aria-hidden />
+          Claims close in
+        </span>
+        <span
+          className="font-mono text-xl font-medium tabular-nums"
+          aria-live="off"
+        >
+          {formatCountdown(claimEnd - now)}
+        </span>
+        <span className="font-mono text-xs text-muted-dim">
+          Closes {formatClaimTime(claimEnd)}
+        </span>
+      </div>
+    );
+  }
+  return null;
 }
 
 function Receipt({

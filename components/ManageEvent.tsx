@@ -21,6 +21,10 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
+import {
+  localInputToTimestamp,
+  timestampToLocalInput,
+} from "@/lib/claim-window";
 import { fileToItems } from "@/lib/spreadsheet";
 import {
   AlertDialog,
@@ -569,6 +573,12 @@ function EventDetailsForm({
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
   const [eventUrl, setEventUrl] = useState(event.eventUrl ?? "");
+  const [claimStart, setClaimStart] = useState(
+    timestampToLocalInput(event.claimStart)
+  );
+  const [claimEnd, setClaimEnd] = useState(
+    timestampToLocalInput(event.claimEnd)
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -583,6 +593,8 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        claimStart: localInputToTimestamp(claimStart),
+        claimEnd: localInputToTimestamp(claimEnd),
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -661,6 +673,32 @@ function EventDetailsForm({
                 placeholder="$100"
               />
               <FieldDescription>Shown on the claim page.</FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="detail-claim-start">Claims open</FieldLabel>
+              <Input
+                id="detail-claim-start"
+                type="datetime-local"
+                value={claimStart}
+                onChange={(e) => setClaimStart(e.target.value)}
+                className="font-mono"
+              />
+              <FieldDescription>
+                Optional — claims are blocked before this time.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="detail-claim-end">Claims close</FieldLabel>
+              <Input
+                id="detail-claim-end"
+                type="datetime-local"
+                value={claimEnd}
+                onChange={(e) => setClaimEnd(e.target.value)}
+                className="font-mono"
+              />
+              <FieldDescription>
+                Optional — claims are blocked after this time.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="detail-url">Event URL</FieldLabel>

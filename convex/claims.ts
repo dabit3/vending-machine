@@ -55,6 +55,20 @@ export const claim = mutation({
       };
     }
 
+    const now = Date.now();
+    if (event.claimStart !== undefined && now < event.claimStart) {
+      return {
+        ok: false as const,
+        error: "Claims for this event haven't opened yet. Come back when the window opens.",
+      };
+    }
+    if (event.claimEnd !== undefined && now > event.claimEnd) {
+      return {
+        ok: false as const,
+        error: "The claim window for this event has closed.",
+      };
+    }
+
     const available = await ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>

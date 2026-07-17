@@ -21,6 +21,8 @@ export default defineSchema({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    claimStart: v.optional(v.number()),
+    claimEnd: v.optional(v.number()),
   }).index("by_slug", ["slug"]),
 
   emails: defineTable({

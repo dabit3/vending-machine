@@ -7,6 +7,7 @@ import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { localInputToTimestamp } from "@/lib/claim-window";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -131,6 +132,8 @@ function NewEventDialog() {
   const [eventDate, setEventDate] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
   const [eventUrl, setEventUrl] = useState("");
+  const [claimStart, setClaimStart] = useState("");
+  const [claimEnd, setClaimEnd] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,6 +149,8 @@ function NewEventDialog() {
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        claimStart: localInputToTimestamp(claimStart),
+        claimEnd: localInputToTimestamp(claimEnd),
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -227,6 +232,32 @@ function NewEventDialog() {
                 onChange={(e) => setCreditAmount(e.target.value)}
                 placeholder="$100"
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-claim-start">Claims open</FieldLabel>
+              <Input
+                id="event-claim-start"
+                type="datetime-local"
+                value={claimStart}
+                onChange={(e) => setClaimStart(e.target.value)}
+                className="font-mono"
+              />
+              <FieldDescription>
+                Optional — claims are blocked before this time.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-claim-end">Claims close</FieldLabel>
+              <Input
+                id="event-claim-end"
+                type="datetime-local"
+                value={claimEnd}
+                onChange={(e) => setClaimEnd(e.target.value)}
+                className="font-mono"
+              />
+              <FieldDescription>
+                Optional — claims are blocked after this time.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="event-url">Event URL</FieldLabel>

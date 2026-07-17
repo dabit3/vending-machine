@@ -37,6 +37,16 @@ function normalizeEventDate(raw?: string): string | undefined {
   return trimmed;
 }
 
+function validateClaimWindow(claimStart?: number, claimEnd?: number) {
+  if (
+    claimStart !== undefined &&
+    claimEnd !== undefined &&
+    claimEnd <= claimStart
+  ) {
+    throw new Error("Claim end time must be after the start time");
+  }
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -68,6 +78,8 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
+      claimStart: event.claimStart,
+      claimEnd: event.claimEnd,
     };
   },
 });
@@ -119,9 +131,12 @@ export const create = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    claimStart: v.optional(v.number()),
+    claimEnd: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    validateClaimWindow(args.claimStart, args.claimEnd);
     const slug = slugify(args.slug?.trim() || args.name);
     if (!slug) throw new Error("Event name must contain letters or numbers");
     const existing = await ctx.db
@@ -136,6 +151,8 @@ export const create = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      claimStart: args.claimStart,
+      claimEnd: args.claimEnd,
     });
     return { id, slug };
   },
@@ -150,9 +167,12 @@ export const update = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    claimStart: v.optional(v.number()),
+    claimEnd: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
+    validateClaimWindow(args.claimStart, args.claimEnd);
     const slug = slugify(args.slug);
     if (!slug) throw new Error("Slug must contain letters or numbers");
     const existing = await ctx.db
@@ -169,6 +189,8 @@ export const update = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      claimStart: args.claimStart,
+      claimEnd: args.claimEnd,
     });
     return { slug };
   },
