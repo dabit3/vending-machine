@@ -9,6 +9,7 @@ import {
   Check,
   Download,
   Inbox,
+  QrCode,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -16,6 +17,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -43,6 +45,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import {
   Field,
@@ -199,20 +209,23 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
             {event.name}
           </h1>
-          <Button
-            variant="outline"
-            render={
-              <Link
-                href={`/${event.slug}`}
-                target="_blank"
-                rel="noreferrer"
-              />
-            }
-            nativeButton={false}
-          >
-            <span className="font-mono text-xs">/{event.slug}</span>
-            <ArrowUpRight data-icon="inline-end" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <QrCodeDialog slug={event.slug} eventName={event.name} />
+            <Button
+              variant="outline"
+              render={
+                <Link
+                  href={`/${event.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+              nativeButton={false}
+            >
+              <span className="font-mono text-xs">/{event.slug}</span>
+              <ArrowUpRight data-icon="inline-end" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -362,6 +375,45 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <EventAdminsCard eventId={id} />
     </div>
+  );
+}
+
+function QrCodeDialog({
+  slug,
+  eventName,
+}: {
+  slug: string;
+  eventName: string;
+}) {
+  const claimUrl =
+    typeof window === "undefined"
+      ? `/${slug}`
+      : `${window.location.origin}/${slug}`;
+
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button variant="outline" />}>
+        <QrCode data-icon="inline-start" />
+        QR code
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{eventName}</DialogTitle>
+          <DialogDescription>
+            Scan to open the claim page. Display this on a slide at your
+            event.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="rounded-lg bg-white p-4">
+            <QRCodeSVG value={claimUrl} size={240} marginSize={0} />
+          </div>
+          <span className="font-mono text-xs text-muted-foreground break-all">
+            {claimUrl}
+          </span>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
