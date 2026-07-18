@@ -7,12 +7,17 @@ const DOT_RADIUS = 1;
 const ATTRACT_RADIUS = 200;
 const ATTRACT_STRENGTH = 0.55;
 const EASE = 0.12;
+const OVERSCAN = ATTRACT_RADIUS;
+const HOVER_AMPLITUDE = 6;
+const LIGHT_DOT_COLOR = "#b9b9b9";
 
 type Dot = {
   homeX: number;
   homeY: number;
   x: number;
   y: number;
+  phase: number;
+  speed: number;
 };
 
 export default function DotGridCanvas() {
@@ -36,16 +41,35 @@ export default function DotGridCanvas() {
     const mouse = { x: -1e4, y: -1e4 };
 
     const readColor = () => {
-      dotColor =
-        getComputedStyle(parent).getPropertyValue("--border").trim() ||
-        dotColor;
+      if (document.documentElement.classList.contains("dark")) {
+        dotColor =
+          getComputedStyle(parent).getPropertyValue("--border").trim() ||
+          dotColor;
+      } else {
+        dotColor = LIGHT_DOT_COLOR;
+      }
     };
 
     const buildDots = () => {
       dots = [];
-      for (let y = GRID_SIZE / 2; y < height + GRID_SIZE; y += GRID_SIZE) {
-        for (let x = GRID_SIZE / 2; x < width + GRID_SIZE; x += GRID_SIZE) {
-          dots.push({ homeX: x, homeY: y, x, y });
+      for (
+        let y = GRID_SIZE / 2 - OVERSCAN;
+        y < height + OVERSCAN;
+        y += GRID_SIZE
+      ) {
+        for (
+          let x = GRID_SIZE / 2 - OVERSCAN;
+          x < width + OVERSCAN;
+          x += GRID_SIZE
+        ) {
+          dots.push({
+            homeX: x,
+            homeY: y,
+            x,
+            y,
+            phase: Math.random() * Math.PI * 2,
+            speed: 0.8 + Math.random() * 0.7,
+          });
         }
       }
     };
@@ -73,6 +97,8 @@ export default function DotGridCanvas() {
     };
 
     const step = () => {
+      const now = performance.now() / 1000;
+      const mouseActive = mouse.x > -1e3;
       let settled = true;
       for (const dot of dots) {
         const dx = mouse.x - dot.homeX;
@@ -82,8 +108,11 @@ export default function DotGridCanvas() {
         let targetY = dot.homeY;
         if (dist < ATTRACT_RADIUS && dist > 0) {
           const pull = (1 - dist / ATTRACT_RADIUS) * ATTRACT_STRENGTH;
-          targetX = dot.homeX + dx * pull;
-          targetY = dot.homeY + dy * pull;
+          const wobble = HOVER_AMPLITUDE * pull;
+          const t = now * dot.speed * 2 + dot.phase;
+          targetX = dot.homeX + dx * pull + Math.cos(t) * wobble;
+          targetY = dot.homeY + dy * pull + Math.sin(t * 1.3) * wobble;
+          settled = false;
         }
         dot.x += (targetX - dot.x) * EASE;
         dot.y += (targetY - dot.y) * EASE;
@@ -95,7 +124,7 @@ export default function DotGridCanvas() {
         }
       }
       draw();
-      if (settled && mouse.x < -1e3) {
+      if (settled && !mouseActive) {
         running = false;
         return;
       }
