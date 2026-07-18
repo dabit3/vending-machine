@@ -19,7 +19,7 @@ const NOISE_AMPLITUDE = 0.25;
 const OFFSET_EASE = 0.15;
 // Ambient swell: dots grow/shrink as slow waves travel across the grid
 const SWELL_MIN = 0.55;
-const SWELL_MAX = 1.7;
+const SWELL_MAX = 1.36;
 const SWELL_LIFT = 4;
 
 type Dot = {
