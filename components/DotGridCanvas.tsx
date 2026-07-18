@@ -8,12 +8,13 @@ const TRAIL_RADIUS = 120;
 const OVERSCAN = TRAIL_RADIUS * 1.75;
 const LIGHT_DOT_COLOR = "#b9b9b9";
 const DARK_DOT_COLOR = "rgba(61, 61, 61, 0.9)";
-// Trail field decays ~10.5% per frame, matching pow(0.33, 0.1)
+// Base per-frame trail decay; strong trails decay slower (up to TRAIL_DECAY_MAX)
 const TRAIL_DECAY = 0.895;
+const TRAIL_DECAY_MAX = 0.965;
 // Frame movement (px) at which the trail reaches full density
 const FULL_DENSITY_DIST = 30;
 const MAX_OFFSET = 44;
-const MAX_DENSITY = 4;
+const MAX_DENSITY = 8;
 const NOISE_AMPLITUDE = 0.25;
 const OFFSET_EASE = 0.18;
 
@@ -125,10 +126,14 @@ export default function DotGridCanvas() {
       let settled = true;
 
       for (const dot of dots) {
-        // Decay the stored trail field
-        dot.dirX *= TRAIL_DECAY;
-        dot.dirY *= TRAIL_DECAY;
-        dot.density *= TRAIL_DECAY;
+        // Decay the stored trail field; stronger trails linger longer
+        const decay =
+          TRAIL_DECAY +
+          (TRAIL_DECAY_MAX - TRAIL_DECAY) *
+            Math.min(dot.density / MAX_DENSITY, 1);
+        dot.dirX *= decay;
+        dot.dirY *= decay;
+        dot.density *= decay;
 
         // Inject density along the segment the mouse swept this frame
         if (mouseActive && segLen > 0) {
@@ -170,8 +175,11 @@ export default function DotGridCanvas() {
           targetX = dot.homeX + (nx + wobbleX) * strength * MAX_OFFSET;
           targetY = dot.homeY + (ny + wobbleY) * strength * MAX_OFFSET;
         }
-        dot.x += (targetX - dot.x) * OFFSET_EASE;
-        dot.y += (targetY - dot.y) * OFFSET_EASE;
+        // Farther-flung dots ease back more slowly
+        const disp = Math.hypot(dot.x - dot.homeX, dot.y - dot.homeY);
+        const ease = OFFSET_EASE / (1 + disp / 60);
+        dot.x += (targetX - dot.x) * ease;
+        dot.y += (targetY - dot.y) * ease;
 
         if (
           strength > 0.001 ||
