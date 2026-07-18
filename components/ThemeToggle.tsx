@@ -12,10 +12,10 @@ export function ThemeToggle() {
       onClick={() => setTheme(nextTheme)}
       aria-label="Toggle color theme"
       title="Toggle color theme"
-      className="group flex h-8 cursor-pointer items-center gap-2 rounded-full border border-border px-3 font-mono text-[10px] font-medium tracking-[0.18em] uppercase text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="group flex h-8 cursor-pointer items-center gap-2 rounded-full px-2 font-mono text-[10px] font-medium tracking-[0.18em] uppercase text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <span aria-hidden className="relative flex size-1.5 shrink-0">
-        <span className="absolute inline-flex size-full rounded-full bg-brand shadow-[0_0_8px_2px_var(--color-brand)] transition-opacity duration-500 group-hover:animate-pulse motion-reduce:animate-none dark:opacity-0" />
+        <span className="absolute inline-flex size-full rounded-full bg-amber-400 shadow-[0_0_8px_2px_var(--color-amber-400)] transition-opacity duration-500 group-hover:animate-pulse motion-reduce:animate-none dark:opacity-0" />
         <span className="inline-flex size-full rounded-full border border-border-strong transition-colors" />
       </span>
       <span className="hidden sm:inline">Lights</span>
