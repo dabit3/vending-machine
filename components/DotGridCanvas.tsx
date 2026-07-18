@@ -4,22 +4,33 @@ import { useEffect, useRef } from "react";
 
 const GRID_SIZE = 28;
 const DOT_RADIUS = 1;
-const DISRUPT_RADIUS = 160;
-const EASE = 0.06;
-const OVERSCAN = DISRUPT_RADIUS;
+const TRAIL_RADIUS = 120;
+const OVERSCAN = TRAIL_RADIUS;
 const LIGHT_DOT_COLOR = "#b9b9b9";
 const DARK_DOT_COLOR = "#3d3d3d";
-const DISRUPT_FORCE = 0.35;
-const MAX_MOUSE_SPEED = 5;
-const VELOCITY_DAMPING = 0.9;
+// Trail field decays ~10.5% per frame, matching pow(0.33, 0.1)
+const TRAIL_DECAY = 0.895;
+// Frame movement (px) at which the trail reaches full density
+const FULL_DENSITY_DIST = 30;
+const MAX_OFFSET = 44;
+const NOISE_AMPLITUDE = 0.25;
+const OFFSET_EASE = 0.25;
 
 type Dot = {
   homeX: number;
   homeY: number;
   x: number;
   y: number;
-  vx: number;
-  vy: number;
+  dirX: number;
+  dirY: number;
+  density: number;
+  seedX: number;
+  seedY: number;
+};
+
+const smoothstep = (edge: number, x: number) => {
+  const t = Math.min(Math.max(x / edge, 0), 1);
+  return t * t * (3 - 2 * t);
 };
 
 export default function DotGridCanvas() {
@@ -40,8 +51,8 @@ export default function DotGridCanvas() {
     let dotColor = "#e5e5e5";
     let raf = 0;
     let running = false;
-    const mouse = { x: -1e4, y: -1e4, vx: 0, vy: 0 };
-    let lastMove = 0;
+    const mouse = { x: -1e4, y: -1e4 };
+    const prev = { x: -1e4, y: -1e4 };
 
     const readColor = () => {
       dotColor = document.documentElement.classList.contains("dark")
@@ -61,7 +72,17 @@ export default function DotGridCanvas() {
           x < width + OVERSCAN;
           x += GRID_SIZE
         ) {
-          dots.push({ homeX: x, homeY: y, x, y, vx: 0, vy: 0 });
+          dots.push({
+            homeX: x,
+            homeY: y,
+            x,
+            y,
+            dirX: 0,
+            dirY: 0,
+            density: 0,
+            seedX: Math.random() * Math.PI * 2,
+            seedY: Math.random() * Math.PI * 2,
+          });
         }
       }
     };
@@ -89,38 +110,77 @@ export default function DotGridCanvas() {
     };
 
     const step = () => {
-      const mouseSpeed = Math.min(
-        Math.hypot(mouse.vx, mouse.vy),
-        MAX_MOUSE_SPEED,
-      );
+      const now = performance.now() / 1000;
+      const mouseActive = mouse.x > -1e3 && prev.x > -1e3;
+      const segX = mouseActive ? mouse.x - prev.x : 0;
+      const segY = mouseActive ? mouse.y - prev.y : 0;
+      const segLen = Math.hypot(segX, segY);
+      const dirX = segLen > 0 ? segX / segLen : 1;
+      const dirY = segLen > 0 ? segY / segLen : 0;
+      // Slow movement paints a narrower trail
+      const radius =
+        TRAIL_RADIUS * (0.5 + 0.5 * Math.min(segLen / (FULL_DENSITY_DIST / 2), 1));
       let settled = true;
+
       for (const dot of dots) {
-        if (mouseSpeed > 0.01) {
-          const cx = dot.x - mouse.x;
-          const cy = dot.y - mouse.y;
-          const cdist = Math.hypot(cx, cy);
-          if (cdist < DISRUPT_RADIUS && cdist > 0) {
-            const falloff = 1 - cdist / DISRUPT_RADIUS;
-            const kick = mouseSpeed * DISRUPT_FORCE * falloff;
-            dot.vx += (cx / cdist) * kick + mouse.vx * 0.12 * falloff;
-            dot.vy += (cy / cdist) * kick + mouse.vy * 0.12 * falloff;
+        // Decay the stored trail field
+        dot.dirX *= TRAIL_DECAY;
+        dot.dirY *= TRAIL_DECAY;
+        dot.density *= TRAIL_DECAY;
+
+        // Inject density along the segment the mouse swept this frame
+        if (mouseActive && segLen > 0) {
+          const t = Math.min(
+            Math.max(
+              ((dot.homeX - prev.x) * segX + (dot.homeY - prev.y) * segY) /
+                (segLen * segLen),
+              0,
+            ),
+            1,
+          );
+          const cx = prev.x + segX * t;
+          const cy = prev.y + segY * t;
+          const distToLine = Math.hypot(dot.homeX - cx, dot.homeY - cy);
+          let s = 1 - smoothstep(radius, distToLine);
+          s *= s;
+          const current = Math.min(1, segLen / (FULL_DENSITY_DIST / 3)) * s;
+          if (current > 0) {
+            dot.dirX += dirX * current;
+            dot.dirY += dirY * current;
+            dot.density = Math.max(dot.density, current);
           }
         }
-        dot.vx = (dot.vx + (dot.homeX - dot.x) * EASE) * VELOCITY_DAMPING;
-        dot.vy = (dot.vy + (dot.homeY - dot.y) * EASE) * VELOCITY_DAMPING;
-        dot.x += dot.vx;
-        dot.y += dot.vy;
+
+        // Displace along the trail direction, with noise scaled by strength
+        const strength = Math.min(dot.density, 1);
+        let targetX = dot.homeX;
+        let targetY = dot.homeY;
+        if (strength > 0.001) {
+          const dLen = Math.hypot(dot.dirX, dot.dirY);
+          const nx = dLen > 0 ? dot.dirX / dLen : 0;
+          const ny = dLen > 0 ? dot.dirY / dLen : 0;
+          const wobbleX =
+            Math.sin(now * 6 + dot.seedX + strength * 3) * NOISE_AMPLITUDE;
+          const wobbleY =
+            Math.sin(now * 6 * 1.3 + dot.seedY + strength * 3) *
+            NOISE_AMPLITUDE;
+          targetX = dot.homeX + (nx + wobbleX) * strength * MAX_OFFSET;
+          targetY = dot.homeY + (ny + wobbleY) * strength * MAX_OFFSET;
+        }
+        dot.x += (targetX - dot.x) * OFFSET_EASE;
+        dot.y += (targetY - dot.y) * OFFSET_EASE;
+
         if (
-          Math.abs(dot.homeX - dot.x) > 0.05 ||
-          Math.abs(dot.homeY - dot.y) > 0.05 ||
-          Math.abs(dot.vx) > 0.02 ||
-          Math.abs(dot.vy) > 0.02
+          strength > 0.001 ||
+          Math.abs(dot.x - dot.homeX) > 0.05 ||
+          Math.abs(dot.y - dot.homeY) > 0.05
         ) {
           settled = false;
         }
       }
-      mouse.vx *= 0.8;
-      mouse.vy *= 0.8;
+
+      prev.x = mouse.x;
+      prev.y = mouse.y;
       draw();
       if (settled) {
         running = false;
@@ -140,13 +200,10 @@ export default function DotGridCanvas() {
       const rect = parent.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const dt = Math.max(e.timeStamp - lastMove, 8);
-      if (mouse.x > -1e3) {
-        // px per ms, smoothed
-        mouse.vx = mouse.vx * 0.7 + ((x - mouse.x) / dt) * 0.3;
-        mouse.vy = mouse.vy * 0.7 + ((y - mouse.y) / dt) * 0.3;
+      if (mouse.x < -1e3) {
+        prev.x = x;
+        prev.y = y;
       }
-      lastMove = e.timeStamp;
       mouse.x = x;
       mouse.y = y;
       wake();
@@ -155,8 +212,8 @@ export default function DotGridCanvas() {
     const onPointerLeave = () => {
       mouse.x = -1e4;
       mouse.y = -1e4;
-      mouse.vx = 0;
-      mouse.vy = 0;
+      prev.x = -1e4;
+      prev.y = -1e4;
       wake();
     };
 
