@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 
-const GRID_SIZE = 14;
+const GRID_SIZE = 17;
 const DOT_RADIUS = 1;
 const TRAIL_RADIUS = 120;
 const OVERSCAN = TRAIL_RADIUS;
 const LIGHT_DOT_COLOR = "#b9b9b9";
-const DARK_DOT_COLOR = "#3d3d3d";
+const DARK_DOT_COLOR = "rgba(61, 61, 61, 0.9)";
 // Trail field decays ~10.5% per frame, matching pow(0.33, 0.1)
 const TRAIL_DECAY = 0.895;
 // Frame movement (px) at which the trail reaches full density
