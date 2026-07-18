@@ -158,10 +158,10 @@ export default function DotGridCanvas() {
         let targetY = dot.homeY;
         // Ambient swell traveling across the grid, like something moving underneath
         const wave =
-          Math.sin(dot.homeX * 0.012 + now * 0.9) *
-            Math.sin(dot.homeY * 0.011 - now * 0.96) *
+          Math.sin(dot.homeX * 0.012 + now * 1.35) *
+            Math.sin(dot.homeY * 0.011 - now * 1.44) *
             0.5 +
-          Math.sin((dot.homeX + dot.homeY) * 0.006 + now * 0.7) * 0.5;
+          Math.sin((dot.homeX + dot.homeY) * 0.006 + now * 1.05) * 0.5;
         const swell = (wave + 1) / 2;
         dot.r = DOT_RADIUS * (SWELL_MIN + (SWELL_MAX - SWELL_MIN) * swell);
         targetY -= swell * SWELL_LIFT;
