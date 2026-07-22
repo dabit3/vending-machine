@@ -37,5 +37,6 @@ export default defineSchema({
     claimedAt: v.optional(v.number()),
   })
     .index("by_event", ["eventId"])
-    .index("by_event_claimedBy", ["eventId", "claimedBy"]),
+    .index("by_event_claimedBy", ["eventId", "claimedBy"])
+    .index("by_claimedBy", ["claimedBy"]),
 });
