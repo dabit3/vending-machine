@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
+import { ArrowRight, CalendarPlus, OctagonX, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -32,6 +32,11 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +45,14 @@ export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
   const access = useQuery(api.admins.accessLevel);
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
+
+  const [search, setSearch] = useState("");
+  const query = search.trim();
+  const visibleEvents = events?.filter(
+    (event) =>
+      event.name.toLowerCase().includes(query) ||
+      event.slug.toLowerCase().includes(query)
+  );
 
   return (
     <div>
@@ -82,39 +95,70 @@ export default function AdminDashboard() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="border-t border-border">
-          {events.map((event, index) => (
-            <li key={event._id} className="border-b border-border">
-              <Link
-                href={`/admin/events/${event._id}`}
-                className="group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4"
-              >
-                <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
-                    {event.name}
-                  </div>
-                </div>
-                <span className="hidden font-mono text-xs text-muted-dim sm:inline">
-                  /{event.slug}
-                </span>
-                <span className="hidden font-mono text-xs text-muted-dim tabular-nums md:inline">
-                  {new Date(event._creationTime).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "2-digit",
-                    year: "numeric",
-                  })}
-                </span>
-                <ArrowRight
-                  className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-brand"
-                  aria-hidden
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <InputGroup className="sm:max-w-xs">
+              <InputGroupAddon>
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                aria-label="Search events"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name or slug"
+              />
+            </InputGroup>
+            {query ? (
+              <span className="font-mono text-xs text-muted-dim tabular-nums">
+                {visibleEvents?.length ?? 0} / {events.length}
+              </span>
+            ) : null}
+          </div>
+          {visibleEvents?.length === 0 ? (
+            <Empty className="border border-dashed border-border-strong py-12">
+              <EmptyHeader>
+                <EmptyTitle>No matching events</EmptyTitle>
+                <EmptyDescription>
+                  Nothing matches &ldquo;{query}&rdquo;.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <ul className="border-t border-border">
+              {visibleEvents?.map((event, index) => (
+                <li key={event._id} className="border-b border-border">
+                  <Link
+                    href={`/admin/events/${event._id}`}
+                    className="group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4"
+                  >
+                    <span className="font-mono text-xs text-muted-dim tabular-nums">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
+                        {event.name}
+                      </div>
+                    </div>
+                    <span className="hidden font-mono text-xs text-muted-dim sm:inline">
+                      /{event.slug}
+                    </span>
+                    <span className="hidden font-mono text-xs text-muted-dim tabular-nums md:inline">
+                      {new Date(event._creationTime).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "2-digit",
+                        year: "numeric",
+                      })}
+                    </span>
+                    <ArrowRight
+                      className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+                      aria-hidden
+                    />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
       )}
     </div>
   );
