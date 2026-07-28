@@ -18,7 +18,8 @@ export function daysUntilEvent(date: string, now: Date = new Date()): number {
   const [year, month, day] = date.split("-").map(Number);
   if (!year || !month || !day) return 0;
   const eventDay = new Date(year, month - 1, day);
-  return Math.round((eventDay.getTime() - now.getTime()) / MS_PER_DAY);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((eventDay.getTime() - today.getTime()) / MS_PER_DAY);
 }
 
 // Short countdown label for upcoming events; null once the event has passed.
