@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
 import SiteHeader from "@/components/SiteHeader";
+import DotGridCanvas from "@/components/DotGridCanvas";
 import SiteFooter from "@/components/SiteFooter";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -23,8 +24,9 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <section className="border-b border-border bg-dotgrid">
-          <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
+        <section className="relative border-b border-border">
+          <DotGridCanvas />
+          <div className="relative mx-auto max-w-5xl px-4 py-16 sm:px-6 sm:py-24">
             <p className="eyebrow text-muted-foreground">
               Event credit distribution
             </p>

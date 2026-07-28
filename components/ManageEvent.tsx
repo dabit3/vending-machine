@@ -9,6 +9,7 @@ import {
   Check,
   Download,
   Inbox,
+  QrCode,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -199,6 +200,15 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
             {event.name}
           </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="brand"
+              render={<Link href={`/admin/events/${id}/walkup`} />}
+              nativeButton={false}
+            >
+              <QrCode data-icon="inline-start" />
+              Walk-up claim
+            </Button>
           <Button
             variant="outline"
             render={
@@ -213,6 +223,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <span className="font-mono text-xs">/{event.slug}</span>
             <ArrowUpRight data-icon="inline-end" />
           </Button>
+          </div>
         </div>
       </div>
 
