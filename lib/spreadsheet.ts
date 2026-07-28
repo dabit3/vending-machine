@@ -1,5 +1,7 @@
 // Minimal RFC 4180-style CSV parser (quoted fields, escaped quotes, CRLF).
-export function parseCsv(text: string): string[][] {
+// Excel writes a UTF-8 BOM, which would otherwise glue itself to the first cell.
+export function parseCsv(input: string): string[][] {
+  const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -52,12 +54,16 @@ export function extractEmails(rows: string[][]): string[] {
   return emails;
 }
 
+// Header cells vary between exports: "Code", "Promo Code", "Code (USD)",
+// "credit_code". Match any header that mentions a code.
+const CODE_HEADER_RE = /codes?/i;
+
 // Prefer a column whose header is named like "code"; otherwise use the first
 // column. Single-column files without a header keep every row.
 export function extractCodes(rows: string[][]): string[] {
   if (rows.length === 0) return [];
   const headerIndex = rows[0].findIndex((cell) =>
-    /^[\w\s]*codes?$/i.test(cell.trim())
+    CODE_HEADER_RE.test(cell.trim())
   );
   const dataRows = headerIndex === -1 ? rows : rows.slice(1);
   const colIndex = headerIndex === -1 ? 0 : headerIndex;

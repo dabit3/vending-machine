@@ -15,6 +15,10 @@ describe("parseCsv", () => {
   it("drops rows that are entirely blank", () => {
     expect(parseCsv("a@b.co\n\n   \nc@d.co\n")).toEqual([["a@b.co"], ["c@d.co"]]);
   });
+
+  it("strips the UTF-8 BOM Excel writes", () => {
+    expect(parseCsv("\uFEFFemail\na@b.co")).toEqual([["email"], ["a@b.co"]]);
+  });
 });
 
 describe("extractEmails", () => {
@@ -41,6 +45,14 @@ describe("extractCodes", () => {
       ["c@d.co", "CODE-2"],
     ];
     expect(extractCodes(rows)).toEqual(["CODE-1", "CODE-2"]);
+  });
+
+  it("handles header names other than a bare \"code\"", () => {
+    const rows = [
+      ["email", "Code (USD)"],
+      ["a@b.co", "CODE-1"],
+    ];
+    expect(extractCodes(rows)).toEqual(["CODE-1"]);
   });
 
   it("keeps every row of a headerless single-column file", () => {
