@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
-import { formatEventDate } from "@/lib/event-date";
+import { eventCountdownLabel, formatEventDate } from "@/lib/event-date";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -141,6 +141,11 @@ export default function ClaimPage({ slug }: { slug: string }) {
                       <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
                         <CalendarDays className="size-3.5" aria-hidden />
                         {formatEventDate(event.eventDate)}
+                        {eventCountdownLabel(event.eventDate) ? (
+                          <Badge variant="secondary">
+                            {eventCountdownLabel(event.eventDate)}
+                          </Badge>
+                        ) : null}
                       </span>
                     ) : null}
                     {event.eventUrl ? (
