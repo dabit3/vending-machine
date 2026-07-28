@@ -4,10 +4,11 @@ import Link from "next/link";
 import { ArrowUpRight, Ticket } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { formatEventDate } from "@/lib/event-date";
+import { eventCountdownLabel, formatEventDate } from "@/lib/event-date";
 import SiteHeader from "@/components/SiteHeader";
 import DotGridCanvas from "@/components/DotGridCanvas";
 import SiteFooter from "@/components/SiteFooter";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
@@ -98,8 +99,13 @@ export default function Home() {
                         {event.name}
                       </div>
                       {event.eventDate ? (
-                        <p className="mt-1 font-mono text-xs text-muted-dim tabular-nums">
+                        <p className="mt-1 flex items-center gap-2 font-mono text-xs text-muted-dim tabular-nums">
                           {formatEventDate(event.eventDate)}
+                          {eventCountdownLabel(event.eventDate) ? (
+                            <Badge variant="secondary">
+                              {eventCountdownLabel(event.eventDate)}
+                            </Badge>
+                          ) : null}
                         </p>
                       ) : null}
                       {event.description ? (
