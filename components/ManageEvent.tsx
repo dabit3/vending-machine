@@ -10,6 +10,7 @@ import {
   Download,
   Inbox,
   QrCode,
+  Search,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -77,6 +78,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
+  const [emailFilter, setEmailFilter] = useState("");
+  const [codeFilter, setCodeFilter] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
 
@@ -101,6 +104,20 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
+
+  const emailQuery = emailFilter.trim().toLowerCase();
+  const visibleEmails = emailQuery
+    ? emails?.filter((e) => e.email.toLowerCase().includes(emailQuery))
+    : emails;
+
+  const codeQuery = codeFilter.trim().toLowerCase();
+  const visibleCodes = codeQuery
+    ? codes?.filter(
+        (c) =>
+          c.code.toLowerCase().includes(codeQuery) ||
+          c.claimedBy.toLowerCase().includes(codeQuery)
+      )
+    : codes;
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
@@ -297,8 +314,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 Add emails
               </Button>
             </form>
+            {emails && emails.length > 0 ? (
+              <FilterInput
+                label="Filter emails"
+                placeholder="Filter emails"
+                value={emailFilter}
+                onChange={setEmailFilter}
+                shown={visibleEmails?.length ?? 0}
+                total={emails.length}
+              />
+            ) : null}
             <RowList
-              items={emails?.map((e) => ({
+              items={visibleEmails?.map((e) => ({
                 key: e._id,
                 label: e.email,
                 onRemove: () =>
@@ -306,7 +333,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     toast.error("Failed to remove email")
                   ),
               }))}
-              emptyText="No emails yet."
+              emptyText={emailQuery ? "No matching emails." : "No emails yet."}
             />
           </CardContent>
         </Card>
@@ -349,8 +376,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 Add codes
               </Button>
             </form>
+            {codes && codes.length > 0 ? (
+              <FilterInput
+                label="Filter codes"
+                placeholder="Filter by code or email"
+                value={codeFilter}
+                onChange={setCodeFilter}
+                shown={visibleCodes?.length ?? 0}
+                total={codes.length}
+              />
+            ) : null}
             <RowList
-              items={codes?.map((c) => ({
+              items={visibleCodes?.map((c) => ({
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
@@ -365,7 +402,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         )
                       ),
               }))}
-              emptyText="No codes yet."
+              emptyText={codeQuery ? "No matching codes." : "No codes yet."}
             />
           </CardContent>
         </Card>
@@ -505,6 +542,56 @@ function UploadButton({
         }}
       />
     </Button>
+  );
+}
+
+function FilterInput({
+  label,
+  placeholder,
+  value,
+  onChange,
+  shown,
+  total,
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  shown: number;
+  total: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <InputGroup>
+        <InputGroupAddon align="inline-start">
+          <Search className="size-4 text-muted-dim" aria-hidden />
+        </InputGroupAddon>
+        <InputGroupInput
+          aria-label={label}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="font-mono text-sm"
+        />
+        {value ? (
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton
+              variant="ghost"
+              size="icon-xs"
+              aria-label={`Clear ${label.toLowerCase()}`}
+              onClick={() => onChange("")}
+            >
+              <X />
+            </InputGroupButton>
+          </InputGroupAddon>
+        ) : null}
+      </InputGroup>
+      {value ? (
+        <span className="font-mono text-[10px] text-muted-dim tabular-nums">
+          {shown} of {total}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
