@@ -38,6 +38,42 @@ export const add = mutation({
   },
 });
 
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const email = identity.email?.trim().toLowerCase();
+    if (!email || identity.emailVerified !== true) return null;
+
+    const claimed = await ctx.db
+      .query("codes")
+      .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
+      .collect();
+    const items = await Promise.all(
+      claimed.map(async (c) => {
+        const event = await ctx.db.get(c.eventId);
+        return {
+          _id: c._id,
+          code: c.code,
+          claimedAt: c.claimedAt,
+          event: event
+            ? {
+                _id: event._id,
+                name: event.name,
+                slug: event.slug,
+                creditAmount: event.creditAmount,
+                eventDate: event.eventDate,
+                eventUrl: event.eventUrl,
+              }
+            : null,
+        };
+      })
+    );
+    return items.sort((a, b) => (b.claimedAt ?? 0) - (a.claimedAt ?? 0));
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("codes") },
   handler: async (ctx, args) => {
