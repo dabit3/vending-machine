@@ -34,6 +34,14 @@ export const add = mutation({
       await ctx.db.insert("codes", { eventId: args.eventId, code });
       added++;
     }
+    if (added > 0) {
+      const event = await ctx.db.get(args.eventId);
+      if (event) {
+        await ctx.db.patch(args.eventId, {
+          codeCount: (event.codeCount ?? existing.length) + added,
+        });
+      }
+    }
     return { added, skipped };
   },
 });
@@ -86,5 +94,11 @@ export const remove = mutation({
       );
     }
     await ctx.db.delete(args.id);
+    const event = await ctx.db.get(code.eventId);
+    if (event) {
+      await ctx.db.patch(code.eventId, {
+        codeCount: Math.max(0, (event.codeCount ?? 1) - 1),
+      });
+    }
   },
 });

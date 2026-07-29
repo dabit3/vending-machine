@@ -18,6 +18,8 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     hidden: v.optional(v.boolean()),
+    codeCount: v.optional(v.number()),
+    claimedCodeCount: v.optional(v.number()),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
