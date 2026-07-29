@@ -251,7 +251,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Eligible emails" value={emails?.length} />
-        <StatCard label="Codes in pool" value={codes?.length} />
+        <StatCard label="Codes in pool" value={codeStats?.total} />
         <Card className="gap-2">
           <CardContent className="flex flex-col gap-3">
             <div className="flex items-baseline justify-between">
@@ -263,8 +263,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </span>
             </div>
             <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-              {codes ? claimedCount : "—"}
-              <span className="text-base text-muted-dim"> / {codes ? codeCount : "—"}</span>
+              {codeStats ? claimedCount : "—"}
+              <span className="text-base text-muted-dim"> / {codeStats ? codeCount : "—"}</span>
             </div>
             <Progress
               value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
