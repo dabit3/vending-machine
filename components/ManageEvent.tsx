@@ -145,7 +145,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         c.claimedBy ?? "",
         c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
       ]),
-      ["claimed %", codeCount ? `${Math.round((claimedCount / codeCount) * 100)}%` : "0%", ""],
+      ["", "claimed %", codeCount ? `${Math.round((claimedCount / codeCount) * 100)}%` : "0%"],
     ]);
   }
 
