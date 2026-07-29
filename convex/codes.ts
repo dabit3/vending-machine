@@ -96,9 +96,20 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
     const event = await ctx.db.get(code.eventId);
     if (event) {
-      await ctx.db.patch(code.eventId, {
-        codeCount: Math.max(0, (event.codeCount ?? 1) - 1),
-      });
+      if (event.codeCount === undefined || event.claimedCodeCount === undefined) {
+        const remaining = await ctx.db
+          .query("codes")
+          .withIndex("by_event", (q) => q.eq("eventId", code.eventId))
+          .collect();
+        await ctx.db.patch(code.eventId, {
+          codeCount: remaining.length,
+          claimedCodeCount: remaining.filter((item) => item.claimedBy).length,
+        });
+      } else {
+        await ctx.db.patch(code.eventId, {
+          codeCount: Math.max(0, event.codeCount - 1),
+        });
+      }
     }
   },
 });

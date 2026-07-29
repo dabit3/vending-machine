@@ -63,6 +63,16 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
+    let codeCount = event.codeCount;
+    let claimedCodeCount = event.claimedCodeCount;
+    if (codeCount === undefined || claimedCodeCount === undefined) {
+      const codes = await ctx.db
+        .query("codes")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+      codeCount = codes.length;
+      claimedCodeCount = codes.filter((code) => code.claimedBy).length;
+    }
     return {
       _id: event._id,
       _creationTime: event._creationTime,
@@ -72,10 +82,10 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
-      codeCount: event.codeCount ?? 0,
+      codeCount,
       remainingCodeCount: Math.max(
         0,
-        (event.codeCount ?? 0) - (event.claimedCodeCount ?? 0)
+        codeCount - claimedCodeCount
       ),
     };
   },
