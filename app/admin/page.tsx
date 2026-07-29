@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
@@ -96,6 +98,11 @@ export default function AdminDashboard() {
                   <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
                     {event.name}
                   </div>
+                  {event.hidden ? (
+                    <Badge variant="secondary" className="mt-2">
+                      Hidden
+                    </Badge>
+                  ) : null}
                 </div>
                 <span className="hidden font-mono text-xs text-muted-dim sm:inline">
                   /{event.slug}
@@ -131,6 +138,7 @@ function NewEventDialog() {
   const [eventDate, setEventDate] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
   const [eventUrl, setEventUrl] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,6 +154,7 @@ function NewEventDialog() {
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -241,6 +250,19 @@ function NewEventDialog() {
               <FieldDescription>
                 Optional — linked from the claim page.
               </FieldDescription>
+            </Field>
+            <Field orientation="horizontal" className="sm:col-span-2">
+              <Checkbox
+                id="event-hidden"
+                checked={hidden}
+                onCheckedChange={setHidden}
+              />
+              <div className="flex flex-col gap-1">
+                <FieldLabel htmlFor="event-hidden">Hide from homepage</FieldLabel>
+                <FieldDescription>
+                  The claim page stays live, but this event will not appear on the landing page.
+                </FieldDescription>
+              </div>
             </Field>
           </FieldGroup>
           {error ? (

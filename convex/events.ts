@@ -41,7 +41,7 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const events = await ctx.db.query("events").order("desc").collect();
-    return events.map((event) => ({
+    return events.filter((event) => !event.hidden).map((event) => ({
       _id: event._id,
       _creationTime: event._creationTime,
       name: event.name,
@@ -107,6 +107,7 @@ export const listManaged = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
+      hidden: event.hidden ?? false,
     }));
   },
 });
@@ -119,6 +120,7 @@ export const create = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -136,6 +138,7 @@ export const create = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      hidden: args.hidden ?? false,
     });
     return { id, slug };
   },
@@ -150,6 +153,7 @@ export const update = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
@@ -169,6 +173,7 @@ export const update = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      hidden: args.hidden ?? false,
     });
     return { slug };
   },

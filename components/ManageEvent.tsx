@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
@@ -62,6 +62,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const UPLOAD_CHUNK_SIZE = 500;
 
@@ -69,6 +70,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
+  const paginatedCodes = usePaginatedQuery(
+    api.codes.listPaginated,
+    { eventId: id },
+    { initialNumItems: 25 }
+  );
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
@@ -101,6 +107,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
+  const visibleCodes = paginatedCodes.results;
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
@@ -350,7 +357,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
-              items={codes?.map((c) => ({
+              items={visibleCodes.map((c) => ({
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
@@ -367,6 +374,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               }))}
               emptyText="No codes yet."
             />
+            {paginatedCodes.status === "CanLoadMore" ? (
+              <Button
+                variant="outline"
+                className="self-start"
+                onClick={() => paginatedCodes.loadMore(25)}
+              >
+                Load more codes
+              </Button>
+            ) : null}
+            {paginatedCodes.status === "LoadingMore" ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Spinner />
+                Loading more codes...
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -580,6 +602,7 @@ function EventDetailsForm({
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
   const [eventUrl, setEventUrl] = useState(event.eventUrl ?? "");
+  const [hidden, setHidden] = useState(event.hidden ?? false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -594,6 +617,7 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -686,6 +710,19 @@ function EventDetailsForm({
               <FieldDescription>
                 Optional — linked from the claim page.
               </FieldDescription>
+            </Field>
+            <Field orientation="horizontal" className="sm:col-span-2">
+              <Checkbox
+                id="detail-hidden"
+                checked={hidden}
+                onCheckedChange={setHidden}
+              />
+              <div className="flex flex-col gap-1">
+                <FieldLabel htmlFor="detail-hidden">Hide from homepage</FieldLabel>
+                <FieldDescription>
+                  The claim page stays live, but this event will not appear on the landing page.
+                </FieldDescription>
+              </div>
             </Field>
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">
