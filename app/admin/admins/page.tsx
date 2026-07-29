@@ -1,33 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert, UserPlus, X } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Field, FieldLabel } from "@/components/ui/field";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@/components/ui/input-group";
-import { Skeleton } from "@/components/ui/skeleton";
+import AdminForm from "@/components/admin/AdminForm";
+import AdminList from "@/components/admin/AdminList";
 
 export default function AdminsPage() {
   const access = useQuery(api.admins.accessLevel);
@@ -102,106 +83,13 @@ export default function AdminsPage() {
         </Alert>
       ) : null}
 
-      <form onSubmit={handleAdd} className="mb-10">
-        <Field>
-          <FieldLabel htmlFor="admin-email">Add an admin</FieldLabel>
-          <InputGroup>
-            <InputGroupInput
-              id="admin-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
-              className="font-mono text-sm"
-            />
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                type="submit"
-                variant="brand"
-                size="xs"
-                disabled={submitting}
-                aria-busy={submitting}
-              >
-                <UserPlus data-icon="inline-start" />
-                {submitting ? "Adding..." : "Add"}
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
-        </Field>
-      </form>
-
-      {admins === undefined ? (
-        <div className="flex flex-col gap-2">
-          <Skeleton className="h-12 rounded-md" />
-          <Skeleton className="h-12 rounded-md" />
-        </div>
-      ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {admins.map((admin) => (
-            <li
-              key={admin._id}
-              className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-surface"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="truncate font-mono text-sm">{admin.email}</span>
-                {admin.isSelf ? (
-                  <Badge
-                    variant="outline"
-                    className="eyebrow shrink-0 border-brand/40 text-brand"
-                  >
-                    You
-                  </Badge>
-                ) : null}
-              </span>
-              {admin.isSelf ? (
-                <AlertDialog>
-                  <AlertDialogTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label={`Remove ${admin.email}`}
-                        className="shrink-0 text-muted-foreground"
-                      />
-                    }
-                  >
-                    <X />
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Remove yourself?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        You will immediately lose admin access, and only another
-                        admin can add you back.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        variant="destructive"
-                        onClick={() => handleRemove(admin._id)}
-                      >
-                        Remove me
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove ${admin.email}`}
-                  onClick={() => handleRemove(admin._id)}
-                  className="shrink-0 text-muted-foreground"
-                >
-                  <X />
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <AdminForm
+        email={email}
+        submitting={submitting}
+        onEmailChange={setEmail}
+        onSubmit={handleAdd}
+      />
+      <AdminList admins={admins} onRemove={handleRemove} />
     </div>
   );
 }

@@ -60,6 +60,10 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
+      .collect();
     return {
       _id: event._id,
       _creationTime: event._creationTime,
@@ -68,6 +72,8 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
+      codeCount: codes.length,
+      claimedCodeCount: codes.filter((code) => code.claimedBy).length,
     };
   },
 });

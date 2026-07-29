@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
+import { ArrowRight, CalendarPlus, OctagonX, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -32,6 +32,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,16 @@ export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
   const access = useQuery(api.admins.accessLevel);
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
+  const [search, setSearch] = useState("");
+  const filteredEvents = events?.filter((event) => {
+    const query = search.trim().toLowerCase();
+    return (
+      !query ||
+      event.name.toLowerCase().includes(query) ||
+      event.slug.toLowerCase().includes(query) ||
+      event.description?.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div>
@@ -82,8 +93,30 @@ export default function AdminDashboard() {
           </EmptyHeader>
         </Empty>
       ) : (
+        <div className="flex flex-col gap-4">
+          <InputGroup>
+            <InputGroupAddon>
+              <Search aria-hidden />
+            </InputGroupAddon>
+            <InputGroupInput
+              aria-label="Search events"
+              placeholder="Search events"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+          </InputGroup>
+          {filteredEvents?.length === 0 ? (
+            <Empty className="border border-dashed border-border-strong py-12">
+              <EmptyHeader>
+                <EmptyTitle>No matching events</EmptyTitle>
+                <EmptyDescription>
+                  Try a different name, slug, or description.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
         <ul className="border-t border-border">
-          {events.map((event, index) => (
+          {filteredEvents?.map((event, index) => (
             <li key={event._id} className="border-b border-border">
               <Link
                 href={`/admin/events/${event._id}`}
@@ -115,6 +148,8 @@ export default function AdminDashboard() {
             </li>
           ))}
         </ul>
+          )}
+        </div>
       )}
     </div>
   );

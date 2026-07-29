@@ -134,6 +134,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   function exportCodes() {
     if (!codes || !event) return;
+    const claimedPercent =
+      codeCount > 0 ? `${Math.round((claimedCount / codeCount) * 100)}%` : "0%";
     downloadCsv(`${event.slug}-codes.csv`, [
       ["code", "claimed_by", "claimed_at"],
       ...codes.map((c) => [
@@ -141,6 +143,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         c.claimedBy ?? "",
         c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
       ]),
+      [],
+      ["claimed %", claimedPercent],
     ]);
   }
 

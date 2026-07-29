@@ -11,9 +11,7 @@ import {
   OctagonX,
   QrCode,
   SearchX,
-  Undo2,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
@@ -21,6 +19,8 @@ import { api } from "@/convex/_generated/api";
 import { eventCountdownLabel, formatEventDate } from "@/lib/event-date";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import EventQrPanel from "@/components/EventQrPanel";
+import { CodeDisplay } from "@/components/CodeDisplay";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -200,6 +200,10 @@ export default function ClaimPage({ slug }: { slug: string }) {
                     ) : null}
                   </div>
                 ) : null}
+                <p className="font-mono text-xs text-muted-foreground">
+                  {Math.max(event.codeCount - event.claimedCodeCount, 0)} of{" "}
+                  {event.codeCount} codes left
+                </p>
               </CardHeader>
               <CardContent className="py-(--card-spacing)">
                 {authLoading ? (
@@ -270,7 +274,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                 )}
               </CardContent>
             </Card>
-            <QrPanel
+            <EventQrPanel
               eventName={event.name}
               url={origin ? `${origin}/${slug}` : ""}
               onBack={() => setShowQr(false)}
@@ -283,65 +287,6 @@ export default function ClaimPage({ slug }: { slug: string }) {
       </main>
       <SiteFooter />
     </div>
-  );
-}
-
-function QrPanel({
-  eventName,
-  url,
-  onBack,
-  hidden,
-}: {
-  eventName: string;
-  url: string;
-  onBack: () => void;
-  hidden: boolean;
-}) {
-  return (
-    <Card
-      inert={hidden || undefined}
-      className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
-    >
-      <CardHeader className="gap-2 border-b border-border py-(--card-spacing)">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-2">
-            <span className="eyebrow text-muted-foreground">Scan to claim</span>
-            <CardTitle className="font-heading text-2xl font-semibold tracking-[-0.02em] text-balance">
-              {eventName}
-            </CardTitle>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-mt-1 -mr-2 shrink-0 text-muted-foreground"
-            onClick={onBack}
-            aria-label="Back to claim form"
-            title="Back to claim form"
-          >
-            <Undo2 />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col items-center justify-center gap-5 py-(--card-spacing)">
-        <div className="rounded-lg border border-dashed border-border-strong bg-background p-4 text-foreground">
-          {url ? (
-            <QRCodeSVG
-              value={url}
-              size={208}
-              marginSize={0}
-              fgColor="currentColor"
-              bgColor="transparent"
-              aria-label={`QR code linking to ${url}`}
-            />
-          ) : (
-            <Skeleton className="size-[208px]" />
-          )}
-        </div>
-        <span className="max-w-full truncate font-mono text-xs text-muted-foreground">
-          {url ? url.replace(/^https?:\/\//, "") : "\u00A0"}
-        </span>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -393,12 +338,7 @@ function Receipt({
           </Badge>
         ) : null}
 
-        <div className="rounded-lg border border-dashed border-border-strong bg-background px-5 py-6 text-center">
-          <div className="eyebrow text-muted-dim">Your credit code</div>
-          <div className="mt-3 font-mono text-2xl font-medium tracking-[0.08em] break-all select-all">
-            {code}
-          </div>
-        </div>
+        <CodeDisplay code={code} label="Your credit code" />
 
         <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
           {copied ? (
