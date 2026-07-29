@@ -202,7 +202,6 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           </h1>
           <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="brand"
               render={<Link href={`/admin/events/${id}/walkup`} />}
               nativeButton={false}
             >
@@ -427,7 +426,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
             <InputGroupAddon align="inline-end">
               <InputGroupButton
                 type="submit"
-                variant="brand"
+                variant="default"
                 size="xs"
                 disabled={submitting}
                 aria-busy={submitting}

@@ -4,32 +4,36 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — clean, warm neutrals with the same blue accent. */
+/* Light mode (default) — "Paper": warm off-neutrals rather than the pure grey
+   axis, and ink (#22211E) instead of near-black so text sits at ~15:1 rather
+   than a harsh 19:1. The blue accent is reserved for the claim flow only. */
 :root {
   --surface: #ffffff;
-  --surface-hover: #f5f5f5;
-  --border: #e5e5e5;
-  --border-strong: #d4d4d4;
-  --muted: oklch(0.97 0 0);
-  --muted-dim: #737373;
-  --background: #fafafa;
-  --foreground: #0a0a0a;
+  --surface-hover: #f3f1ea;
+  --border: #e7e3da;
+  --border-strong: #d5cfc2;
+  --muted: #f1efe8;
+  --muted-dim: #78716a;
+  --background: #faf9f5;
+  --foreground: #22211e;
   --card: #ffffff;
-  --card-foreground: #0a0a0a;
+  --card-foreground: #22211e;
   --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #0a0a0a;
-  --primary-foreground: #fafafa;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: #0a0a0a;
-  --muted-foreground: #525252;
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: #0a0a0a;
+  --popover-foreground: #22211e;
+  --primary: #22211e;
+  --primary-foreground: #faf9f5;
+  --secondary: #f1efe8;
+  --secondary-foreground: #22211e;
+  --muted-foreground: #57534a;
+  --accent: #f1efe8;
+  --accent-foreground: #22211e;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
   --brand: #2200ff;
   --brand-foreground: #ffffff;
-  --ring: #2200ff;
+  --ring: #44403a;
+  --selection: #e6e1d5;
+  --selection-foreground: #22211e;
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
@@ -37,13 +41,13 @@
   --chart-5: oklch(0.87 0 0);
   --radius: 0.5rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #0a0a0a;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: #0a0a0a;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-foreground: #22211e;
+  --sidebar-primary: #22211e;
+  --sidebar-primary-foreground: #faf9f5;
+  --sidebar-accent: #f1efe8;
+  --sidebar-accent-foreground: #22211e;
+  --sidebar-border: #e7e3da;
+  --sidebar-ring: #78716a;
 }
 
 @theme inline {
@@ -100,9 +104,11 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Neutral, not brand: selection is incidental, so it shouldn't compete with
+   the one blue thing on screen. */
 ::selection {
-  background: var(--brand);
-  color: var(--brand-foreground);
+  background: var(--selection);
+  color: var(--selection-foreground);
 }
 
 /* Micro-label: the recurring uppercase mono eyebrow used across the app. */
@@ -127,45 +133,49 @@ body {
   mask-repeat: repeat-x;
 }
 
-/* Dark mode — the original palette. */
+/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
+   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
+   to stop white type haloing on OLED. */
 .dark {
-  --surface: #111111;
-  --surface-hover: #161616;
-  --border: #262626;
-  --border-strong: #3a3a3a;
-  --muted: oklch(0.269 0 0);
-  --muted-dim: #737373;
-  --background: #0a0a0a;
-  --foreground: #f5f5f5;
-  --card: #111111;
-  --card-foreground: #f5f5f5;
-  --popover: #161616;
-  --popover-foreground: #f5f5f5;
-  --primary: #f5f5f5;
-  --primary-foreground: #0a0a0a;
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: #f5f5f5;
-  --muted-foreground: #a3a3a3;
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: #f5f5f5;
+  --surface: #141416;
+  --surface-hover: #1a1a1d;
+  --border: #26262a;
+  --border-strong: #3a3a40;
+  --muted: #212125;
+  --muted-dim: #7a7772;
+  --background: #0c0c0e;
+  --foreground: #e8e6e1;
+  --card: #141416;
+  --card-foreground: #e8e6e1;
+  --popover: #1a1a1d;
+  --popover-foreground: #e8e6e1;
+  --primary: #e8e6e1;
+  --primary-foreground: #0c0c0e;
+  --secondary: #2b2b30;
+  --secondary-foreground: #e8e6e1;
+  --muted-foreground: #a8a5a0;
+  --accent: #2b2b30;
+  --accent-foreground: #e8e6e1;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
   --brand: #2200ff;
   --brand-foreground: #ffffff;
-  --ring: #2200ff;
+  --ring: #c4c1bb;
+  --selection: #33333a;
+  --selection-foreground: #e8e6e1;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #111111;
-  --sidebar-foreground: #f5f5f5;
-  --sidebar-primary: #f5f5f5;
-  --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: #f5f5f5;
-  --sidebar-border: #262626;
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #141416;
+  --sidebar-foreground: #e8e6e1;
+  --sidebar-primary: #e8e6e1;
+  --sidebar-primary-foreground: #0c0c0e;
+  --sidebar-accent: #2b2b30;
+  --sidebar-accent-foreground: #e8e6e1;
+  --sidebar-border: #26262a;
+  --sidebar-ring: #7a7772;
 }
 
 @layer base {

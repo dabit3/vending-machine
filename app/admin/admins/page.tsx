@@ -80,7 +80,7 @@ export default function AdminsPage() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-10">
         <p className="eyebrow flex items-center gap-2 text-muted-foreground">
-          <span className="inline-block size-1.5 rounded-full bg-brand" />
+          <span className="inline-block size-1.5 rounded-full bg-border-strong" />
           Access control
         </p>
         <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
@@ -118,7 +118,7 @@ export default function AdminsPage() {
             <InputGroupAddon align="inline-end">
               <InputGroupButton
                 type="submit"
-                variant="brand"
+                variant="default"
                 size="xs"
                 disabled={submitting}
                 aria-busy={submitting}
@@ -148,7 +148,7 @@ export default function AdminsPage() {
                 {admin.isSelf ? (
                   <Badge
                     variant="outline"
-                    className="eyebrow shrink-0 border-brand/40 text-brand"
+                    className="eyebrow shrink-0 border-border-strong text-muted-foreground"
                   >
                     You
                   </Badge>

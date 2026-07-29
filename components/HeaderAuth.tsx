@@ -27,7 +27,7 @@ export default function HeaderAuth() {
           <ArrowRight
             data-icon="inline-end"
             aria-hidden
-            className="text-muted-dim transition-all group-hover/button:translate-x-0.5 group-hover/button:text-brand"
+            className="text-muted-dim transition-all group-hover/button:translate-x-0.5 group-hover/button:text-foreground"
           />
         </Button>
       </SignInButton>

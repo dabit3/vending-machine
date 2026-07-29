@@ -143,7 +143,6 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                 />
                 <Button
                   type="submit"
-                  variant="brand"
                   size="lg"
                   className="w-full"
                   disabled={submitting || !email.trim()}

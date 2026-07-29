@@ -147,11 +147,11 @@ export default function MyCodesPage() {
                         {item.event ? (
                           <Link
                             href={`/${item.event.slug}`}
-                            className="group flex items-center gap-1.5 rounded-sm transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                            className="group flex items-center gap-1.5 rounded-sm transition-colors hover:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                           >
                             {item.event.name}
                             <ArrowUpRight
-                              className="size-3.5 text-muted-dim transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand"
+                              className="size-3.5 text-muted-dim transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
                               aria-hidden
                             />
                           </Link>

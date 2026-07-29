@@ -6,8 +6,8 @@ const GRID_SIZE = 17;
 const DOT_RADIUS = 1;
 const TRAIL_RADIUS = 120;
 const OVERSCAN = TRAIL_RADIUS * 1.75;
-const LIGHT_DOT_COLOR = "rgba(185, 185, 185, 0.85)";
-const DARK_DOT_COLOR = "rgba(61, 61, 61, 0.765)";
+const LIGHT_DOT_COLOR = "rgba(190, 184, 172, 0.85)";
+const DARK_DOT_COLOR = "rgba(64, 64, 70, 0.765)";
 // Impulse physics: the mouse imparts velocity kicks scaled by its speed
 const IMPULSE = 1.1;
 const MAX_SPEED = 120;
@@ -51,7 +51,7 @@ export default function DotGridCanvas() {
     let width = 0;
     let height = 0;
     let dpr = 1;
-    let dotColor = "#e5e5e5";
+    let dotColor = LIGHT_DOT_COLOR;
     let raf = 0;
     let running = false;
     const mouse = { x: -1e4, y: -1e4 };

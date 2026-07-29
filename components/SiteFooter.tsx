@@ -10,7 +10,7 @@ export default function SiteFooter() {
           href="https://devin.ai"
           target="_blank"
           rel="noreferrer"
-          className="flex min-w-0 items-center gap-2 rounded-sm text-muted-dim transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          className="flex min-w-0 items-center gap-2 rounded-sm text-muted-dim transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
           <BrandMark className="size-4 shrink-0" />
           <span className="eyebrow truncate">{getAppName()}</span>

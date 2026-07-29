@@ -46,7 +46,7 @@ export default function AdminDashboard() {
       <div className="mb-10 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div>
           <p className="eyebrow flex items-center gap-2 text-muted-foreground">
-            <span className="inline-block size-1.5 rounded-full bg-brand" />
+            <span className="inline-block size-1.5 rounded-full bg-border-strong" />
             Control room
           </p>
           <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
@@ -93,7 +93,7 @@ export default function AdminDashboard() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
+                  <div className="font-medium tracking-tight">
                     {event.name}
                   </div>
                 </div>
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
                   })}
                 </span>
                 <ArrowRight
-                  className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-brand"
+                  className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
                   aria-hidden
                 />
               </Link>
@@ -157,7 +157,7 @@ function NewEventDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="brand" />}>
+      <DialogTrigger render={<Button />}>
         <Plus data-icon="inline-start" />
         New event
       </DialogTrigger>
@@ -259,7 +259,6 @@ function NewEventDialog() {
             </Button>
             <Button
               type="submit"
-              variant="brand"
               disabled={submitting}
               aria-busy={submitting}
             >

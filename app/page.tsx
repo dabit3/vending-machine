@@ -94,7 +94,7 @@ export default function Home() {
                       {String(index + 1).padStart(2, "0")}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="font-heading text-xl font-medium tracking-tight transition-colors group-hover:text-brand sm:text-2xl">
+                      <div className="font-heading text-xl font-medium tracking-tight sm:text-2xl">
                         {event.name}
                       </div>
                       {event.eventDate ? (
@@ -112,7 +112,7 @@ export default function Home() {
                       /{event.slug}
                     </span>
                     <ArrowUpRight
-                      className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand"
+                      className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
                       aria-hidden
                     />
                   </Link>

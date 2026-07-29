@@ -189,7 +189,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         href={event.eventUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group flex w-fit items-center gap-1.5 rounded-sm font-mono text-xs text-muted-foreground transition-colors hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                        className="group flex w-fit items-center gap-1.5 rounded-sm font-mono text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                       >
                         {urlLabel(event.eventUrl)}
                         <ArrowUpRight
@@ -225,7 +225,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                     <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2.5">
                       <span className="flex min-w-0 items-center gap-2">
                         <BadgeCheck
-                          className="size-4 shrink-0 text-brand"
+                          className="size-4 shrink-0 text-muted-foreground"
                           aria-hidden
                         />
                         <span className="truncate font-mono text-sm">
