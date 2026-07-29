@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
+import { ArrowRight, CalendarPlus, OctagonX, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -32,6 +32,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,15 @@ export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
   const access = useQuery(api.admins.accessLevel);
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
+  const [search, setSearch] = useState("");
+  const filteredEvents = events?.filter((event) => {
+    const query = search.trim().toLowerCase();
+    return (
+      !query ||
+      event.name.toLowerCase().includes(query) ||
+      event.slug.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div>
@@ -82,8 +92,29 @@ export default function AdminDashboard() {
           </EmptyHeader>
         </Empty>
       ) : (
+        <>
+        <div className="mb-4 max-w-md">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-dim" aria-hidden />
+            <Input
+              aria-label="Search events"
+              placeholder="Search events..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        {filteredEvents?.length === 0 ? (
+          <Empty className="border border-dashed border-border-strong py-12">
+            <EmptyHeader>
+              <EmptyTitle>No matching events</EmptyTitle>
+              <EmptyDescription>Try a different name or slug.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
         <ul className="border-t border-border">
-          {events.map((event, index) => (
+          {filteredEvents?.map((event, index) => (
             <li key={event._id} className="border-b border-border">
               <Link
                 href={`/admin/events/${event._id}`}
@@ -97,6 +128,11 @@ export default function AdminDashboard() {
                     {event.name}
                   </div>
                 </div>
+                {event.hidden ? (
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-dim">
+                    Hidden
+                  </span>
+                ) : null}
                 <span className="hidden font-mono text-xs text-muted-dim sm:inline">
                   /{event.slug}
                 </span>
@@ -115,6 +151,8 @@ export default function AdminDashboard() {
             </li>
           ))}
         </ul>
+        )}
+        </>
       )}
     </div>
   );
@@ -131,6 +169,7 @@ function NewEventDialog() {
   const [eventDate, setEventDate] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
   const [eventUrl, setEventUrl] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,6 +185,7 @@ function NewEventDialog() {
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -181,6 +221,17 @@ function NewEventDialog() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Hackathon 1"
               />
+            </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="event-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="event-hidden">Hide from homepage</FieldLabel>
+              <FieldDescription>
+                The claim page remains live at its URL.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="event-slug">Slug</FieldLabel>

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { formatEventDate } from "@/lib/event-date";
+import { formatEventDate, relativeTime } from "@/lib/event-date";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -94,7 +94,7 @@ export default function MyCodesPage() {
             </div>
           ) : !isAuthenticated ? (
             <Card className="mx-auto max-w-md">
-              <CardHeader>
+                    <CardHeader>
                 <CardTitle>Sign in to see your codes</CardTitle>
                 <CardDescription>
                   Codes are tied to your verified email address.
@@ -160,35 +160,40 @@ export default function MyCodesPage() {
                         )}
                       </CardTitle>
                       {meta ? <CardDescription>{meta}</CardDescription> : null}
+                      {item.claimedAt ? (
+                        <CardDescription>
+                          Claimed {relativeTime(item.claimedAt)}
+                        </CardDescription>
+                      ) : null}
                     </CardHeader>
-                  <CardContent className="flex-1">
+                    <CardContent className="flex-1">
                     <div className="rounded-lg border border-dashed border-border-strong bg-background px-5 py-6 text-center">
                       <div className="eyebrow text-muted-dim">Credit code</div>
                       <div className="mt-3 font-mono text-2xl font-medium tracking-[0.08em] break-all select-all">
                         {item.code}
                       </div>
                     </div>
-                  </CardContent>
-                  <CardFooter className="justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(item._id, item.code)}
-                    >
-                      {copiedId === item._id ? (
-                        <>
-                          <Check data-icon="inline-start" />
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy data-icon="inline-start" />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
+                    </CardContent>
+                    <CardFooter className="justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopy(item._id, item.code)}
+                      >
+                        {copiedId === item._id ? (
+                          <>
+                            <Check data-icon="inline-start" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy data-icon="inline-start" />
+                            Copy
+                          </>
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
               );
             })}
             </div>

@@ -40,12 +40,15 @@ function normalizeEventDate(raw?: string): string | undefined {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const events = await ctx.db.query("events").order("desc").collect();
+    const events = (await ctx.db.query("events").order("desc").collect()).filter(
+      (event) => !event.hidden
+    );
     return events.map((event) => ({
       _id: event._id,
       _creationTime: event._creationTime,
       name: event.name,
       slug: event.slug,
+      hidden: event.hidden,
       description: event.description,
       eventDate: event.eventDate,
     }));
@@ -60,14 +63,21 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", event._id))
+      .collect();
     return {
       _id: event._id,
       _creationTime: event._creationTime,
       name: event.name,
       slug: event.slug,
+      hidden: event.hidden,
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
+      codeCount: codes.length,
+      remainingCodeCount: codes.filter((code) => !code.claimedBy).length,
     };
   },
 });
@@ -106,6 +116,7 @@ export const listManaged = query({
       _creationTime: event._creationTime,
       name: event.name,
       slug: event.slug,
+      hidden: event.hidden,
       description: event.description,
     }));
   },
@@ -115,6 +126,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     slug: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
@@ -132,6 +144,7 @@ export const create = mutation({
     const id = await ctx.db.insert("events", {
       name: args.name.trim(),
       slug,
+      hidden: args.hidden ?? false,
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
@@ -146,6 +159,7 @@ export const update = mutation({
     id: v.id("events"),
     name: v.string(),
     slug: v.string(),
+    hidden: v.optional(v.boolean()),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
@@ -165,6 +179,7 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       slug,
+      hidden: args.hidden ?? false,
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),

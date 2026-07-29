@@ -52,6 +52,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   InputGroup,
   InputGroupAddon,
@@ -64,6 +65,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
+const CODE_PAGE_SIZE = 25;
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
@@ -79,6 +81,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [codeInput, setCodeInput] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [codeLimit, setCodeLimit] = useState(CODE_PAGE_SIZE);
 
   if (event === undefined) {
     return (
@@ -101,6 +104,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
+  const visibleCodes = codes?.slice(0, codeLimit);
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
@@ -141,6 +145,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         c.claimedBy ?? "",
         c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
       ]),
+      ["claimed %", codeCount ? `${Math.round((claimedCount / codeCount) * 100)}%` : "0%", ""],
     ]);
   }
 
@@ -350,7 +355,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
-              items={codes?.map((c) => ({
+              items={visibleCodes?.map((c) => ({
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
@@ -366,6 +371,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                       ),
               }))}
               emptyText="No codes yet."
+              hasMore={Boolean(codes && visibleCodes && visibleCodes.length < codes.length)}
+              onLoadMore={() => setCodeLimit((limit) => limit + CODE_PAGE_SIZE)}
             />
           </CardContent>
         </Card>
@@ -511,9 +518,13 @@ function UploadButton({
 function RowList({
   items,
   emptyText,
+  hasMore = false,
+  onLoadMore,
 }: {
   items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
   emptyText: string;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }) {
   if (!items) {
     return (
@@ -531,35 +542,42 @@ function RowList({
     );
   }
   return (
-    <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
-      {items.map((item) => (
-        <li
-          key={item.key}
-          className="flex min-h-10 items-center justify-between gap-3 px-3 py-1.5 transition-colors hover:bg-surface"
-        >
-          <span className="truncate font-mono text-xs">{item.label}</span>
-          {item.claimedBy ? (
-            <Badge
-              variant="secondary"
-              className="max-w-32 shrink-0 truncate font-mono text-[10px] sm:max-w-48"
-            >
-              <Check data-icon="inline-start" />
-              {item.claimedBy}
-            </Badge>
-          ) : item.onRemove ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${item.label}`}
-              onClick={item.onRemove}
-              className="shrink-0 text-muted-foreground"
-            >
-              <X />
-            </Button>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
+        {items.map((item) => (
+          <li
+            key={item.key}
+            className="flex min-h-10 items-center justify-between gap-3 px-3 py-1.5 transition-colors hover:bg-surface"
+          >
+            <span className="truncate font-mono text-xs">{item.label}</span>
+            {item.claimedBy ? (
+              <Badge
+                variant="secondary"
+                className="max-w-32 shrink-0 truncate font-mono text-[10px] sm:max-w-48"
+              >
+                <Check data-icon="inline-start" />
+                {item.claimedBy}
+              </Badge>
+            ) : item.onRemove ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Remove ${item.label}`}
+                onClick={item.onRemove}
+                className="shrink-0 text-muted-foreground"
+              >
+                <X />
+              </Button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {hasMore && onLoadMore ? (
+        <Button variant="outline" size="sm" className="self-center" onClick={onLoadMore}>
+          Load 25 more
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -580,6 +598,7 @@ function EventDetailsForm({
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
   const [eventUrl, setEventUrl] = useState(event.eventUrl ?? "");
+  const [hidden, setHidden] = useState(event.hidden ?? false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -594,6 +613,7 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -685,6 +705,17 @@ function EventDetailsForm({
               />
               <FieldDescription>
                 Optional — linked from the claim page.
+              </FieldDescription>
+            </Field>
+            <Field orientation="horizontal" className="sm:col-span-2">
+              <Checkbox
+                id="detail-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="detail-hidden">Hide from homepage</FieldLabel>
+              <FieldDescription>
+                The claim page remains live at its URL.
               </FieldDescription>
             </Field>
           </FieldGroup>

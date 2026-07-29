@@ -17,6 +17,7 @@ export default defineSchema({
   events: defineTable({
     name: v.string(),
     slug: v.string(),
+    hidden: v.optional(v.boolean()),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
