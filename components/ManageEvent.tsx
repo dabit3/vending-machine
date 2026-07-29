@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardAction,
@@ -79,6 +80,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [codeInput, setCodeInput] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [codeLimit, setCodeLimit] = useState(25);
 
   if (event === undefined) {
     return (
@@ -101,6 +103,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
+  const visibleCodes = codes?.slice(0, codeLimit);
+  const hasMoreCodes = codes ? codeLimit < codes.length : false;
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
@@ -350,7 +354,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
-              items={codes?.map((c) => ({
+              items={visibleCodes?.map((c) => ({
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
@@ -367,6 +371,24 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               }))}
               emptyText="No codes yet."
             />
+            {hasMoreCodes ? (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setCodeLimit((n) =>
+                      Math.min(n + 25, codes?.length ?? 0)
+                    )
+                  }
+                >
+                  Load more
+                </Button>
+                <span className="text-xs text-muted-dim">
+                  Showing {visibleCodes?.length ?? 0} of {codeCount}
+                </span>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -580,6 +602,7 @@ function EventDetailsForm({
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
   const [eventUrl, setEventUrl] = useState(event.eventUrl ?? "");
+  const [hidden, setHidden] = useState(event.hidden ?? false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -594,6 +617,7 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -687,6 +711,20 @@ function EventDetailsForm({
                 Optional — linked from the claim page.
               </FieldDescription>
             </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="detail-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="detail-hidden" className="font-normal">
+                Hide from homepage
+              </FieldLabel>
+            </Field>
+            <FieldDescription>
+              The page will still be live at its slug, but it will not appear on
+              the public events list.
+            </FieldDescription>
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">
             <Button type="submit" disabled={saving} aria-busy={saving}>

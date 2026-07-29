@@ -8,7 +8,9 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -93,8 +95,15 @@ export default function AdminDashboard() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium tracking-tight transition-colors group-hover:text-brand">
-                    {event.name}
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium tracking-tight transition-colors group-hover:text-brand">
+                      {event.name}
+                    </span>
+                    {event.hidden ? (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        Hidden
+                      </Badge>
+                    ) : null}
                   </div>
                 </div>
                 <span className="hidden font-mono text-xs text-muted-dim sm:inline">
@@ -131,6 +140,7 @@ function NewEventDialog() {
   const [eventDate, setEventDate] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
   const [eventUrl, setEventUrl] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -146,6 +156,7 @@ function NewEventDialog() {
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
         eventUrl: eventUrl || undefined,
+        hidden,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -242,6 +253,20 @@ function NewEventDialog() {
                 Optional — linked from the claim page.
               </FieldDescription>
             </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="event-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="event-hidden" className="font-normal">
+                Hide from homepage
+              </FieldLabel>
+            </Field>
+            <FieldDescription>
+              The page will still be live at its slug, but it will not appear on
+              the public events list.
+            </FieldDescription>
           </FieldGroup>
           {error ? (
             <Alert variant="destructive">

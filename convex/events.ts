@@ -40,7 +40,9 @@ function normalizeEventDate(raw?: string): string | undefined {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const events = await ctx.db.query("events").order("desc").collect();
+    const events = (await ctx.db.query("events").order("desc").collect()).filter(
+      (event) => !event.hidden
+    );
     return events.map((event) => ({
       _id: event._id,
       _creationTime: event._creationTime,
@@ -107,6 +109,7 @@ export const listManaged = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
+      hidden: event.hidden,
     }));
   },
 });
@@ -119,6 +122,7 @@ export const create = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -136,6 +140,7 @@ export const create = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      hidden: args.hidden ?? false,
     });
     return { id, slug };
   },
@@ -150,6 +155,7 @@ export const update = mutation({
     creditAmount: v.optional(v.string()),
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
@@ -162,14 +168,26 @@ export const update = mutation({
     if (existing && existing._id !== args.id) {
       throw new Error(`Slug "${slug}" is already taken`);
     }
-    await ctx.db.patch(args.id, {
+    const patch: Partial<{
+      name: string;
+      slug: string;
+      description: string | undefined;
+      creditAmount: string | undefined;
+      eventUrl: string | undefined;
+      eventDate: string | undefined;
+      hidden: boolean;
+    }> = {
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
-    });
+    };
+    if (args.hidden !== undefined) {
+      patch.hidden = args.hidden;
+    }
+    await ctx.db.patch(args.id, patch);
     return { slug };
   },
 });

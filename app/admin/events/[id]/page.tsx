@@ -7,5 +7,5 @@ export default async function AdminEventPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ManageEvent id={id as Id<"events">} />;
+  return <ManageEvent id={id as Id<"events">} key={id} />;
 }
