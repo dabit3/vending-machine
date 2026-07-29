@@ -18,7 +18,12 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import {
+  useConvex,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
@@ -69,12 +74,13 @@ const UPLOAD_CHUNK_SIZE = 500;
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
-  const codes = useQuery(api.codes.list, { eventId: id });
+  const codeStats = useQuery(api.codes.stats, { eventId: id });
   const paginatedCodes = usePaginatedQuery(
     api.codes.listPaginated,
     { eventId: id },
     { initialNumItems: 25 }
   );
+  const convex = useConvex();
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
@@ -105,8 +111,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     );
   }
 
-  const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
-  const codeCount = codes?.length ?? 0;
+  const claimedCount = codeStats?.claimed;
+  const codeCount = codeStats?.total;
   const visibleCodes = paginatedCodes.results;
 
   async function handleAddEmails(e: React.FormEvent) {
@@ -139,8 +145,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     ]);
   }
 
-  function exportCodes() {
-    if (!codes || !event) return;
+  async function exportCodes() {
+    if (!event) return;
+    const codes = await convex.query(api.codes.list, { eventId: id });
     downloadCsv(`${event.slug}-codes.csv`, [
       ["code", "claimed_by", "claimed_at"],
       ...codes.map((c) => [
@@ -236,23 +243,30 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Eligible emails" value={emails?.length} />
-        <StatCard label="Codes in pool" value={codes?.length} />
+        <StatCard label="Codes in pool" value={codeCount} />
         <Card className="gap-2">
           <CardContent className="flex flex-col gap-3">
             <div className="flex items-baseline justify-between">
               <span className="eyebrow text-muted-foreground">Claimed</span>
               <span className="font-mono text-xs text-muted-dim tabular-nums">
-                {codeCount > 0
+                {codeCount && claimedCount !== undefined && codeCount > 0
                   ? `${Math.round((claimedCount / codeCount) * 100)}%`
                   : "—"}
               </span>
             </div>
             <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-              {codes ? claimedCount : "—"}
-              <span className="text-base text-muted-dim"> / {codes ? codeCount : "—"}</span>
+              {claimedCount !== undefined ? claimedCount : "—"}
+              <span className="text-base text-muted-dim">
+                {" / "}
+                {codeCount !== undefined ? codeCount : "—"}
+              </span>
             </div>
             <Progress
-              value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
+              value={
+                codeCount && claimedCount !== undefined && codeCount > 0
+                  ? (claimedCount / codeCount) * 100
+                  : 0
+              }
               className="w-full"
             />
           </CardContent>
@@ -328,7 +342,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               Each email is assigned one unclaimed code.
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
-              {codes && codes.length > 0 ? (
+              {codeStats?.total !== undefined && codeStats.total > 0 ? (
                 <Button variant="outline" size="sm" onClick={exportCodes}>
                   <Download data-icon="inline-start" />
                   Export

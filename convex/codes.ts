@@ -28,10 +28,23 @@ export const listPaginated = query({
   },
 });
 
+export const stats = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    return {
+      total: event?.codeCount,
+      claimed: event?.claimedCodeCount,
+    };
+  },
+});
+
 export const add = mutation({
   args: { eventId: v.id("events"), codes: v.array(v.string()) },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
     const existing = await ctx.db
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
@@ -48,6 +61,14 @@ export const add = mutation({
       existingSet.add(code);
       await ctx.db.insert("codes", { eventId: args.eventId, code });
       added++;
+    }
+    if (event && added > 0) {
+      await ctx.db.patch(args.eventId, {
+        codeCount: (event.codeCount ?? existing.length) + added,
+        claimedCodeCount:
+          event.claimedCodeCount ??
+          existing.filter((code) => code.claimedBy).length,
+      });
     }
     return { added, skipped };
   },
@@ -101,5 +122,11 @@ export const remove = mutation({
       );
     }
     await ctx.db.delete(args.id);
+    const event = await ctx.db.get(code.eventId);
+    if (event?.codeCount !== undefined) {
+      await ctx.db.patch(code.eventId, {
+        codeCount: Math.max(0, event.codeCount - 1),
+      });
+    }
   },
 });

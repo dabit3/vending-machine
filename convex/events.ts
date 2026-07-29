@@ -139,6 +139,8 @@ export const create = mutation({
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
       hidden: args.hidden ?? false,
+      codeCount: 0,
+      claimedCodeCount: 0,
     });
     return { id, slug };
   },

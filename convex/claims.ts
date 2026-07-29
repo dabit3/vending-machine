@@ -72,6 +72,11 @@ export const claim = mutation({
       claimedBy: email,
       claimedAt: Date.now(),
     });
+    if (event.claimedCodeCount !== undefined) {
+      await ctx.db.patch(event._id, {
+        claimedCodeCount: event.claimedCodeCount + 1,
+      });
+    }
     return {
       ok: true as const,
       code: available.code,

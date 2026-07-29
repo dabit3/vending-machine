@@ -22,6 +22,8 @@ export default defineSchema({
     eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
+    codeCount: v.optional(v.number()),
+    claimedCodeCount: v.optional(v.number()),
   }).index("by_slug", ["slug"]),
 
   emails: defineTable({
