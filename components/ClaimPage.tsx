@@ -202,6 +202,9 @@ export default function ClaimPage({ slug }: { slug: string }) {
                 ) : null}
               </CardHeader>
               <CardContent className="py-(--card-spacing)">
+                <p className="mb-6 font-mono text-xs text-muted-foreground">
+                  {event.codeCount - event.claimedCodeCount} of {event.codeCount} codes left
+                </p>
                 {authLoading ? (
                   <div className="flex flex-col gap-3">
                     <Skeleton className="h-12 rounded-md" />

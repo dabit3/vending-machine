@@ -144,6 +144,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     ]);
   }
 
+  function exportClaimedCodes() {
+    if (!codes || !event) return;
+    const claimedCodes = codes.filter((code) => code.claimedBy);
+    const claimedPercent = codeCount > 0 ? Math.round((claimedCount / codeCount) * 100) : 0;
+    downloadCsv(`${event.slug}-claimed-codes.csv`, [
+      ["code", "claimed_by", "claimed_at"],
+      ...claimedCodes.map((code) => [
+        code.code,
+        code.claimedBy ?? "",
+        code.claimedAt ? new Date(code.claimedAt).toISOString() : "",
+      ]),
+      ["claimed %", `${claimedPercent}%`, ""],
+    ]);
+  }
+
   async function importFile(
     file: File,
     kind: "emails" | "codes",
@@ -322,10 +337,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {codes && codes.length > 0 ? (
-                <Button variant="outline" size="sm" onClick={exportCodes}>
-                  <Download data-icon="inline-start" />
-                  Export
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={exportCodes}>
+                    <Download data-icon="inline-start" />
+                    Export all
+                  </Button>
+                  {claimedCount > 0 ? (
+                    <Button variant="outline" size="sm" onClick={exportClaimedCodes}>
+                      <Download data-icon="inline-start" />
+                      Export claimed
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
               <UploadButton busy={codeBusy} onFile={(f) => importFile(f, "codes", (items) => addCodes({ eventId: id, codes: items }), setCodeBusy)} />
             </CardAction>

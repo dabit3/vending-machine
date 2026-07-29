@@ -14,6 +14,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
+import { formatRelativeTime } from "@/lib/relative-time";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -160,6 +161,11 @@ export default function MyCodesPage() {
                         )}
                       </CardTitle>
                       {meta ? <CardDescription>{meta}</CardDescription> : null}
+                      {item.claimedAt ? (
+                        <CardDescription>
+                          Claimed {formatRelativeTime(item.claimedAt)}
+                        </CardDescription>
+                      ) : null}
                     </CardHeader>
                   <CardContent className="flex-1">
                     <div className="rounded-lg border border-dashed border-border-strong bg-background px-5 py-6 text-center">
