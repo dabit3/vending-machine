@@ -357,21 +357,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
-              items={visibleCodes.map((c) => ({
-                key: c._id,
-                label: c.code,
-                claimedBy: c.claimedBy ?? undefined,
-                onRemove: c.claimedBy
+              items={
+                paginatedCodes.status === "LoadingFirstPage"
                   ? undefined
-                  : () =>
-                      removeCode({ id: c._id }).catch((err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to remove code"
-                        )
-                      ),
-              }))}
+                  : visibleCodes.map((c) => ({
+                      key: c._id,
+                      label: c.code,
+                      claimedBy: c.claimedBy ?? undefined,
+                      onRemove: c.claimedBy
+                        ? undefined
+                        : () =>
+                            removeCode({ id: c._id }).catch((err) =>
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to remove code"
+                              )
+                            ),
+                    }))
+              }
               emptyText="No codes yet."
             />
             {paginatedCodes.status === "CanLoadMore" ? (
