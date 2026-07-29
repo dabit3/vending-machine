@@ -60,10 +60,6 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
-    const codes = await ctx.db
-      .query("codes")
-      .withIndex("by_event", (q) => q.eq("eventId", event._id))
-      .collect();
     return {
       _id: event._id,
       _creationTime: event._creationTime,
@@ -72,8 +68,8 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
-      codeCount: codes.length,
-      claimedCodeCount: codes.filter((code) => code.claimedBy).length,
+      codeCount: event.codeCount ?? 0,
+      claimedCodeCount: event.claimedCodeCount ?? 0,
     };
   },
 });
@@ -142,8 +138,31 @@ export const create = mutation({
       creditAmount: args.creditAmount?.trim() || undefined,
       eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
+      codeCount: 0,
+      claimedCodeCount: 0,
     });
     return { id, slug };
+  },
+});
+
+export const backfillCodeCounts = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireAdmin(ctx);
+    const events = await ctx.db.query("events").collect();
+    for (const event of events) {
+      if (event.codeCount !== undefined && event.claimedCodeCount !== undefined) {
+        continue;
+      }
+      const codes = await ctx.db
+        .query("codes")
+        .withIndex("by_event", (q) => q.eq("eventId", event._id))
+        .collect();
+      await ctx.db.patch(event._id, {
+        codeCount: codes.length,
+        claimedCodeCount: codes.filter((code) => code.claimedBy).length,
+      });
+    }
   },
 });
 

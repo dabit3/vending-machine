@@ -68,6 +68,10 @@ export const claim = mutation({
       };
     }
 
+    await ctx.db.patch(event._id, {
+      codeCount: event.codeCount ?? 0,
+      claimedCodeCount: (event.claimedCodeCount ?? 0) + 1,
+    });
     await ctx.db.patch(available._id, {
       claimedBy: email,
       claimedAt: Date.now(),

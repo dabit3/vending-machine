@@ -22,6 +22,7 @@ export const add = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
     const existingSet = new Set(existing.map((c) => c.code));
+    const event = await ctx.db.get(args.eventId);
     let added = 0;
     let skipped = 0;
     for (const raw of args.codes) {
@@ -33,6 +34,14 @@ export const add = mutation({
       existingSet.add(code);
       await ctx.db.insert("codes", { eventId: args.eventId, code });
       added++;
+    }
+    if (event) {
+      await ctx.db.patch(args.eventId, {
+        codeCount:
+          event.codeCount === undefined
+            ? existing.length + added
+            : event.codeCount + added,
+      });
     }
     return { added, skipped };
   },
@@ -86,5 +95,11 @@ export const remove = mutation({
       );
     }
     await ctx.db.delete(args.id);
+    const event = await ctx.db.get(code.eventId);
+    if (event) {
+      await ctx.db.patch(code.eventId, {
+        codeCount: Math.max((event.codeCount ?? 1) - 1, 0),
+      });
+    }
   },
 });
