@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
@@ -68,17 +68,47 @@ const UPLOAD_CHUNK_SIZE = 500;
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
-  const codes = useQuery(api.codes.list, { eventId: id });
+  const [emailInput, setEmailInput] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [codeBusy, setCodeBusy] = useState(false);
+  const [exportRequestId, setExportRequestId] = useState(0);
+  const lastExportedRequestId = useRef(0);
+  const codeStats = useQuery(api.codes.stats, { eventId: id });
+  const exportCodesData = useQuery(
+    api.codes.exportList,
+    exportRequestId > 0 ? { eventId: id } : "skip"
+  );
+  const {
+    results: codes,
+    status: codesStatus,
+    loadMore: loadMoreCodes,
+  } = usePaginatedQuery(api.codes.list, { eventId: id }, { initialNumItems: 25 });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
   const addCodes = useMutation(api.codes.add);
   const removeCode = useMutation(api.codes.remove);
 
-  const [emailInput, setEmailInput] = useState("");
-  const [codeInput, setCodeInput] = useState("");
-  const [emailBusy, setEmailBusy] = useState(false);
-  const [codeBusy, setCodeBusy] = useState(false);
+  useEffect(() => {
+    if (
+      exportRequestId === 0 ||
+      exportRequestId === lastExportedRequestId.current ||
+      !exportCodesData ||
+      !event
+    ) {
+      return;
+    }
+    downloadCsv(`${event.slug}-codes.csv`, [
+      ["code", "claimed_by", "claimed_at"],
+      ...exportCodesData.map((c) => [
+        c.code,
+        c.claimedBy ?? "",
+        c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
+      ]),
+    ]);
+    lastExportedRequestId.current = exportRequestId;
+  }, [event, exportCodesData, exportRequestId]);
 
   if (event === undefined) {
     return (
@@ -99,8 +129,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     );
   }
 
-  const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
-  const codeCount = codes?.length ?? 0;
+  const claimedCount = codeStats?.claimed ?? 0;
+  const codeCount = codeStats?.total ?? 0;
 
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
@@ -133,15 +163,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   }
 
   function exportCodes() {
-    if (!codes || !event) return;
-    downloadCsv(`${event.slug}-codes.csv`, [
-      ["code", "claimed_by", "claimed_at"],
-      ...codes.map((c) => [
-        c.code,
-        c.claimedBy ?? "",
-        c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
-      ]),
-    ]);
+    setExportRequestId((requestId) => requestId + 1);
   }
 
   async function importFile(
@@ -321,7 +343,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               Each email is assigned one unclaimed code.
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
-              {codes && codes.length > 0 ? (
+              {codeCount > 0 ? (
                 <Button variant="outline" size="sm" onClick={exportCodes}>
                   <Download data-icon="inline-start" />
                   Export
@@ -350,23 +372,41 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
-              items={codes?.map((c) => ({
-                key: c._id,
-                label: c.code,
-                claimedBy: c.claimedBy ?? undefined,
-                onRemove: c.claimedBy
+              items={
+                codesStatus === "LoadingFirstPage"
                   ? undefined
-                  : () =>
-                      removeCode({ id: c._id }).catch((err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to remove code"
-                        )
-                      ),
-              }))}
+                  : codes.map((c) => ({
+                      key: c._id,
+                      label: c.code,
+                      claimedBy: c.claimedBy ?? undefined,
+                      onRemove: c.claimedBy
+                        ? undefined
+                        : () =>
+                            removeCode({ id: c._id }).catch((err) =>
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to remove code"
+                              )
+                            ),
+                    }))
+              }
               emptyText="No codes yet."
             />
+            {codesStatus === "CanLoadMore" || codesStatus === "LoadingMore" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-center"
+                disabled={codesStatus === "LoadingMore"}
+                onClick={() => loadMoreCodes(25)}
+              >
+                {codesStatus === "LoadingMore" ? (
+                  <Spinner data-icon="inline-start" />
+                ) : null}
+                {codesStatus === "LoadingMore" ? "Loading..." : "Load more"}
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -512,7 +552,12 @@ function RowList({
   items,
   emptyText,
 }: {
-  items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
+  items?: {
+    key: string;
+    label: string;
+    claimedBy?: string;
+    onRemove?: () => void;
+  }[];
   emptyText: string;
 }) {
   if (!items) {

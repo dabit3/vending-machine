@@ -1,8 +1,38 @@
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
 
 export const list = query({
+  args: {
+    eventId: v.id("events"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    return await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .paginate(args.paginationOpts);
+  },
+});
+
+export const stats = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    return {
+      total: codes.length,
+      claimed: codes.filter((code) => code.claimedBy).length,
+    };
+  },
+});
+
+export const exportList = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
