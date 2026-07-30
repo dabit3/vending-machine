@@ -51,7 +51,9 @@ export const request = mutation({
       )
       .unique();
     if (existing) {
-      if (existing.status === "denied") {
+      // A denied request can be reopened; so can an approved one whose
+      // whitelist entry was later removed (caller is not whitelisted here).
+      if (existing.status === "denied" || existing.status === "approved") {
         await ctx.db.patch(existing._id, {
           status: "pending",
           message,
@@ -66,7 +68,7 @@ export const request = mutation({
           details: message,
         });
       }
-      return { ok: true as const, status: existing.status === "denied" ? "pending" : existing.status };
+      return { ok: true as const, status: "pending" as const };
     }
 
     await ctx.db.insert("accessRequests", {
@@ -200,7 +202,7 @@ export const approve = mutation({
       )
       .first();
     if (alreadyClaimed) {
-      reservedCode = alreadyClaimed.code;
+      // Nothing to reserve; they already hold a code.
     } else if (alreadyReserved) {
       reservedCode = alreadyReserved.code;
     } else {
@@ -229,7 +231,7 @@ export const approve = mutation({
       subjectEmail: request.email,
       details: alreadyClaimed
         ? "Whitelisted — already holds a claimed code"
-        : reservedCode
+        : reservedCode !== null
           ? "Whitelisted and code reserved"
           : "Whitelisted — no unreserved codes left to hold",
     });
@@ -238,10 +240,17 @@ export const approve = mutation({
       email: request.email,
       eventName: event.name,
       slug: event.slug,
-      codeReserved: reservedCode !== null,
+      outcome: alreadyClaimed
+        ? ("already_claimed" as const)
+        : reservedCode !== null
+          ? ("reserved" as const)
+          : ("none" as const),
     });
 
-    return { codeReserved: reservedCode !== null };
+    return {
+      codeReserved: reservedCode !== null,
+      alreadyClaimed: alreadyClaimed !== null,
+    };
   },
 });
 
