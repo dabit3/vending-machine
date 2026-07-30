@@ -114,7 +114,7 @@ export default function AccessRequestsCard({
                         </span>
                       ) : null}
                       <span className="font-mono text-[10px] text-muted-dim">
-                        {new Date(r._creationTime).toLocaleString()}
+                        {new Date(r.requestedAt ?? r._creationTime).toLocaleString()}
                       </span>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
