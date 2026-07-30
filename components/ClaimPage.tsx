@@ -19,6 +19,7 @@ import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { eventCountdownLabel, formatEventDate } from "@/lib/event-date";
+import RequestAccess from "@/components/RequestAccess";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -266,6 +267,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         "Dispense my code"
                       )}
                     </Button>
+                    <RequestAccess slug={slug} />
                   </div>
                 )}
               </CardContent>
