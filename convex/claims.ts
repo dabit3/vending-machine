@@ -74,9 +74,17 @@ export const claim = mutation({
         .filter((q) => q.eq(q.field("reservedFor"), undefined))
         .first());
     if (!available) {
+      const anyUnclaimed = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", event._id).eq("claimedBy", undefined)
+        )
+        .first();
       return {
         ok: false as const,
-        error: "All codes for this event have been claimed.",
+        error: anyUnclaimed
+          ? "No codes are currently available — the remaining codes are held for approved attendees."
+          : "All codes for this event have been claimed.",
       };
     }
 
