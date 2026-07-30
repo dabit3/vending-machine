@@ -57,6 +57,7 @@ export const request = mutation({
         await ctx.db.patch(existing._id, {
           status: "pending",
           message,
+          requestedAt: Date.now(),
           decidedBy: undefined,
           decidedAt: undefined,
         });
@@ -78,6 +79,7 @@ export const request = mutation({
       email,
       status: "pending",
       message,
+      requestedAt: Date.now(),
     });
     await recordAudit(ctx, {
       eventId: event._id,
@@ -114,7 +116,7 @@ export const mine = query({
     if (!request) return null;
     return {
       status: request.status,
-      requestedAt: request._creationTime,
+      requestedAt: request.requestedAt ?? request._creationTime,
       decidedAt: request.decidedAt,
     };
   },
