@@ -184,6 +184,14 @@ export const approve = mutation({
       });
     }
 
+    // Skip reserving if the attendee already holds a code (e.g. they were
+    // whitelisted manually and claimed while this request was pending).
+    const alreadyClaimed = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", request.eventId).eq("claimedBy", request.email)
+      )
+      .first();
     let reservedCode: string | null = null;
     const alreadyReserved = await ctx.db
       .query("codes")
@@ -191,7 +199,9 @@ export const approve = mutation({
         q.eq("eventId", request.eventId).eq("reservedFor", request.email)
       )
       .first();
-    if (alreadyReserved) {
+    if (alreadyClaimed) {
+      reservedCode = alreadyClaimed.code;
+    } else if (alreadyReserved) {
       reservedCode = alreadyReserved.code;
     } else {
       const available = await ctx.db
@@ -217,15 +227,18 @@ export const approve = mutation({
       actor: adminEmail ?? "unknown",
       action: "request_approved",
       subjectEmail: request.email,
-      details: reservedCode
-        ? "Whitelisted and code reserved"
-        : "Whitelisted — no unreserved codes left to hold",
+      details: alreadyClaimed
+        ? "Whitelisted — already holds a claimed code"
+        : reservedCode
+          ? "Whitelisted and code reserved"
+          : "Whitelisted — no unreserved codes left to hold",
     });
 
     await ctx.scheduler.runAfter(0, internal.notifications.sendApprovalEmail, {
       email: request.email,
       eventName: event.name,
       slug: event.slug,
+      codeReserved: reservedCode !== null,
     });
 
     return { codeReserved: reservedCode !== null };
