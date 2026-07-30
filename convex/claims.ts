@@ -55,12 +55,24 @@ export const claim = mutation({
       };
     }
 
-    const available = await ctx.db
+    // A code reserved for this email (via waitlist approval) takes priority;
+    // codes reserved for others are excluded from the shared pool.
+    const reserved = await ctx.db
       .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", event._id).eq("claimedBy", undefined)
+      .withIndex("by_event_reservedFor", (q) =>
+        q.eq("eventId", event._id).eq("reservedFor", email)
       )
+      .filter((q) => q.eq(q.field("claimedBy"), undefined))
       .first();
+    const available =
+      reserved ??
+      (await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", event._id).eq("claimedBy", undefined)
+        )
+        .filter((q) => q.eq(q.field("reservedFor"), undefined))
+        .first());
     if (!available) {
       return {
         ok: false as const,
