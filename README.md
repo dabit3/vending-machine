@@ -1,5 +1,7 @@
 # Vending Machine
 
+[![Made with Devin](https://img.shields.io/badge/Made%20with-Devin-blue)](https://devin.ai)
+
 Dispense credit codes to event participants (hackathons, conferences, meetups). Admins create events with a list of eligible emails and a pool of unique codes; attendees visit the event's URL (e.g. `/hackathon-1`), enter their email, and receive a code if their email is on the list.
 
 ## Stack
