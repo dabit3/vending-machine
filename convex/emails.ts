@@ -48,6 +48,18 @@ export const remove = mutation({
     const email = await ctx.db.get(args.id);
     if (!email) return;
     await requireEventAdmin(ctx, email.eventId);
+    // Release any code reserved for this email so it returns to the pool.
+    const reserved = await ctx.db
+      .query("codes")
+      .withIndex("by_event_reservedFor", (q) =>
+        q.eq("eventId", email.eventId).eq("reservedFor", email.email)
+      )
+      .collect();
+    for (const code of reserved) {
+      if (code.claimedBy === undefined) {
+        await ctx.db.patch(code._id, { reservedFor: undefined });
+      }
+    }
     await ctx.db.delete(args.id);
   },
 });
