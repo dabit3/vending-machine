@@ -1,6 +1,15 @@
 import { internalAction } from "./_generated/server";
 import { v } from "convex/values";
 
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // Sends the "you're approved" email via Resend. Requires RESEND_API_KEY (and
 // optionally RESEND_FROM_EMAIL, SITE_URL) in the Convex deployment environment;
 // without a key it logs and skips so approvals never fail on email delivery.
@@ -9,6 +18,7 @@ export const sendApprovalEmail = internalAction({
     email: v.string(),
     eventName: v.string(),
     slug: v.string(),
+    codeReserved: v.boolean(),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.RESEND_API_KEY;
@@ -21,7 +31,8 @@ export const sendApprovalEmail = internalAction({
     const from =
       process.env.RESEND_FROM_EMAIL ?? "Vending Machine <onboarding@resend.dev>";
     const siteUrl = process.env.SITE_URL?.replace(/\/$/, "");
-    const claimUrl = siteUrl ? `${siteUrl}/${args.slug}` : `/${args.slug}`;
+    const claimUrl = siteUrl ? `${siteUrl}/${args.slug}` : null;
+    const eventName = escapeHtml(args.eventName);
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -33,9 +44,13 @@ export const sendApprovalEmail = internalAction({
         to: [args.email],
         subject: `You're approved for ${args.eventName}`,
         html: [
-          `<p>Your access request for <strong>${args.eventName}</strong> was approved.</p>`,
-          `<p>A credit code has been reserved for you. Sign in with this email address to claim it:</p>`,
-          `<p><a href="${claimUrl}">${claimUrl}</a></p>`,
+          `<p>Your access request for <strong>${eventName}</strong> was approved.</p>`,
+          args.codeReserved
+            ? `<p>A credit code has been reserved for you. Sign in with this email address to claim it${claimUrl ? ":" : " on the event page."}</p>`
+            : `<p>Sign in with this email address on the event page to claim a code when more become available.</p>`,
+          ...(claimUrl
+            ? [`<p><a href="${claimUrl}">${claimUrl}</a></p>`]
+            : []),
         ].join("\n"),
       }),
     });

@@ -83,6 +83,7 @@ export const claim = mutation({
     await ctx.db.patch(available._id, {
       claimedBy: email,
       claimedAt: Date.now(),
+      reservedFor: undefined,
     });
     return {
       ok: true as const,
