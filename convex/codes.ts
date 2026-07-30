@@ -85,6 +85,11 @@ export const remove = mutation({
         `Cannot remove ${code.code} — it was already dispensed to ${code.claimedBy}. Deleting it would let them claim a second code.`
       );
     }
+    if (code.reservedFor) {
+      throw new Error(
+        `Cannot remove ${code.code} — it is reserved for ${code.reservedFor} via an approved access request.`
+      );
+    }
     await ctx.db.delete(args.id);
   },
 });

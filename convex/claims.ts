@@ -36,6 +36,7 @@ export const claim = mutation({
     if (!allowed) {
       return {
         ok: false as const,
+        notOnList: true as const,
         error: `${email} is not on the participant list for this event. Sign in with the email you registered with.`,
       };
     }
@@ -55,12 +56,20 @@ export const claim = mutation({
       };
     }
 
-    const available = await ctx.db
+    // Approved waitlist requests reserve a specific code for the email.
+    const reserved = await ctx.db
+      .query("codes")
+      .withIndex("by_event_reservedFor", (q) =>
+        q.eq("eventId", event._id).eq("reservedFor", email)
+      )
+      .first();
+    const pool = await ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>
         q.eq("eventId", event._id).eq("claimedBy", undefined)
       )
-      .first();
+      .collect();
+    const available = reserved ?? pool.find((c) => !c.reservedFor);
     if (!available) {
       return {
         ok: false as const,
@@ -71,6 +80,7 @@ export const claim = mutation({
     await ctx.db.patch(available._id, {
       claimedBy: email,
       claimedAt: Date.now(),
+      reservedFor: undefined,
     });
     return {
       ok: true as const,

@@ -9,7 +9,9 @@ import {
   Check,
   Download,
   Inbox,
+  MailQuestion,
   QrCode,
+  ScrollText,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -371,8 +373,206 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         </Card>
       </div>
 
+      <AccessRequestsCard eventId={id} />
+
       <EventAdminsCard eventId={id} />
+
+      <AuditLogCard eventId={id} />
     </div>
+  );
+}
+
+function AccessRequestsCard({ eventId }: { eventId: Id<"events"> }) {
+  const requests = useQuery(api.accessRequests.listByEvent, { eventId });
+  const approve = useMutation(api.accessRequests.approve);
+  const deny = useMutation(api.accessRequests.deny);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const pending = requests?.filter((r) => r.status === "pending") ?? [];
+  const resolved = requests?.filter((r) => r.status !== "pending") ?? [];
+
+  async function handleApprove(id: Id<"accessRequests">, email: string) {
+    setBusyId(id);
+    try {
+      await approve({ id });
+      toast.success(`Approved ${email}`, {
+        description: "Whitelisted, code reserved, and notification email sent.",
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDeny(id: Id<"accessRequests">, email: string) {
+    setBusyId(id);
+    try {
+      await deny({ id });
+      toast.success(`Denied ${email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to deny");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MailQuestion className="size-4 text-muted-dim" aria-hidden />
+          Access requests
+          {pending.length > 0 ? (
+            <Badge variant="secondary">{pending.length} pending</Badge>
+          ) : null}
+        </CardTitle>
+        <CardDescription>
+          Attendees not on the list can request access. Approving whitelists
+          their email, reserves a code, and emails them.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {!requests ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 rounded-md" />
+            <Skeleton className="h-9 rounded-md" />
+          </div>
+        ) : requests.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+            No access requests yet.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border rounded-md border border-border">
+            {pending.map((r) => (
+              <li
+                key={r._id}
+                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
+              >
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate font-mono text-xs">{r.email}</span>
+                  {r.message ? (
+                    <span className="text-xs text-muted-foreground">
+                      “{r.message}”
+                    </span>
+                  ) : null}
+                  <span className="font-mono text-[10px] text-muted-dim">
+                    {new Date(r._creationTime).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button
+                    variant="brand"
+                    size="sm"
+                    disabled={busyId === r._id}
+                    aria-busy={busyId === r._id}
+                    onClick={() => handleApprove(r._id, r.email)}
+                  >
+                    <Check data-icon="inline-start" />
+                    Approve
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={busyId === r._id}
+                    onClick={() => handleDeny(r._id, r.email)}
+                  >
+                    <X data-icon="inline-start" />
+                    Deny
+                  </Button>
+                </div>
+              </li>
+            ))}
+            {resolved.map((r) => (
+              <li
+                key={r._id}
+                className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5"
+              >
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate font-mono text-xs">{r.email}</span>
+                  <span className="font-mono text-[10px] text-muted-dim">
+                    {r.resolvedBy ? `by ${r.resolvedBy} · ` : ""}
+                    {r.resolvedAt
+                      ? new Date(r.resolvedAt).toLocaleString()
+                      : ""}
+                  </span>
+                </div>
+                <Badge
+                  variant={r.status === "approved" ? "secondary" : "outline"}
+                  className="shrink-0 font-mono text-[10px]"
+                >
+                  {r.status}
+                </Badge>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  request_submitted: "Request submitted",
+  request_approved: "Request approved",
+  request_denied: "Request denied",
+};
+
+function AuditLogCard({ eventId }: { eventId: Id<"events"> }) {
+  const logs = useQuery(api.auditLogs.listByEvent, { eventId });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ScrollText className="size-4 text-muted-dim" aria-hidden />
+          Audit log
+        </CardTitle>
+        <CardDescription>
+          A record of access requests and approval decisions for this event.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!logs ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 rounded-md" />
+            <Skeleton className="h-9 rounded-md" />
+          </div>
+        ) : logs.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+            No activity yet.
+          </p>
+        ) : (
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
+            {logs.map((log) => (
+              <li
+                key={log._id}
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-2"
+              >
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="text-xs">
+                    <span className="font-medium">
+                      {AUDIT_ACTION_LABELS[log.action] ?? log.action}
+                    </span>{" "}
+                    <span className="text-muted-foreground">
+                      — {log.subject ?? ""} by {log.actor}
+                    </span>
+                  </span>
+                  {log.details ? (
+                    <span className="truncate text-xs text-muted-dim">
+                      {log.details}
+                    </span>
+                  ) : null}
+                </div>
+                <span className="shrink-0 font-mono text-[10px] text-muted-dim">
+                  {new Date(log._creationTime).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

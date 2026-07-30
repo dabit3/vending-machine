@@ -7,7 +7,9 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Hourglass,
   LogIn,
+  MailCheck,
   OctagonX,
   QrCode,
   SearchX,
@@ -40,6 +42,7 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type ClaimResult =
@@ -49,7 +52,7 @@ type ClaimResult =
       alreadyClaimed: boolean;
       creditAmount?: string;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; notOnList?: boolean };
 
 // creditAmount is free text; prefix "$" only when it starts with a number
 // so already-prefixed values ("$100") or other currencies stay untouched.
@@ -74,6 +77,10 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
+  const myRequest = useQuery(
+    api.accessRequests.myRequest,
+    isAuthenticated ? { slug } : "skip"
+  );
   const { user } = useUser();
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
@@ -248,6 +255,38 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         <AlertTitle>{result.error}</AlertTitle>
                       </Alert>
                     ) : null}
+                    {myRequest?.status === "pending" ? (
+                      <Alert>
+                        <Hourglass />
+                        <AlertTitle>
+                          Your access request is pending review by the event
+                          organizers.
+                        </AlertTitle>
+                      </Alert>
+                    ) : myRequest?.status === "approved" ? (
+                      <Alert>
+                        <MailCheck />
+                        <AlertTitle>
+                          Your access request was approved — a code is
+                          reserved for you. Dispense it below.
+                        </AlertTitle>
+                      </Alert>
+                    ) : myRequest?.status === "denied" ? (
+                      <Alert variant="destructive">
+                        <OctagonX />
+                        <AlertTitle>
+                          Your access request was denied. You can submit a new
+                          request below.
+                        </AlertTitle>
+                      </Alert>
+                    ) : null}
+                    {result &&
+                    !result.ok &&
+                    result.notOnList &&
+                    myRequest?.status !== "pending" &&
+                    myRequest?.status !== "approved" ? (
+                      <RequestAccessForm slug={slug} />
+                    ) : null}
                     <Button
                       variant="brand"
                       size="lg"
@@ -283,6 +322,75 @@ export default function ClaimPage({ slug }: { slug: string }) {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function RequestAccessForm({ slug }: { slug: string }) {
+  const requestAccess = useMutation(api.accessRequests.request);
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await requestAccess({
+        slug,
+        message: message.trim() || undefined,
+      });
+      if (res.ok) {
+        toast.success("Access request submitted", {
+          description: "You'll get an email if the organizers approve it.",
+        });
+        setMessage("");
+      } else {
+        toast.error(res.error);
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-md border border-dashed border-border-strong p-4"
+    >
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium">Not on the list?</span>
+        <span className="text-xs text-muted-foreground">
+          Request access and the event organizers will review it. You&apos;ll
+          be emailed if approved.
+        </span>
+      </div>
+      <Textarea
+        aria-label="Optional message to the organizers"
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        rows={2}
+        maxLength={500}
+        placeholder="Optional: tell the organizers why you should be added"
+        className="resize-y text-sm"
+      />
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={submitting}
+        aria-busy={submitting}
+        className="self-start"
+      >
+        {submitting ? (
+          <>
+            <Spinner data-icon="inline-start" />
+            Submitting...
+          </>
+        ) : (
+          "Request access"
+        )}
+      </Button>
+    </form>
   );
 }
 
