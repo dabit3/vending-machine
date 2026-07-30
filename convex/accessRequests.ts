@@ -67,6 +67,8 @@ export const request = mutation({
           subjectEmail: email,
           details: message,
         });
+      } else if (message && message !== existing.message) {
+        await ctx.db.patch(existing._id, { message });
       }
       return { ok: true as const, status: "pending" as const };
     }
