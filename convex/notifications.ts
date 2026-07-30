@@ -33,6 +33,8 @@ export const sendApprovalEmail = internalAction({
     const siteUrl = process.env.SITE_URL?.replace(/\/$/, "");
     const claimUrl = siteUrl ? `${siteUrl}/${args.slug}` : null;
     const eventName = escapeHtml(args.eventName);
+    // Strip control characters (e.g. CR/LF) so the name is safe in the subject.
+    const subjectName = args.eventName.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim();
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -42,7 +44,7 @@ export const sendApprovalEmail = internalAction({
       body: JSON.stringify({
         from,
         to: [args.email],
-        subject: `You're approved for ${args.eventName}`,
+        subject: `You're approved for ${subjectName}`,
         html: [
           `<p>Your access request for <strong>${eventName}</strong> was approved.</p>`,
           args.codeReserved
