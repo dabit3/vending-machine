@@ -20,6 +20,8 @@ import {
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import AccessRequestsCard from "@/components/AccessRequestsCard";
+import AuditLogCard from "@/components/AuditLogCard";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
@@ -369,6 +371,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             />
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <AccessRequestsCard eventId={id} />
+        <AuditLogCard eventId={id} />
       </div>
 
       <EventAdminsCard eventId={id} />
