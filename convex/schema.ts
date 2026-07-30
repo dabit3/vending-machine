@@ -52,6 +52,8 @@ export default defineSchema({
       v.literal("denied")
     ),
     message: v.optional(v.string()),
+    // Time of the latest submission; refreshed when a request is reopened.
+    requestedAt: v.optional(v.number()),
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
   })
