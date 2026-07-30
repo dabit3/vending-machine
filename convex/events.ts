@@ -193,6 +193,16 @@ export const remove = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
     for (const admin of eventAdmins) await ctx.db.delete(admin._id);
+    const requests = await ctx.db
+      .query("accessRequests")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    for (const request of requests) await ctx.db.delete(request._id);
+    const auditLogs = await ctx.db
+      .query("auditLogs")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    for (const log of auditLogs) await ctx.db.delete(log._id);
     await ctx.db.delete(args.id);
   },
 });

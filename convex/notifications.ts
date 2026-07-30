@@ -1,0 +1,72 @@
+import { internalAction } from "./_generated/server";
+import { v } from "convex/values";
+
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// Sends the "you're approved" email via Resend. Requires RESEND_API_KEY (and
+// optionally RESEND_FROM_EMAIL, SITE_URL) in the Convex deployment environment;
+// without a key it logs and skips so approvals never fail on email delivery.
+export const sendApprovalEmail = internalAction({
+  args: {
+    email: v.string(),
+    eventName: v.string(),
+    slug: v.string(),
+    outcome: v.union(
+      v.literal("reserved"),
+      v.literal("already_claimed"),
+      v.literal("none")
+    ),
+  },
+  handler: async (_ctx, args) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.log(
+        `RESEND_API_KEY not set — skipping approval email to ${args.email} for ${args.eventName}`
+      );
+      return { sent: false as const };
+    }
+    const from =
+      process.env.RESEND_FROM_EMAIL ?? "Vending Machine <onboarding@resend.dev>";
+    const siteUrl = process.env.SITE_URL?.replace(/\/$/, "");
+    const claimUrl = siteUrl ? `${siteUrl}/${args.slug}` : null;
+    const eventName = escapeHtml(args.eventName);
+    // Strip control characters (e.g. CR/LF) so the name is safe in the subject.
+    const subjectName = args.eventName.replace(/[\p{Cc}\p{Cf}]/gu, " ").trim();
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [args.email],
+        subject: `You're approved for ${subjectName}`,
+        html: [
+          `<p>Your access request for <strong>${eventName}</strong> was approved.</p>`,
+          args.outcome === "reserved"
+            ? `<p>A credit code has been reserved for you. Sign in with this email address to claim it${claimUrl ? ":" : " on the event page."}</p>`
+            : args.outcome === "already_claimed"
+              ? `<p>You already have a credit code for this event${claimUrl ? " — you can view it here:" : "."}</p>`
+              : `<p>Sign in with this email address on the event page to claim a code when more become available.</p>`,
+          ...(claimUrl
+            ? [`<p><a href="${claimUrl}">${claimUrl}</a></p>`]
+            : []),
+        ].join("\n"),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`Resend API error (${res.status}): ${body}`);
+      return { sent: false as const };
+    }
+    return { sent: true as const };
+  },
+});
