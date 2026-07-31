@@ -187,12 +187,33 @@ export default function DotGridCanvas() {
       raf = requestAnimationFrame(step);
     };
 
+    // Reduced motion: no swell, no pointer physics — just a static grid that
+    // still redraws on resize and theme changes.
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reducedMotion = motionQuery.matches;
+
     const wake = () => {
+      if (reducedMotion) {
+        draw();
+        return;
+      }
       if (!running) {
         running = true;
         raf = requestAnimationFrame(step);
       }
     };
+
+    const onMotionChange = (e: MediaQueryListEvent) => {
+      reducedMotion = e.matches;
+      if (reducedMotion) {
+        cancelAnimationFrame(raf);
+        running = false;
+        draw();
+      } else {
+        wake();
+      }
+    };
+    motionQuery.addEventListener("change", onMotionChange);
 
     // Ambient swell runs continuously; pause when off-screen
     const visObserver = new IntersectionObserver((entries) => {
@@ -248,6 +269,7 @@ export default function DotGridCanvas() {
       visObserver.disconnect();
       resizeObserver.disconnect();
       themeObserver.disconnect();
+      motionQuery.removeEventListener("change", onMotionChange);
       parent.removeEventListener("pointermove", onPointerMove);
       parent.removeEventListener("pointerleave", onPointerLeave);
     };

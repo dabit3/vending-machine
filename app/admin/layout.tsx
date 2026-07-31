@@ -4,6 +4,7 @@ import AdminGate from "@/components/AdminGate";
 import AdminNav from "@/components/AdminNav";
 import BrandMark from "@/components/BrandMark";
 import DevinCredit from "@/components/DevinCredit";
+import ScrollAwareHeader from "@/components/ScrollAwareHeader";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getAppName } from "@/lib/app-name";
@@ -15,7 +16,7 @@ export default function AdminLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
+      <ScrollAwareHeader>
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link
@@ -23,13 +24,13 @@ export default function AdminLayout({
               className="group flex min-w-0 items-center gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
             >
               <BrandMark className="size-5 shrink-0 transition-transform duration-300 group-hover:-rotate-6" />
-              <span className="eyebrow hidden truncate text-foreground transition-colors group-hover:text-muted-foreground sm:inline">
+              <span className="hidden truncate text-sm font-semibold tracking-tight text-foreground transition-colors group-hover:text-muted-foreground sm:inline">
                 {getAppName()}
               </span>
             </Link>
             <Badge
               variant="outline"
-              className="eyebrow shrink-0 border-border-strong text-muted-foreground"
+              className="shrink-0 border-border-strong text-muted-foreground"
             >
               Admin
             </Badge>
@@ -43,7 +44,7 @@ export default function AdminLayout({
             <UserButton />
           </div>
         </div>
-      </header>
+      </ScrollAwareHeader>
       <main
         id="main-content"
         className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12"
@@ -52,7 +53,9 @@ export default function AdminLayout({
       </main>
       <footer className="border-t border-border">
         <div className="mx-auto flex h-12 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
-          <span className="eyebrow text-muted-dim">Control room</span>
+          <span className="text-xs font-medium text-muted-dim">
+            Control room
+          </span>
           <DevinCredit />
         </div>
       </footer>

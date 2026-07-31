@@ -109,7 +109,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
       <div className="perspective-distant">
         <div
           className={cn(
-            "grid transition-transform duration-700 transform-3d motion-reduce:transition-none",
+            "grid transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] transform-3d motion-reduce:transition-none",
             showQr && "rotate-y-180",
           )}
         >
@@ -117,7 +117,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
             inert={showQr || undefined}
             className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
           >
-            <CardHeader className="gap-2 border-b border-border py-(--card-spacing)">
+            <CardHeader className="gap-2 pt-(--card-spacing)">
               <span className="eyebrow text-muted-foreground">
                 Walk-up claim
               </span>
@@ -138,7 +138,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="attendee@example.com"
-                  className="h-12 font-mono text-sm"
+                  className="h-12 text-sm"
                   autoComplete="off"
                 />
                 <Button
@@ -168,7 +168,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
             inert={!showQr || undefined}
             className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
           >
-            <CardHeader className="gap-2 border-b border-border py-(--card-spacing)">
+            <CardHeader className="gap-2 pt-(--card-spacing)">
               <span className="eyebrow text-muted-foreground">
                 Scan to claim
               </span>
@@ -176,13 +176,13 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                 {event.name}
               </CardTitle>
               {lastAdded ? (
-                <CardDescription className="font-mono text-xs">
+                <CardDescription className="text-xs">
                   {lastAdded} is on the list
                 </CardDescription>
               ) : null}
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-5 py-(--card-spacing)">
-              <div className="rounded-lg border border-dashed border-border-strong bg-background p-4 text-foreground">
+              <div className="rounded-lg border border-border bg-background p-4 text-foreground">
                 {claimUrl ? (
                   <QRCodeSVG
                     value={claimUrl}
@@ -196,7 +196,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                   <Skeleton className="size-[208px]" />
                 )}
               </div>
-              <span className="max-w-full truncate font-mono text-xs text-muted-foreground">
+              <span className="max-w-full truncate text-xs text-muted-foreground">
                 {claimUrl ? claimUrl.replace(/^https?:\/\//, "") : "\u00A0"}
               </span>
               <Button

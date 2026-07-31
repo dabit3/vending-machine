@@ -10,7 +10,7 @@
 :root {
   --surface: #ffffff;
   --surface-hover: #f3f1ea;
-  --border: #e7e3da;
+  --border: #eae7df;
   --border-strong: #d5cfc2;
   --muted: #f1efe8;
   --muted-dim: #78716a;
@@ -34,12 +34,16 @@
   --ring: #44403a;
   --selection: #e6e1d5;
   --selection-foreground: #22211e;
+  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
+     mode zeroes it out and relies on surface contrast instead. */
+  --shadow-card:
+    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.5rem;
+  --radius: 0.625rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #22211e;
   --sidebar-primary: #22211e;
@@ -61,7 +65,9 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-bricolage);
+  /* Headings share the body face — hierarchy comes from weight, size, and
+     tracking rather than a second display family. */
+  --font-heading: var(--font-geist-sans);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -133,6 +139,36 @@ body {
   mask-repeat: repeat-x;
 }
 
+/* Receipt print: the receipt rolls out of the slot — revealed top-down via
+   clip-path so the scalloped tear-off edge lands last. */
+@utility receipt-print {
+  animation: receipt-print 0.7s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes receipt-print {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+@utility animate-brand-pulse {
+  animation: brand-pulse 3.2s ease-in-out infinite;
+}
+
+@keyframes brand-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 /* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
    while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
    to stop white type haloing on OLED. */
@@ -163,6 +199,7 @@ body {
   --ring: #c4c1bb;
   --selection: #33333a;
   --selection-foreground: #e8e6e1;
+  --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

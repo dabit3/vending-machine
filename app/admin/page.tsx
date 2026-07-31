@@ -100,7 +100,7 @@ export default function AdminDashboard() {
                 <span className="hidden font-mono text-xs text-muted-dim sm:inline">
                   /{event.slug}
                 </span>
-                <span className="hidden font-mono text-xs text-muted-dim tabular-nums md:inline">
+                <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
                   {new Date(event._creationTime).toLocaleDateString("en-US", {
                     month: "short",
                     day: "2-digit",
@@ -213,7 +213,6 @@ function NewEventDialog() {
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="font-mono"
               />
               <FieldDescription>
                 Optional — shown on the home and claim pages.
@@ -236,7 +235,6 @@ function NewEventDialog() {
                 value={eventUrl}
                 onChange={(e) => setEventUrl(e.target.value)}
                 placeholder="https://tokyohackathon.com"
-                className="font-mono"
               />
               <FieldDescription>
                 Optional — linked from the claim page.

@@ -45,6 +45,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast",
+          // Supporting detail (counts, filenames, next steps) reads like the
+          // app's other metadata: small and dimmed.
+          description: "text-xs! text-muted-foreground!",
         },
       }}
       {...props}

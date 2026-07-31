@@ -3,7 +3,7 @@ import { isDevin } from "@/lib/app-name";
 import { cn } from "@/lib/utils";
 
 // Logo mark: a dispenser slot ejecting a receipt with a torn edge.
-// The slot bar inherits currentColor; the receipt is always brand blue.
+// The slot bar inherits currentColor; the receipt follows the foreground color.
 // When IS_DEVIN=true, the Devin logo is shown instead — scaled up slightly
 // because the PNG has built-in padding around the mark. Black/white variants
 // are swapped via CSS so the theme toggle needs no client-side logic here.
@@ -45,7 +45,7 @@ export default function BrandMark({ className }: { className?: string }) {
       />
       <path
         d="M5.5 4h13v13.5l-2.17 2.5-2.17-2.5-2.17 2.5-2.16-2.5-2.17 2.5-2.16-2.5z"
-        className="fill-brand"
+        className="fill-foreground"
       />
     </svg>
   );

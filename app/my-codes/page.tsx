@@ -14,6 +14,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
+import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -72,7 +73,7 @@ function CodesSkeleton() {
         >
           <Skeleton className="h-5 w-2/3 rounded-sm" />
           <Skeleton className="h-4 w-1/2 rounded-sm" />
-          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-7 w-4/5 rounded-sm" />
           <Skeleton className="h-7 w-20 self-end rounded-md" />
         </div>
       ))}
@@ -89,7 +90,13 @@ export default function MyCodesPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleCopy(id: string, code: string) {
-    await navigator.clipboard.writeText(code);
+    const ok = await copyText(code);
+    if (!ok) {
+      toast.error("Couldn't copy automatically", {
+        description: "Select the code and copy it manually.",
+      });
+      return;
+    }
     setCopiedId(id);
     toast.success("Code copied to clipboard");
     setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000);
@@ -101,8 +108,7 @@ export default function MyCodesPage() {
       <main id="main-content" className="flex-1">
         <section className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 sm:py-14">
           <div className="mb-10">
-            <p className="eyebrow text-muted-foreground">Your credits</p>
-            <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+            <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
               My codes
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -177,12 +183,9 @@ export default function MyCodesPage() {
                       </CardTitle>
                       {meta ? <CardDescription>{meta}</CardDescription> : null}
                     </CardHeader>
-                  <CardContent className="flex-1">
-                    <div className="rounded-lg border border-dashed border-border-strong bg-background px-5 py-6 text-center">
-                      <div className="eyebrow text-muted-dim">Credit code</div>
-                      <div className="mt-3 font-mono text-2xl font-medium tracking-[0.08em] break-all select-all">
-                        {item.code}
-                      </div>
+                  <CardContent className="flex-1 pt-2 pb-1">
+                    <div className="font-mono text-xl font-medium tracking-[0.04em] break-all select-all">
+                      {item.code}
                     </div>
                   </CardContent>
                   <CardFooter className="justify-end">
@@ -193,7 +196,10 @@ export default function MyCodesPage() {
                     >
                       {copiedId === item._id ? (
                         <>
-                          <Check data-icon="inline-start" />
+                          <Check
+                            data-icon="inline-start"
+                            className="animate-in zoom-in-50 duration-200 motion-reduce:animate-none"
+                          />
                           Copied
                         </>
                       ) : (

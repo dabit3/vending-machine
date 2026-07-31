@@ -13,7 +13,7 @@ export default function SiteFooter() {
           className="flex min-w-0 items-center gap-2 rounded-sm text-muted-dim transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
           <BrandMark className="size-4 shrink-0" />
-          <span className="eyebrow truncate">{getAppName()}</span>
+          <span className="truncate text-xs font-medium">{getAppName()}</span>
         </a>
         <DevinCredit />
       </div>

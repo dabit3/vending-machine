@@ -45,7 +45,7 @@ export default function AdminGate({ children }: { children: ReactNode }) {
             {email ? (
               <>
                 You&apos;re signed in as{" "}
-                <span className="font-mono text-foreground">{email}</span>,
+                <span className="text-foreground">{email}</span>,
                 which isn&apos;t an admin of anything.
               </>
             ) : (

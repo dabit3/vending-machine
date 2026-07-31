@@ -23,6 +23,8 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
+import { useCountUp } from "@/lib/use-count-up";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,6 +82,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
 
+  // Computed before the early returns so the count-up hook can run
+  // unconditionally; 0 while the codes query is still in flight.
+  const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
+  const codeCount = codes?.length ?? 0;
+  const claimedDisplay = useCountUp(claimedCount);
+
   // Mirrors the real layout below (header → stat grid → details → two-up →
   // admins) so nothing reorganises itself when the queries land.
   if (event === undefined) {
@@ -99,9 +107,15 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
+            <div
+              key={i}
+              className="flex flex-col gap-3 py-5 sm:px-8 sm:first:pl-0 sm:last:pr-0"
+            >
+              <Skeleton className="h-4 w-24 rounded-sm" />
+              <Skeleton className="h-9 w-14 rounded-md" />
+            </div>
           ))}
         </div>
         <Skeleton className="h-96 rounded-xl" />
@@ -122,9 +136,6 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       </Empty>
     );
   }
-
-  const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
-  const codeCount = codes?.length ?? 0;
 
   // Shares the busy flag with the file upload so the two ways of adding to the
   // same list can't run at once. The textarea is only cleared on success, so a
@@ -267,35 +278,35 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <StatCard label="Eligible emails" value={emails?.length} />
         <StatCard label="Codes in pool" value={codes?.length} />
-        <Card className="gap-2">
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex items-baseline justify-between">
-              <span className="eyebrow text-muted-foreground">Claimed</span>
-              {codes ? (
-                <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {codeCount > 0
-                    ? `${Math.round((claimedCount / codeCount) * 100)}%`
-                    : "—"}
-                </span>
-              ) : null}
-            </div>
+        <div className="flex flex-col gap-3 py-5 sm:px-8 sm:last:pr-0">
+          <div className="flex items-baseline justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Claimed
+            </span>
             {codes ? (
-              <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-                {claimedCount}
-                <span className="text-base text-muted-dim"> / {codeCount}</span>
-              </div>
-            ) : (
-              <Skeleton className="h-9 w-20 rounded-md" />
-            )}
-            <Progress
-              value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
-              className="w-full"
-            />
-          </CardContent>
-        </Card>
+              <span className="font-mono text-xs text-muted-dim tabular-nums">
+                {codeCount > 0
+                  ? `${Math.round((claimedCount / codeCount) * 100)}%`
+                  : "—"}
+              </span>
+            ) : null}
+          </div>
+          {codes ? (
+            <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+              {claimedDisplay}
+              <span className="text-base text-muted-dim"> / {codeCount}</span>
+            </div>
+          ) : (
+            <Skeleton className="h-9 w-20 rounded-md" />
+          )}
+          <Progress
+            value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
+            className="w-full"
+          />
+        </div>
       </div>
 
       <EventDetailsForm
@@ -332,7 +343,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 onChange={(e) => setEmailInput(e.target.value)}
                 rows={4}
                 placeholder={"one@example.com\ntwo@example.com"}
-                className="resize-y font-mono text-sm"
+                className="resize-y text-sm"
               />
               <Button
                 type="submit"
@@ -412,6 +423,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
+              mono
               items={codes?.map((c) => ({
                 key: c._id,
                 label: c.code,
@@ -484,7 +496,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="organizer@example.com"
-              className="font-mono text-sm"
+              className="text-sm"
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton
@@ -521,19 +533,18 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
 }
 
 function StatCard({ label, value }: { label: string; value?: number }) {
+  const display = useCountUp(value ?? 0);
   return (
-    <Card className="gap-2">
-      <CardContent className="flex flex-col gap-3">
-        <span className="eyebrow text-muted-foreground">{label}</span>
-        {value === undefined ? (
-          <Skeleton className="h-9 w-14 rounded-md" />
-        ) : (
-          <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-            {value}
-          </span>
-        )}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-3 py-5 sm:px-8 sm:first:pl-0">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {value === undefined ? (
+        <Skeleton className="h-9 w-14 rounded-md" />
+      ) : (
+        <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+          {display}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -577,9 +588,11 @@ function UploadButton({
 function RowList({
   items,
   emptyText,
+  mono,
 }: {
   items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
   emptyText: string;
+  mono?: boolean;
 }) {
   if (!items) {
     return (
@@ -597,17 +610,21 @@ function RowList({
     );
   }
   return (
-    <ul className="max-h-72 divide-y divide-border overflow-y-auto rounded-md border border-border">
+    <ul className="max-h-72 divide-y divide-border overflow-y-auto border-y border-border">
       {items.map((item) => (
         <li
           key={item.key}
-          className="flex min-h-10 items-center justify-between gap-3 px-3 py-1.5 transition-colors hover:bg-surface"
+          className="flex min-h-10 items-center justify-between gap-3 px-1 py-1.5 transition-colors hover:bg-surface"
         >
-          <span className="truncate font-mono text-xs">{item.label}</span>
+          <span
+            className={cn("truncate text-sm", mono && "font-mono text-xs")}
+          >
+            {item.label}
+          </span>
           {item.claimedBy ? (
             <Badge
               variant="secondary"
-              className="max-w-32 shrink-0 truncate font-mono text-[10px] sm:max-w-48"
+              className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
             >
               <Check data-icon="inline-start" />
               {item.claimedBy}
@@ -723,7 +740,6 @@ function EventDetailsForm({
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
-                className="font-mono"
               />
               <FieldDescription>
                 Optional — shown on the home and claim pages.
@@ -747,7 +763,6 @@ function EventDetailsForm({
                 value={eventUrl}
                 onChange={(e) => setEventUrl(e.target.value)}
                 placeholder="https://tokyohackathon.com"
-                className="font-mono"
               />
               <FieldDescription>
                 Optional — linked from the claim page.

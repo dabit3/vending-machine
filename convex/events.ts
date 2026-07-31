@@ -60,6 +60,14 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
+    // One row is enough to know whether anything is left to dispense —
+    // claimers who already have a code can still retrieve it regardless.
+    const unclaimed = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", event._id).eq("claimedBy", undefined)
+      )
+      .first();
     return {
       _id: event._id,
       _creationTime: event._creationTime,
@@ -68,6 +76,7 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
+      soldOut: unclaimed === null,
     };
   },
 });

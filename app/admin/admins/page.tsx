@@ -118,7 +118,7 @@ export default function AdminsPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@example.com"
-              className="font-mono text-sm"
+              className="text-sm"
             />
             <InputGroupAddon align="inline-end">
               <InputGroupButton
@@ -142,18 +142,18 @@ export default function AdminsPage() {
           <Skeleton className="h-12 rounded-md" />
         </div>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
+        <ul className="divide-y divide-border border-y border-border">
           {admins.map((admin) => (
             <li
               key={admin._id}
-              className="flex min-h-12 items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-surface"
+              className="flex min-h-12 items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
             >
               <span className="flex min-w-0 items-center gap-3">
-                <span className="truncate font-mono text-sm">{admin.email}</span>
+                <span className="truncate text-sm">{admin.email}</span>
                 {admin.isSelf ? (
                   <Badge
                     variant="outline"
-                    className="eyebrow shrink-0 border-border-strong text-muted-foreground"
+                    className="shrink-0 border-border-strong text-muted-foreground"
                   >
                     You
                   </Badge>

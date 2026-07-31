@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import {
   ArrowUpRight,
-  BadgeCheck,
   CalendarDays,
   Check,
   Copy,
@@ -18,7 +18,12 @@ import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
-import { eventCountdownLabel, formatEventDate } from "@/lib/event-date";
+import {
+  daysUntilEvent,
+  eventCountdownLabel,
+  formatEventDate,
+} from "@/lib/event-date";
+import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -101,7 +106,13 @@ export default function ClaimPage({ slug }: { slug: string }) {
   }
 
   async function copyCode(code: string) {
-    await navigator.clipboard.writeText(code);
+    const ok = await copyText(code);
+    if (!ok) {
+      toast.error("Couldn't copy automatically", {
+        description: "Select the code and copy it manually.",
+      });
+      return;
+    }
     setCopied(true);
     toast.success("Code copied to clipboard");
     setTimeout(() => setCopied(false), 2000);
@@ -112,9 +123,13 @@ export default function ClaimPage({ slug }: { slug: string }) {
       <SiteHeader />
       <main
         id="main-content"
-        className="flex flex-1 items-center justify-center bg-dotgrid px-4 py-10 sm:px-6 sm:py-16"
+        className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16"
       >
-        <div className="w-full max-w-md">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
+        />
+        <div className="relative w-full max-w-md">
           {event === undefined ? (
             <Skeleton className="h-80 rounded-xl" />
           ) : event === null ? (
@@ -142,7 +157,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
             <div className="perspective-distant">
               <div
                 className={cn(
-                  "grid transition-transform duration-700 transform-3d motion-reduce:transition-none",
+                  "grid transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] transform-3d motion-reduce:transition-none",
                   showQr && "rotate-y-180",
                 )}
               >
@@ -150,7 +165,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
               inert={showQr || undefined}
               className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
-              <CardHeader className="gap-4 border-b border-border py-(--card-spacing)">
+              <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
                   <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
                     {event.name}
@@ -172,15 +187,25 @@ export default function ClaimPage({ slug }: { slug: string }) {
                   </CardDescription>
                 ) : null}
                 {event.eventDate || event.eventUrl ? (
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                     {event.eventDate ? (
-                      <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1.5 tabular-nums">
                         <CalendarDays className="size-3.5" aria-hidden />
                         {formatEventDate(event.eventDate)}
                         {eventCountdownLabel(event.eventDate) ? (
-                          <Badge variant="secondary">
-                            {eventCountdownLabel(event.eventDate)}
-                          </Badge>
+                          daysUntilEvent(event.eventDate) === 0 ? (
+                            <Badge variant="secondary" className="gap-1.5">
+                              <span
+                                className="size-1.5 animate-pulse rounded-full bg-brand motion-reduce:animate-none"
+                                aria-hidden
+                              />
+                              Live now
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">
+                              {eventCountdownLabel(event.eventDate)}
+                            </Badge>
+                          )
                         ) : null}
                       </span>
                     ) : null}
@@ -189,7 +214,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         href={event.eventUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="group flex w-fit items-center gap-1.5 rounded-sm font-mono text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                        className="group flex w-fit items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                       >
                         {urlLabel(event.eventUrl)}
                         <ArrowUpRight
@@ -219,29 +244,15 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         Sign in to claim
                       </Button>
                     </SignInButton>
+                    {event.soldOut ? (
+                      <p className="text-center text-xs text-muted-foreground">
+                        All codes have been dispensed — if you already claimed,
+                        yours is still here.
+                      </p>
+                    ) : null}
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-6">
-                    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2.5">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <BadgeCheck
-                          className="size-4 shrink-0 text-muted-foreground"
-                          aria-hidden
-                        />
-                        <span className="truncate font-mono text-sm">
-                          {signedInEmail ?? "Signed in"}
-                        </span>
-                      </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="shrink-0 text-muted-foreground"
-                        >
-                          Switch account
-                        </Button>
-                      </SignOutButton>
-                    </div>
+                  <div className="flex flex-col gap-5">
                     {result && !result.ok ? (
                       <Alert variant="destructive">
                         <OctagonX />
@@ -266,6 +277,29 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         "Dispense my code"
                       )}
                     </Button>
+                    {event.soldOut ? (
+                      <p className="text-center text-xs text-muted-foreground">
+                        All codes have been dispensed — if you already claimed,
+                        yours is still here.
+                      </p>
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInEmail ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={`/${slug}`}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -302,7 +336,7 @@ function QrPanel({
       inert={hidden || undefined}
       className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
     >
-      <CardHeader className="gap-2 border-b border-border py-(--card-spacing)">
+      <CardHeader className="gap-2 pt-(--card-spacing)">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <span className="eyebrow text-muted-foreground">Scan to claim</span>
@@ -323,7 +357,7 @@ function QrPanel({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col items-center justify-center gap-5 py-(--card-spacing)">
-        <div className="rounded-lg border border-dashed border-border-strong bg-background p-4 text-foreground">
+        <div className="rounded-lg border border-border bg-background p-4 text-foreground">
           {url ? (
             <QRCodeSVG
               value={url}
@@ -337,7 +371,7 @@ function QrPanel({
             <Skeleton className="size-[208px]" />
           )}
         </div>
-        <span className="max-w-full truncate font-mono text-xs text-muted-foreground">
+        <span className="max-w-full truncate text-xs text-muted-foreground">
           {url ? url.replace(/^https?:\/\//, "") : "\u00A0"}
         </span>
       </CardContent>
@@ -362,7 +396,7 @@ function Receipt({
 }) {
   return (
     <div
-      className="receipt-edge rounded-t-xl border border-border bg-surface pb-10"
+      className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
       role="status"
     >
       <div className="flex flex-col gap-6 p-6 sm:p-8">
@@ -371,7 +405,7 @@ function Receipt({
             Code dispensed
           </span>
           <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none [animation-duration:2.5s]" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none [animation-duration:2.5s] [animation-iteration-count:3]" />
             <span className="relative inline-flex size-2 rounded-full bg-brand" />
           </span>
         </div>
@@ -388,40 +422,58 @@ function Receipt({
         </div>
 
         {alreadyClaimed ? (
-          <Badge variant="secondary" className="self-start">
+          <Badge
+            variant="secondary"
+            className="animate-in fade-in fill-mode-both duration-500 delay-200 self-start motion-reduce:animate-none"
+          >
             Already claimed — here it is again
           </Badge>
         ) : null}
 
-        <div className="rounded-lg border border-dashed border-border-strong bg-background px-5 py-6 text-center">
-          <div className="eyebrow text-muted-dim">Your credit code</div>
-          <div className="mt-3 font-mono text-2xl font-medium tracking-[0.08em] break-all select-all">
+        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 py-2 motion-reduce:animate-none">
+          <div className="text-xs text-muted-dim">Your credit code</div>
+          <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
             {code}
           </div>
         </div>
 
-        <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
-          {copied ? (
-            <>
-              <Check data-icon="inline-start" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy data-icon="inline-start" />
-              Copy code
-            </>
-          )}
-        </Button>
+        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-[450ms] flex flex-col gap-2 motion-reduce:animate-none">
+          <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
+            {copied ? (
+              <>
+                <Check
+                  data-icon="inline-start"
+                  className="animate-in zoom-in-50 duration-200 motion-reduce:animate-none"
+                />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy data-icon="inline-start" />
+                Copy code
+              </>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-center text-muted-foreground"
+            render={<Link href="/my-codes" />}
+            nativeButton={false}
+          >
+            View all my codes
+            <ArrowUpRight data-icon="inline-end" aria-hidden />
+          </Button>
+        </div>
 
-        <div aria-hidden className="flex flex-col gap-2 pt-2">
-          <div className="h-8 w-full bg-[repeating-linear-gradient(90deg,var(--color-border-strong)_0_2px,transparent_2px_5px,var(--color-border-strong)_5px_6px,transparent_6px_11px)]" />
-          <div className="flex items-center justify-between">
-            <span className="eyebrow text-muted-dim">Keep this somewhere safe</span>
-            <span className="font-mono text-[10px] text-muted-dim">
-              NO.{code.slice(-4).toUpperCase().padStart(4, "0")}
-            </span>
-          </div>
+        <div
+          aria-hidden
+          className="animate-in fade-in fill-mode-both duration-500 delay-[550ms] flex items-center gap-4 pt-2 motion-reduce:animate-none"
+        >
+          <div className="h-6 flex-1 bg-[repeating-linear-gradient(90deg,var(--color-border-strong)_0_2px,transparent_2px_5px,var(--color-border-strong)_5px_6px,transparent_6px_11px)]" />
+          <span className="shrink-0 font-mono text-[10px] text-muted-dim">
+            NO.{code.slice(-4).toUpperCase().padStart(4, "0")}
+          </span>
         </div>
       </div>
     </div>

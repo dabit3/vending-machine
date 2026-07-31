@@ -37,11 +37,21 @@ export default function HeaderAuth() {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1 sm:gap-2">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground"
+        render={<Link href="/my-codes" />}
+        nativeButton={false}
+      >
+        My codes
+      </Button>
       {access?.hasEventAccess ? (
         <Button
           variant="ghost"
           size="sm"
+          className="text-muted-foreground"
           render={<Link href="/admin" />}
           nativeButton={false}
         >

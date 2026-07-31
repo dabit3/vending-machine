@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -17,11 +17,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const bricolage = Bricolage_Grotesque({
-  variable: "--font-bricolage",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
   title: getAppName(),
   description: "Claim credits for hackathons, conferences, and meetups.",
@@ -33,7 +28,7 @@ const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] 
   variables: {
     colorPrimary: "#2200ff",
     colorPrimaryForeground: "#ffffff",
-    borderRadius: "0.5rem",
+    borderRadius: "0.625rem",
     fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
   },
   options: {
@@ -54,7 +49,7 @@ export default function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} ${bricolage.variable} h-full antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col">
