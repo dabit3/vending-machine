@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowUpRight, BadgeCheck, Ticket } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -40,6 +41,10 @@ const displacementOptions: ImageDisplacementOptions = {
   grain: 0.12,
   scramble: 1,
 };
+
+// Stable no-op subscription for the hydration gate below: the snapshot never
+// changes on the client, we only care that the server snapshot is false.
+const emptySubscribe = () => () => {};
 
 interface EventItem {
   _id: string;
@@ -113,11 +118,17 @@ export default function Home() {
     mine?.map((item) => item.event?._id).filter(Boolean) ?? [],
   );
 
-  // The image source needs JS (resolvedTheme is undefined until next-themes
-  // mounts), so the effect waits for it; the copy and scrim flip with pure
-  // dark: variants and render correctly from the first paint.
+  // The image source needs JS (the server doesn't know the theme, while the
+  // hydration render already does), so gate it behind hydration to keep both
+  // trees identical; the copy and scrim flip with pure dark: variants and
+  // render correctly from the first paint.
   const { resolvedTheme } = useTheme();
-  const heroSrc = resolvedTheme
+  const hydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
+  const heroSrc = hydrated
     ? resolvedTheme === "light"
       ? "/hero-displacement-light.jpg"
       : "/hero-displacement-dark.jpg"
