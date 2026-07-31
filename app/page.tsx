@@ -146,25 +146,25 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader overlay />
       <main id="main-content" className="flex-1">
-        <section className="-mt-14 border-b border-border/65">
+        <section className="-mt-15.25 border-b border-border/65">
           {/* The WebGL canvas displaces the photo across the whole hero on
               mouse-over; the copy stays crisp DOM above it. Dark mode pairs
               light copy and a black scrim with the blurred monochrome photo;
               light mode flips to black copy and a white scrim over the
               ink plume. The section pulls up behind the transparent header
-              (-mt-14) so the photo runs to the top of the page; the hero is
-              56px taller to compensate and the copy takes pt-14, keeping it
-              centered in the visible area below the header. */}
+              (-mt-15.25) so the photo runs to the top of the page; the hero
+              is 61px taller to compensate and the copy takes pt-15.25,
+              keeping it centered in the visible area below the header. */}
           <ImageDisplacement
             src={heroSrc}
             {...displacementOptions}
-            className="h-[515px] bg-background dark:bg-[#131313] sm:h-[481px]"
+            className="h-[520px] bg-background dark:bg-[#131313] sm:h-[486px]"
           >
             <div
               className="absolute inset-0 bg-white/40 dark:bg-black/45"
               aria-hidden
             />
-            <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-14 sm:px-6">
+            <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
               <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
                 Event credit distribution
               </p>
