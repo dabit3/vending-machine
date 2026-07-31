@@ -93,7 +93,7 @@ export default function AdminDashboard() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium tracking-tight">
+                  <div className="font-heading font-medium tracking-tight">
                     {event.name}
                   </div>
                 </div>

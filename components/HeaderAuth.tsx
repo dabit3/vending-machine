@@ -15,7 +15,9 @@ export default function HeaderAuth() {
     isAuthenticated ? {} : "skip"
   );
 
-  if (isLoading) {
+  // Hold the skeleton until `access` resolves too, otherwise the header renders
+  // without the Admin button and then reflows once the query lands.
+  if (isLoading || (isAuthenticated && access === undefined)) {
     return <Skeleton className="h-7 w-20 rounded-md" />;
   }
 

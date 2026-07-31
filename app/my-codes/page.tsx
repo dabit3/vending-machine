@@ -56,6 +56,30 @@ function eventMeta(event: EventInfo) {
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
+// Same grid and card proportions as the loaded state, so the list doesn't
+// reflow from a column into three columns once the query lands.
+function CodesSkeleton() {
+  return (
+    <div
+      className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      role="status"
+      aria-label="Loading your codes"
+    >
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-4 rounded-xl border border-border bg-card p-6"
+        >
+          <Skeleton className="h-5 w-2/3 rounded-sm" />
+          <Skeleton className="h-4 w-1/2 rounded-sm" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-7 w-20 self-end rounded-md" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MyCodesPage() {
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
   const codes = useQuery(
@@ -87,11 +111,7 @@ export default function MyCodesPage() {
           </div>
 
           {authLoading ? (
-            <div className="flex flex-col gap-4">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-64 rounded-xl" />
-              ))}
-            </div>
+            <CodesSkeleton />
           ) : !isAuthenticated ? (
             <Card className="mx-auto max-w-md">
               <CardHeader>
@@ -110,11 +130,7 @@ export default function MyCodesPage() {
               </CardContent>
             </Card>
           ) : codes === undefined ? (
-            <div className="flex flex-col gap-4">
-              {[0, 1, 2].map((i) => (
-                <Skeleton key={i} className="h-64 rounded-xl" />
-              ))}
-            </div>
+            <CodesSkeleton />
           ) : codes === null ? (
             <Alert variant="destructive" className="max-w-md">
               <AlertTitle>

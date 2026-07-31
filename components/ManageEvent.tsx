@@ -80,11 +80,35 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
 
+  // Mirrors the real layout below (header → stat grid → details → two-up →
+  // admins) so nothing reorganises itself when the queries land.
   if (event === undefined) {
     return (
-      <div className="flex flex-col gap-3">
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-40 rounded-xl" />
+      <div
+        className="flex flex-col gap-8"
+        role="status"
+        aria-label="Loading event"
+      >
+        <div>
+          <Skeleton className="h-6 w-24 rounded-md" />
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <Skeleton className="h-9 w-64 max-w-full rounded-md" />
+            <div className="flex flex-wrap items-center gap-2">
+              <Skeleton className="h-8 w-36 rounded-lg" />
+              <Skeleton className="h-8 w-28 rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-xl" />
+          ))}
+        </div>
+        <Skeleton className="h-96 rounded-xl" />
+        <div className="grid gap-8 lg:grid-cols-2">
+          <Skeleton className="h-80 rounded-xl" />
+          <Skeleton className="h-80 rounded-xl" />
+        </div>
         <Skeleton className="h-64 rounded-xl" />
       </div>
     );
@@ -102,26 +126,43 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
 
+  // Shares the busy flag with the file upload so the two ways of adding to the
+  // same list can't run at once. The textarea is only cleared on success, so a
+  // failed paste isn't lost.
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
     const list = emailInput.split(/[\n,;\s]+/).filter(Boolean);
     if (list.length === 0) return;
-    const { added, skipped } = await addEmails({ eventId: id, emails: list });
-    toast.success(`Added ${added} emails`, {
-      description: skipped ? `Skipped ${skipped} (duplicates/invalid).` : undefined,
-    });
-    setEmailInput("");
+    setEmailBusy(true);
+    try {
+      const { added, skipped } = await addEmails({ eventId: id, emails: list });
+      toast.success(`Added ${added} emails`, {
+        description: skipped ? `Skipped ${skipped} (duplicates/invalid).` : undefined,
+      });
+      setEmailInput("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add emails");
+    } finally {
+      setEmailBusy(false);
+    }
   }
 
   async function handleAddCodes(e: React.FormEvent) {
     e.preventDefault();
     const list = codeInput.split(/[\n,;\s]+/).filter(Boolean);
     if (list.length === 0) return;
-    const { added, skipped } = await addCodes({ eventId: id, codes: list });
-    toast.success(`Added ${added} codes`, {
-      description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
-    });
-    setCodeInput("");
+    setCodeBusy(true);
+    try {
+      const { added, skipped } = await addCodes({ eventId: id, codes: list });
+      toast.success(`Added ${added} codes`, {
+        description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
+      });
+      setCodeInput("");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add codes");
+    } finally {
+      setCodeBusy(false);
+    }
   }
 
   function exportEmails() {
@@ -233,16 +274,22 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-3">
             <div className="flex items-baseline justify-between">
               <span className="eyebrow text-muted-foreground">Claimed</span>
-              <span className="font-mono text-xs text-muted-dim tabular-nums">
-                {codeCount > 0
-                  ? `${Math.round((claimedCount / codeCount) * 100)}%`
-                  : "—"}
-              </span>
+              {codes ? (
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {codeCount > 0
+                    ? `${Math.round((claimedCount / codeCount) * 100)}%`
+                    : "—"}
+                </span>
+              ) : null}
             </div>
-            <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-              {codes ? claimedCount : "—"}
-              <span className="text-base text-muted-dim"> / {codes ? codeCount : "—"}</span>
-            </div>
+            {codes ? (
+              <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+                {claimedCount}
+                <span className="text-base text-muted-dim"> / {codeCount}</span>
+              </div>
+            ) : (
+              <Skeleton className="h-9 w-20 rounded-md" />
+            )}
             <Progress
               value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
               className="w-full"
@@ -291,9 +338,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 type="submit"
                 variant="secondary"
                 className="self-start"
-                disabled={!emailInput.trim()}
+                disabled={emailBusy || !emailInput.trim()}
+                aria-busy={emailBusy}
               >
-                Add emails
+                {emailBusy ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add emails"
+                )}
               </Button>
             </form>
             <RowList
@@ -343,9 +398,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 type="submit"
                 variant="secondary"
                 className="self-start"
-                disabled={!codeInput.trim()}
+                disabled={codeBusy || !codeInput.trim()}
+                aria-busy={codeBusy}
               >
-                Add codes
+                {codeBusy ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    Adding...
+                  </>
+                ) : (
+                  "Add codes"
+                )}
               </Button>
             </form>
             <RowList
@@ -462,9 +525,13 @@ function StatCard({ label, value }: { label: string; value?: number }) {
     <Card className="gap-2">
       <CardContent className="flex flex-col gap-3">
         <span className="eyebrow text-muted-foreground">{label}</span>
-        <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
-          {value ?? "—"}
-        </span>
+        {value === undefined ? (
+          <Skeleton className="h-9 w-14 rounded-md" />
+        ) : (
+          <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+            {value}
+          </span>
+        )}
       </CardContent>
     </Card>
   );

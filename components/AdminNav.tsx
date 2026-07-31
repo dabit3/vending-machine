@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export default function AdminNav() {
@@ -45,6 +46,11 @@ export default function AdminNav() {
           </Link>
         );
       })}
+      {/* Sits where the Admins link will land, so the nav doesn't widen
+          (and push the user button) once `access` resolves. */}
+      {isAuthenticated && access === undefined ? (
+        <Skeleton className="h-8 w-[4.5rem] rounded-md" />
+      ) : null}
     </nav>
   );
 }

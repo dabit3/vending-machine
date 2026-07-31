@@ -28,6 +28,7 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function AdminsPage() {
   const access = useQuery(api.admins.accessLevel);
@@ -37,6 +38,7 @@ export default function AdminsPage() {
 
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [removingId, setRemovingId] = useState<Id<"admins"> | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -53,11 +55,14 @@ export default function AdminsPage() {
   }
 
   async function handleRemove(id: Id<"admins">) {
+    setRemovingId(id);
     try {
       await removeAdmin({ id });
       toast.success("Admin removed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove admin");
+    } finally {
+      setRemovingId(null);
     }
   }
 
@@ -162,11 +167,13 @@ export default function AdminsPage() {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={`Remove ${admin.email}`}
+                        disabled={removingId === admin._id}
+                        aria-busy={removingId === admin._id}
                         className="shrink-0 text-muted-foreground"
                       />
                     }
                   >
-                    <X />
+                    {removingId === admin._id ? <Spinner /> : <X />}
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -193,9 +200,11 @@ export default function AdminsPage() {
                   size="icon-sm"
                   aria-label={`Remove ${admin.email}`}
                   onClick={() => handleRemove(admin._id)}
+                  disabled={removingId === admin._id}
+                  aria-busy={removingId === admin._id}
                   className="shrink-0 text-muted-foreground"
                 >
-                  <X />
+                  {removingId === admin._id ? <Spinner /> : <X />}
                 </Button>
               )}
             </li>

@@ -12,7 +12,7 @@ export function ThemeToggle() {
       onClick={() => setTheme(nextTheme)}
       aria-label="Toggle color theme"
       title="Toggle color theme"
-      className="group flex h-8 cursor-pointer items-center gap-2 rounded-full px-2 font-mono text-[10px] font-medium tracking-[0.18em] uppercase text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="eyebrow group flex h-8 cursor-pointer items-center gap-2 rounded-full px-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <span>Lights</span>
       <span aria-hidden className="grid overflow-hidden text-left">
