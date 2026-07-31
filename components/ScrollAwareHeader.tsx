@@ -30,10 +30,10 @@ export default function ScrollAwareHeader({
       className={cn(
         "sticky top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
         scrolled
-          ? "border-border bg-background/80 backdrop-blur-md dark:border-border/70"
+          ? "border-border/75 bg-background/65 backdrop-blur-md dark:border-border/45"
           : overlay
             ? "border-transparent bg-transparent backdrop-blur-[0px]"
-            : "border-border/60 bg-background/80 backdrop-blur-md dark:border-border/40",
+            : "border-border/60 bg-background/65 backdrop-blur-md dark:border-border/40",
       )}
     >
       {children}

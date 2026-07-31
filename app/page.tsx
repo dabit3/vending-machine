@@ -146,7 +146,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader overlay />
       <main id="main-content" className="flex-1">
-        <section className="-mt-14 border-b border-border">
+        <section className="-mt-14 border-b border-border/75">
           {/* The WebGL canvas displaces the photo across the whole hero on
               mouse-over; the copy stays crisp DOM above it. Dark mode pairs
               light copy and a black scrim with the blurred monochrome photo;
