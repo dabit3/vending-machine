@@ -3,14 +3,18 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
-// Sticky header bar: the bottom border strengthens once the page scrolls, so
-// the bar separates from whatever is passing underneath (e.g. the dot grid).
-// Dark mode steps down one level (strong reads harsh on near-black): a faded
-// hairline at rest, the regular hairline when scrolled.
+// Sticky header bar: a faint hairline at rest that firms up slightly once the
+// page scrolls, so the bar separates from whatever is passing underneath
+// (e.g. the dot grid) without ever reading as a hard rule.
+// With `overlay`, the bar starts fully transparent — no fill, blur, or
+// border — so a hero image can run to the top of the page behind it, then
+// fades into the regular blurred bar as soon as the page scrolls.
 export default function ScrollAwareHeader({
   children,
+  overlay = false,
 }: {
   children: React.ReactNode;
+  overlay?: boolean;
 }) {
   const [scrolled, setScrolled] = useState(false);
 
@@ -24,10 +28,12 @@ export default function ScrollAwareHeader({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md transition-colors duration-300",
+        "sticky top-0 z-40 border-b transition-[background-color,border-color,backdrop-filter] duration-300",
         scrolled
-          ? "border-border-strong dark:border-border"
-          : "border-border dark:border-border/60",
+          ? "border-border bg-background/80 backdrop-blur-md dark:border-border/70"
+          : overlay
+            ? "border-transparent bg-transparent backdrop-blur-[0px]"
+            : "border-border/60 bg-background/80 backdrop-blur-md dark:border-border/40",
       )}
     >
       {children}

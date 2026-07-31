@@ -5,9 +5,9 @@ import ScrollAwareHeader from "@/components/ScrollAwareHeader";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getAppName } from "@/lib/app-name";
 
-export default function SiteHeader() {
+export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
   return (
-    <ScrollAwareHeader>
+    <ScrollAwareHeader overlay={overlay}>
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
