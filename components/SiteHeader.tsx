@@ -1,13 +1,13 @@
 import Link from "next/link";
 import BrandMark from "@/components/BrandMark";
 import HeaderAuth from "@/components/HeaderAuth";
-import ScrollAwareHeader from "@/components/ScrollAwareHeader";
+import HeaderBar from "@/components/HeaderBar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getAppName } from "@/lib/app-name";
 
-export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
+export default function SiteHeader() {
   return (
-    <ScrollAwareHeader overlay={overlay}>
+    <HeaderBar>
       <div className="mx-auto flex h-15.25 max-w-5xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link
           href="/"
@@ -23,6 +23,6 @@ export default function SiteHeader({ overlay = false }: { overlay?: boolean }) {
           <HeaderAuth />
         </nav>
       </div>
-    </ScrollAwareHeader>
+    </HeaderBar>
   );
 }

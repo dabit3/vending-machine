@@ -4,7 +4,7 @@ import AdminGate from "@/components/AdminGate";
 import AdminNav from "@/components/AdminNav";
 import BrandMark from "@/components/BrandMark";
 import DevinCredit from "@/components/DevinCredit";
-import ScrollAwareHeader from "@/components/ScrollAwareHeader";
+import HeaderBar from "@/components/HeaderBar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getAppName } from "@/lib/app-name";
@@ -16,7 +16,7 @@ export default function AdminLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <ScrollAwareHeader>
+      <HeaderBar>
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <Link
@@ -44,7 +44,7 @@ export default function AdminLayout({
             <UserButton />
           </div>
         </div>
-      </ScrollAwareHeader>
+      </HeaderBar>
       <main
         id="main-content"
         className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 sm:py-12"

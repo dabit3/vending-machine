@@ -7,12 +7,9 @@ import { useTheme } from "next-themes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import UnicornSceneEmbed from "@/components/UnicornSceneEmbed";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import {
-  ImageDisplacement,
-  type ImageDisplacementOptions,
-} from "@/components/canvasui/ImageDisplacement";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -24,23 +21,25 @@ import {
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 
-// The hero wraps a photographic background in the Displacement effect: the
-// cursor shears the image into offset, color-fringed cells that relax back.
-// The photo is theme-paired — a dark blurred monochrome in dark mode, a pale
-// ink-plume wash in light mode — while one motion preset serves both.
-const displacementOptions: ImageDisplacementOptions = {
-  // threshold 0 removes the speed gate: cells shear on any mouse-over
-  // movement, with push strength still scaling naturally with cursor speed.
-  grid: 50,
-  radius: 0.12,
-  strength: 0.12,
-  threshold: 0,
-  relaxation: 0.92,
-  shift: 1,
-  aberration: 1.5,
-  grain: 0.12,
-  scramble: 1,
-};
+// The hero background is a theme-paired Unicorn Studio WebGL scene
+// (experiment). A Unicorn project publishes exactly one authored design and
+// the SDK has no color-scheme awareness, so a light-authored project shows
+// its light design in dark mode too — each theme therefore needs its own
+// project ID here.
+const UNICORN_PROJECTS = {
+  light: "wEz2vCJgsynwCYSb3HgR",
+  dark: "aEdLurlqLEmU1DUjAaUz",
+} as const;
+
+// Bump this whenever a scene is republished in Unicorn Studio. Deployed
+// builds read scene data through Unicorn's CDN, which caches for months and
+// doesn't reliably purge on republish; the update param below is part of the
+// CDN cache key, so bumping the version makes deploys fetch the new design.
+// Dev skips the param (and the CDN): without it the SDK cache-busts every
+// load, so republishes show up on a plain refresh.
+const UNICORN_CACHE_VERSION = 1;
+
+const isProdBuild = process.env.NODE_ENV === "production";
 
 // Stable no-op subscription for the hydration gate below: the snapshot never
 // changes on the client, we only care that the server snapshot is false.
@@ -118,20 +117,21 @@ export default function Home() {
     mine?.map((item) => item.event?._id).filter(Boolean) ?? [],
   );
 
-  // The image source needs JS (the server doesn't know the theme, while the
+  // The scene choice needs JS (the server doesn't know the theme, while the
   // hydration render already does), so gate it behind hydration to keep both
   // trees identical; the copy and scrim flip with pure dark: variants and
-  // render correctly from the first paint.
+  // render correctly from the first paint. Until hydration the plain
+  // theme-tinted shell stands in for both themes.
   const { resolvedTheme } = useTheme();
   const hydrated = useSyncExternalStore(
     emptySubscribe,
     () => true,
     () => false,
   );
-  const heroSrc = hydrated
+  const heroProjectId = hydrated
     ? resolvedTheme === "light"
-      ? "/hero-displacement-light.jpg"
-      : "/hero-displacement-dark.jpg"
+      ? UNICORN_PROJECTS.light
+      : UNICORN_PROJECTS.dark
     : undefined;
 
   // Dated events that have passed sink into their own dimmed group; undated
@@ -142,41 +142,61 @@ export default function Home() {
   const past =
     events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? [];
 
+  // Shared hero copy: crisp DOM stacked above the theme's scene. pt-15.25
+  // offsets the translucent header bar the hero slides under, keeping the
+  // copy centered in the visible area.
+  const heroCopy = (
+    <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
+        Event credit distribution
+      </p>
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+        Claim your credits.
+      </h1>
+      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
+        Select your event, enter the email you registered with, and your credit
+        code is dispensed on the spot.
+      </p>
+    </div>
+  );
+
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader overlay />
+      <SiteHeader />
       <main id="main-content" className="flex-1">
         <section className="-mt-15.25 border-b border-border/65">
-          {/* The WebGL canvas displaces the photo across the whole hero on
-              mouse-over; the copy stays crisp DOM above it. Dark mode pairs
-              light copy and a black scrim with the blurred monochrome photo;
-              light mode flips to black copy and a white scrim over the
-              ink plume. The section pulls up behind the transparent header
-              (-mt-15.25) so the photo runs to the top of the page; the hero
-              is 61px taller to compensate and the copy takes pt-15.25,
-              keeping it centered in the visible area below the header. */}
-          <ImageDisplacement
-            src={heroSrc}
-            {...displacementOptions}
-            className="h-[520px] bg-background dark:bg-[#131313] sm:h-[486px]"
-          >
+          {/* The section pulls up behind the translucent header bar
+              (-mt-15.25) so the background runs to the top of the page; the
+              hero is 61px taller to compensate and the scene shows through
+              the bar's frosted fill. The theme's Unicorn Studio scene renders
+              behind the copy and a soft theme-matched scrim; keying the scene
+              by project swaps it cleanly on theme change while the copy stays
+              mounted. The scene's mouse interactivity listens on window, so
+              the copy sitting above it doesn't block it. */}
+          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+            {heroProjectId ? (
+              <div className="absolute inset-0" aria-hidden>
+                {/* Dev fetches fresh scene data on every load; deploys pin
+                    the CDN to UNICORN_CACHE_VERSION — see the constant. */}
+                <UnicornSceneEmbed
+                  key={heroProjectId}
+                  projectId={
+                    isProdBuild
+                      ? `${heroProjectId}?update=${UNICORN_CACHE_VERSION}`
+                      : heroProjectId
+                  }
+                  production={isProdBuild}
+                />
+              </div>
+            ) : null}
+            {/* Soft scrim keeps the headline legible over the scenes; tune
+                or remove once the look settles. */}
             <div
-              className="absolute inset-0 bg-white/40 dark:bg-black/45"
+              className="absolute inset-0 bg-white/20 dark:bg-black/20"
               aria-hidden
             />
-            <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-              <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
-                Event credit distribution
-              </p>
-              <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
-                Claim your credits.
-              </h1>
-              <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
-                Select your event, enter the email you registered with, and
-                your credit code is dispensed on the spot.
-              </p>
-            </div>
-          </ImageDisplacement>
+            {heroCopy}
+          </div>
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">

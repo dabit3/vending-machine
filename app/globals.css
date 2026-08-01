@@ -4,17 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": warm off-neutrals rather than the pure grey
-   axis, and ink (#22211E) instead of near-black so text sits at ~15:1 rather
-   than a harsh 19:1. The blue accent is reserved for the claim flow only. */
+/* Light mode (default) — "Paper": a white page field with the warm
+   off-neutrals pushed into surfaces, tints, and borders rather than the pure
+   grey axis, and ink (#22211E) instead of near-black so text stays short of
+   a harsh 19:1. Surface inverts the classic creme-field relationship: hovers
+   and the receipt stub tint warm against white instead of lifting to white.
+   The blue accent is reserved for the claim flow only. */
 :root {
-  --surface: #ffffff;
+  --surface: #f7f5f0;
   --surface-hover: #f3f1ea;
   --border: #eae7df;
   --border-strong: #d5cfc2;
   --muted: #f1efe8;
   --muted-dim: #78716a;
-  --background: #faf9f5;
+  --background: #ffffff;
   --foreground: #22211e;
   --card: #ffffff;
   --card-foreground: #22211e;
