@@ -135,12 +135,22 @@ export default function Home() {
     : undefined;
 
   // Dated events that have passed sink into their own dimmed group; undated
-  // events are treated as current.
-  const current =
+  // events are treated as current. Active events order soonest-first, with
+  // undated ones following in their arrival (newest created) order; past
+  // events list the most recently ended first. YYYY-MM-DD compares correctly
+  // as a plain string, so no date parsing is needed.
+  const active =
     events?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
     [];
-  const past =
-    events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? [];
+  const current = [
+    ...active
+      .filter((e) => e.eventDate)
+      .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
+    ...active.filter((e) => !e.eventDate),
+  ];
+  const past = (
+    events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? []
+  ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
   // Shared hero copy: crisp DOM stacked above the theme's scene. pt-15.25
   // offsets the translucent header bar the hero slides under, keeping the
