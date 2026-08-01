@@ -37,7 +37,7 @@ const UNICORN_PROJECTS = {
 // CDN cache key, so bumping the version makes deploys fetch the new design.
 // Dev skips the param (and the CDN): without it the SDK cache-busts every
 // load, so republishes show up on a plain refresh.
-const UNICORN_CACHE_VERSION = 1;
+const UNICORN_CACHE_VERSION = 2;
 
 const isProdBuild = process.env.NODE_ENV === "production";
 

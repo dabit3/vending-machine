@@ -3,7 +3,7 @@
 export default function DevinCredit() {
   return (
     <a
-      href="https://github.com/dabit3/credit-dispenser"
+      href="https://app.devin.ai"
       target="_blank"
       rel="noreferrer"
       className="group flex shrink-0 items-center gap-2 rounded-sm text-muted-dim transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
