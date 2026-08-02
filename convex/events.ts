@@ -116,6 +116,7 @@ export const listManaged = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
+      eventDate: event.eventDate,
     }));
   },
 });

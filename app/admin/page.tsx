@@ -7,6 +7,8 @@ import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import { cn } from "@/lib/utils";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,10 +38,83 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 
+interface ManagedEventItem {
+  _id: string;
+  _creationTime: number;
+  name: string;
+  slug: string;
+  eventDate?: string;
+}
+
+function AdminEventRow({
+  event,
+  index,
+  past,
+}: {
+  event: ManagedEventItem;
+  index: number;
+  past?: boolean;
+}) {
+  return (
+    <li className="border-b border-border">
+      <Link
+        href={`/admin/events/${event._id}`}
+        className={cn(
+          "group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4",
+          past && "opacity-60 transition-opacity hover:opacity-100",
+        )}
+      >
+        <span className="font-mono text-xs text-muted-dim tabular-nums">
+          {String(index + 1).padStart(2, "0")}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="font-heading font-medium tracking-tight">
+            {event.name}
+          </div>
+        </div>
+        <span className="hidden font-mono text-xs text-muted-dim sm:inline">
+          /{event.slug}
+        </span>
+        <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
+          {event.eventDate
+            ? formatEventDate(event.eventDate)
+            : new Date(event._creationTime).toLocaleDateString("en-US", {
+                month: "short",
+                day: "2-digit",
+                year: "numeric",
+              })}
+        </span>
+        <ArrowRight
+          className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
+          aria-hidden
+        />
+      </Link>
+    </li>
+  );
+}
+
 export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
   const access = useQuery(api.admins.accessLevel);
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
+
+  // Mirrors the home page grouping: dated events that have passed sink into
+  // their own dimmed group; undated events count as active. Active events
+  // order soonest-first, with undated ones following in their arrival
+  // (newest created) order; past events list the most recently ended first.
+  // YYYY-MM-DD compares correctly as a plain string.
+  const active =
+    events?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
+    [];
+  const current = [
+    ...active
+      .filter((e) => e.eventDate)
+      .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
+    ...active.filter((e) => !e.eventDate),
+  ];
+  const past = (
+    events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? []
+  ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
   return (
     <div>
@@ -82,39 +157,49 @@ export default function AdminDashboard() {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="border-t border-border">
-          {events.map((event, index) => (
-            <li key={event._id} className="border-b border-border">
-              <Link
-                href={`/admin/events/${event._id}`}
-                className="group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4"
-              >
+        <>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-sm font-medium text-muted-foreground">
+              Active events
+            </h2>
+            <span className="font-mono text-xs text-muted-dim tabular-nums">
+              {String(current.length).padStart(2, "0")}
+            </span>
+          </div>
+          {current.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              No active events right now.
+            </p>
+          ) : (
+            <ul className="mt-4 border-t border-border">
+              {current.map((event, index) => (
+                <AdminEventRow key={event._id} event={event} index={index} />
+              ))}
+            </ul>
+          )}
+          {past.length > 0 ? (
+            <>
+              <div className="mt-12 flex items-baseline justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Past events
+                </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(index + 1).padStart(2, "0")}
+                  {String(past.length).padStart(2, "0")}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-heading font-medium tracking-tight">
-                    {event.name}
-                  </div>
-                </div>
-                <span className="hidden font-mono text-xs text-muted-dim sm:inline">
-                  /{event.slug}
-                </span>
-                <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
-                  {new Date(event._creationTime).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "2-digit",
-                    year: "numeric",
-                  })}
-                </span>
-                <ArrowRight
-                  className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
-                  aria-hidden
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
+              </div>
+              <ul className="mt-4 border-t border-border">
+                {past.map((event, index) => (
+                  <AdminEventRow
+                    key={event._id}
+                    event={event}
+                    index={index}
+                    past
+                  />
+                ))}
+              </ul>
+            </>
+          ) : null}
+        </>
       )}
     </div>
   );
