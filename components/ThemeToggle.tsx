@@ -14,13 +14,12 @@ export function ThemeToggle() {
       title="Toggle color theme"
       className="group flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
-      <span>Lights</span>
       <span aria-hidden className="grid overflow-hidden text-left">
         <span className="[grid-area:1/1] transition-[translate,opacity] duration-300 motion-reduce:transition-none dark:-translate-y-2 dark:opacity-0">
-          on
+          light
         </span>
         <span className="[grid-area:1/1] translate-y-2 opacity-0 transition-[translate,opacity] duration-300 motion-reduce:transition-none dark:translate-y-0 dark:opacity-100">
-          off
+          dark
         </span>
       </span>
     </button>
