@@ -120,6 +120,18 @@ body {
   color: var(--selection-foreground);
 }
 
+/* Chrome paints autofilled fields yellow, which clashes with the paper
+   palette. The background is set via an internal style that can't be
+   overridden directly, but it *can* be transitioned — delaying it
+   indefinitely keeps the field transparent while the ink stays themed. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  caret-color: var(--foreground);
+  transition: background-color 9999999s ease-in-out 0s;
+}
+
 /* Micro-label: the recurring uppercase mono eyebrow used across the app. */
 @utility eyebrow {
   font-family: var(--font-mono), monospace;

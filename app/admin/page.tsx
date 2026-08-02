@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -273,7 +274,7 @@ function NewEventDialog() {
                 id="event-slug"
                 value={slug}
                 onChange={(e) => setSlug(e.target.value)}
-                placeholder="hackathon-1"
+                placeholder={slugify(name) || "hackathon-1"}
                 className="font-mono"
               />
               <FieldDescription>
