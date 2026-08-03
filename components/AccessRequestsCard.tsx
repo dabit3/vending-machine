@@ -43,14 +43,21 @@ export default function AccessRequestsCard({
   async function handleApprove(id: Id<"accessRequests">, email: string) {
     setBusyId(id);
     try {
-      const { codeReserved, alreadyClaimed } = await approve({ id });
-      toast.success(`${email} approved and whitelisted`, {
-        description: alreadyClaimed
-          ? "They already hold a claimed code."
-          : codeReserved
-            ? "A code has been reserved for them."
-            : "No unreserved codes were left to hold — add more codes.",
+      const { codeReserved, alreadyClaimed, alreadyApproved } = await approve({
+        id,
       });
+      toast.success(
+        alreadyApproved
+          ? `${email} was already approved`
+          : `${email} approved and whitelisted`,
+        {
+          description: alreadyClaimed
+            ? "They already hold a claimed code."
+            : codeReserved
+              ? "A code has been reserved for them."
+              : "No unreserved codes were left to hold — add more codes.",
+        }
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to approve");
     } finally {
