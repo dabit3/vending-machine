@@ -126,16 +126,14 @@ export const listRequests = query({
 });
 
 // Approval whitelists the requester and reserves an unclaimed code for them,
-// then schedules the notification email.
+// then schedules the notification email. Denied requests can be approved too,
+// so a denial is never a dead end.
 export const approve = mutation({
   args: { requestId: v.id("accessRequests") },
   handler: async (ctx, args) => {
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
     const adminEmail = await requireEventAdmin(ctx, request.eventId);
-    if (request.status === "denied") {
-      throw new Error("Request is already denied");
-    }
     const event = await ctx.db.get(request.eventId);
     if (!event) throw new Error("Event not found");
 
