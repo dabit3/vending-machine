@@ -77,7 +77,7 @@ export const myRequest = query({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     const email = identity?.email?.trim().toLowerCase();
-    if (!email) return null;
+    if (!email || identity?.emailVerified !== true) return null;
     const event = await ctx.db
       .query("events")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
