@@ -61,5 +61,16 @@ export const remove = mutation({
     for (const code of reserved) {
       await ctx.db.patch(code._id, { reservedFor: undefined });
     }
+    // Drop an approved access request for this email so the attendee can
+    // request access again instead of being stuck showing "approved".
+    const request = await ctx.db
+      .query("accessRequests")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", email.eventId).eq("email", email.email)
+      )
+      .unique();
+    if (request && request.status === "approved") {
+      await ctx.db.delete(request._id);
+    }
   },
 });
