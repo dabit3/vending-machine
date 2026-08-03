@@ -432,6 +432,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 key: c._id,
                 label: c.code,
                 claimedBy: c.claimedBy ?? undefined,
+                reservedFor: c.reservedFor ?? undefined,
                 onRemove: c.claimedBy
                   ? undefined
                   : () =>
@@ -777,7 +778,13 @@ function RowList({
   emptyText,
   mono,
 }: {
-  items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
+  items?: {
+    key: string;
+    label: string;
+    claimedBy?: string;
+    reservedFor?: string;
+    onRemove?: () => void;
+  }[];
   emptyText: string;
   mono?: boolean;
 }) {
@@ -816,6 +823,27 @@ function RowList({
               <Check data-icon="inline-start" />
               {item.claimedBy}
             </Badge>
+          ) : item.reservedFor ? (
+            <span className="flex shrink-0 items-center gap-1">
+              <Badge
+                variant="outline"
+                className="max-w-32 truncate text-[10px] sm:max-w-48"
+              >
+                <Hourglass data-icon="inline-start" />
+                Reserved: {item.reservedFor}
+              </Badge>
+              {item.onRemove ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remove ${item.label}`}
+                  onClick={item.onRemove}
+                  className="text-muted-foreground"
+                >
+                  <X />
+                </Button>
+              ) : null}
+            </span>
           ) : item.onRemove ? (
             <Button
               variant="ghost"
