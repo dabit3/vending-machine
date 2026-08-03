@@ -9,11 +9,14 @@
  */
 
 import type * as admins from "../admins.js";
+import type * as auditLog from "../auditLog.js";
 import type * as claims from "../claims.js";
 import type * as codes from "../codes.js";
 import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
+import type * as notifications from "../notifications.js";
+import type * as waitlist from "../waitlist.js";
 
 import type {
   ApiFromModules,
@@ -23,11 +26,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admins: typeof admins;
+  auditLog: typeof auditLog;
   claims: typeof claims;
   codes: typeof codes;
   emails: typeof emails;
   eventAdmins: typeof eventAdmins;
   events: typeof events;
+  notifications: typeof notifications;
+  waitlist: typeof waitlist;
 }>;
 
 /**
