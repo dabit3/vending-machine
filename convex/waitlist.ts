@@ -153,18 +153,28 @@ export const approve = mutation({
     }
 
     // Reserve the first unclaimed, unreserved code so the pool can't be
-    // exhausted before the approved attendee gets a chance to claim.
+    // exhausted before the approved attendee gets a chance to claim. Skip
+    // when the email already claimed a code (e.g. whitelisted manually while
+    // the request was pending) so a code isn't locked away unused.
     let reservedCode: string | undefined;
-    const candidates = await ctx.db
+    const alreadyClaimed = await ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", request.eventId).eq("claimedBy", undefined)
+        q.eq("eventId", request.eventId).eq("claimedBy", request.email)
       )
-      .collect();
-    const available = candidates.find((c) => c.reservedFor === undefined);
-    if (available) {
-      await ctx.db.patch(available._id, { reservedFor: request.email });
-      reservedCode = available.code;
+      .first();
+    if (!alreadyClaimed) {
+      const available = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", request.eventId).eq("claimedBy", undefined)
+        )
+        .filter((q) => q.eq(q.field("reservedFor"), undefined))
+        .first();
+      if (available) {
+        await ctx.db.patch(available._id, { reservedFor: request.email });
+        reservedCode = available.code;
+      }
     }
 
     await ctx.db.patch(request._id, {
@@ -179,13 +189,16 @@ export const approve = mutation({
       subjectEmail: request.email,
       details: reservedCode
         ? "Whitelisted and reserved a code"
-        : "Whitelisted — no unreserved codes left to reserve",
+        : alreadyClaimed
+          ? "Whitelisted — already claimed a code"
+          : "Whitelisted — no unreserved codes left to reserve",
     });
 
     await ctx.scheduler.runAfter(0, internal.notifications.sendApprovalEmail, {
       email: request.email,
       eventName: event.name,
       eventSlug: event.slug,
+      reserved: reservedCode !== undefined || alreadyClaimed !== null,
     });
 
     return { reserved: reservedCode !== undefined };
