@@ -49,5 +49,28 @@ export const remove = mutation({
     if (!email) return;
     await requireEventAdmin(ctx, email.eventId);
     await ctx.db.delete(args.id);
+    // Release any unclaimed code reserved for this email so it returns to
+    // the general pool instead of staying locked away.
+    const reserved = await ctx.db
+      .query("codes")
+      .withIndex("by_event_reservedFor", (q) =>
+        q.eq("eventId", email.eventId).eq("reservedFor", email.email)
+      )
+      .filter((q) => q.eq(q.field("claimedBy"), undefined))
+      .collect();
+    for (const code of reserved) {
+      await ctx.db.patch(code._id, { reservedFor: undefined });
+    }
+    // Drop an approved access request for this email so the attendee can
+    // request access again instead of being stuck showing "approved".
+    const request = await ctx.db
+      .query("accessRequests")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", email.eventId).eq("email", email.email)
+      )
+      .unique();
+    if (request && request.status === "approved") {
+      await ctx.db.delete(request._id);
+    }
   },
 });
