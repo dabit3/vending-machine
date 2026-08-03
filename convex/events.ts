@@ -62,12 +62,30 @@ export const getBySlug = query({
     if (!event) return null;
     // One row is enough to know whether anything is left to dispense —
     // claimers who already have a code can still retrieve it regardless.
-    const unclaimed = await ctx.db
+    // A code counts as available for the viewer when it is unclaimed and
+    // either unreserved or reserved for the viewer's verified email, matching
+    // what claims.claim would actually hand out.
+    const identity = await ctx.auth.getUserIdentity();
+    const viewerEmail =
+      identity?.emailVerified === true
+        ? identity.email?.trim().toLowerCase()
+        : undefined;
+    let available = await ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>
         q.eq("eventId", event._id).eq("claimedBy", undefined)
       )
+      .filter((q) => q.eq(q.field("reservedFor"), undefined))
       .first();
+    if (!available && viewerEmail) {
+      available = await ctx.db
+        .query("codes")
+        .withIndex("by_event_reservedFor", (q) =>
+          q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
+        )
+        .filter((q) => q.eq(q.field("claimedBy"), undefined))
+        .first();
+    }
     return {
       _id: event._id,
       _creationTime: event._creationTime,
@@ -76,7 +94,7 @@ export const getBySlug = query({
       description: event.description,
       eventUrl: event.eventUrl,
       eventDate: event.eventDate,
-      soldOut: unclaimed === null,
+      soldOut: available === null,
     };
   },
 });
