@@ -216,7 +216,8 @@ export const approve = mutation({
       email: request.email,
       eventName: event.name,
       eventSlug: event.slug,
-      reserved: reservedCode !== undefined || priorClaim !== null,
+      reserved: reservedCode !== undefined,
+      alreadyClaimed: priorClaim !== null,
     });
 
     return {

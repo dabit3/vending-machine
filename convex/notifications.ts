@@ -10,6 +10,7 @@ export const sendApprovalEmail = internalAction({
     eventName: v.string(),
     eventSlug: v.string(),
     reserved: v.boolean(),
+    alreadyClaimed: v.boolean(),
   },
   handler: async (_ctx, args) => {
     const apiKey = process.env.RESEND_API_KEY;
@@ -34,7 +35,9 @@ export const sendApprovalEmail = internalAction({
         subject: `You're approved for ${args.eventName}`,
         text: args.reserved
           ? `Your access request for ${args.eventName} was approved. A credit code has been reserved for you.\n\nClaim it here: ${claimUrl}\n\nSign in with this email address (${args.email}) to dispense your code.`
-          : `Your access request for ${args.eventName} was approved.\n\nVisit ${claimUrl} and sign in with this email address (${args.email}) to claim a code if one becomes available.`,
+          : args.alreadyClaimed
+            ? `Your access request for ${args.eventName} was approved. You already have a credit code for this event.\n\nView it here: ${claimUrl}\n\nSign in with this email address (${args.email}) to see your code.`
+            : `Your access request for ${args.eventName} was approved.\n\nVisit ${claimUrl} and sign in with this email address (${args.email}) to claim a code if one becomes available.`,
       }),
     });
     if (!res.ok) {
