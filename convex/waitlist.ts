@@ -133,11 +133,35 @@ export const approve = mutation({
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
     const adminEmail = await requireEventAdmin(ctx, request.eventId);
-    if (request.status !== "pending") {
-      throw new Error(`Request is already ${request.status}`);
+    if (request.status === "denied") {
+      throw new Error("Request is already denied");
     }
     const event = await ctx.db.get(request.eventId);
     if (!event) throw new Error("Event not found");
+
+    const priorClaim = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", request.eventId).eq("claimedBy", request.email)
+      )
+      .first();
+    const priorReservation = await ctx.db
+      .query("codes")
+      .withIndex("by_event_reservedFor", (q) =>
+        q.eq("eventId", request.eventId).eq("reservedFor", request.email)
+      )
+      .filter((q) => q.eq(q.field("claimedBy"), undefined))
+      .first();
+
+    // Retried approvals are no-ops: the request is already approved, so
+    // report the existing state without reserving another code, re-logging,
+    // or re-sending the email.
+    if (request.status === "approved") {
+      return {
+        reserved: priorReservation !== null,
+        alreadyClaimed: priorClaim !== null,
+      };
+    }
 
     const whitelisted = await ctx.db
       .query("emails")
@@ -155,15 +179,11 @@ export const approve = mutation({
     // Reserve the first unclaimed, unreserved code so the pool can't be
     // exhausted before the approved attendee gets a chance to claim. Skip
     // when the email already claimed a code (e.g. whitelisted manually while
-    // the request was pending) so a code isn't locked away unused.
-    let reservedCode: string | undefined;
-    const alreadyClaimed = await ctx.db
-      .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", request.eventId).eq("claimedBy", request.email)
-      )
-      .first();
-    if (!alreadyClaimed) {
+    // the request was pending) so a code isn't locked away unused, and skip
+    // when a code is already reserved for them so at most one code is ever
+    // held per email.
+    let reservedCode = priorReservation?.code;
+    if (!priorClaim && !priorReservation) {
       const available = await ctx.db
         .query("codes")
         .withIndex("by_event_claimedBy", (q) =>
@@ -189,7 +209,7 @@ export const approve = mutation({
       subjectEmail: request.email,
       details: reservedCode
         ? "Whitelisted and reserved a code"
-        : alreadyClaimed
+        : priorClaim
           ? "Whitelisted — already claimed a code"
           : "Whitelisted — no unreserved codes left to reserve",
     });
@@ -198,12 +218,12 @@ export const approve = mutation({
       email: request.email,
       eventName: event.name,
       eventSlug: event.slug,
-      reserved: reservedCode !== undefined || alreadyClaimed !== null,
+      reserved: reservedCode !== undefined || priorClaim !== null,
     });
 
     return {
       reserved: reservedCode !== undefined,
-      alreadyClaimed: alreadyClaimed !== null,
+      alreadyClaimed: priorClaim !== null,
     };
   },
 });
