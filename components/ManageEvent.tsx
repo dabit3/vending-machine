@@ -8,13 +8,17 @@ import {
   ArrowUpRight,
   Check,
   Download,
+  Hourglass,
   Inbox,
   QrCode,
+  ScrollText,
   ShieldCheck,
   Ticket,
   Trash2,
   Upload,
+  UserCheck,
   UserPlus,
+  UserX,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -445,8 +449,189 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         </Card>
       </div>
 
+      <WaitlistCard eventId={id} />
+
       <EventAdminsCard eventId={id} />
+
+      <AuditLogCard eventId={id} />
     </div>
+  );
+}
+
+const REQUEST_STATUS_LABEL: Record<string, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  denied: "Denied",
+};
+
+function WaitlistCard({ eventId }: { eventId: Id<"events"> }) {
+  const requests = useQuery(api.waitlist.listRequests, { eventId });
+  const approve = useMutation(api.waitlist.approve);
+  const deny = useMutation(api.waitlist.deny);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const pending = requests?.filter((r) => r.status === "pending") ?? [];
+  const decided = requests?.filter((r) => r.status !== "pending") ?? [];
+
+  async function handleApprove(requestId: Id<"accessRequests">, email: string) {
+    setBusyId(requestId);
+    try {
+      const { reserved } = await approve({ requestId });
+      toast.success(`Approved ${email}`, {
+        description: reserved
+          ? "Whitelisted and reserved a code."
+          : "Whitelisted — no unreserved codes were left to reserve.",
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDeny(requestId: Id<"accessRequests">, email: string) {
+    setBusyId(requestId);
+    try {
+      await deny({ requestId });
+      toast.success(`Denied ${email}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to deny");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Hourglass className="size-4 text-muted-dim" aria-hidden />
+          Access requests
+          {pending.length > 0 ? (
+            <Badge variant="secondary">{pending.length} pending</Badge>
+          ) : null}
+        </CardTitle>
+        <CardDescription>
+          Attendees not on the list can request access. Approving whitelists
+          their email, reserves a code, and emails them.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        {requests === undefined ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 rounded-md" />
+            <Skeleton className="h-9 rounded-md" />
+          </div>
+        ) : requests.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+            No access requests yet.
+          </p>
+        ) : (
+          <ul className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
+            {[...pending, ...decided].map((request) => (
+              <li
+                key={request._id}
+                className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
+              >
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <span className="truncate text-sm">{request.email}</span>
+                  <span className="text-xs text-muted-dim tabular-nums">
+                    {new Date(request._creationTime).toLocaleString()}
+                    {request.note ? ` — ${request.note}` : ""}
+                  </span>
+                </div>
+                {request.status === "pending" ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled={busyId === request._id}
+                      aria-busy={busyId === request._id}
+                      onClick={() => handleApprove(request._id, request.email)}
+                    >
+                      <UserCheck data-icon="inline-start" />
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busyId === request._id}
+                      onClick={() => handleDeny(request._id, request.email)}
+                    >
+                      <UserX data-icon="inline-start" />
+                      Deny
+                    </Button>
+                  </div>
+                ) : (
+                  <Badge
+                    variant="secondary"
+                    className="shrink-0 text-[10px]"
+                  >
+                    {REQUEST_STATUS_LABEL[request.status]}
+                    {request.decidedBy ? ` by ${request.decidedBy}` : ""}
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function AuditLogCard({ eventId }: { eventId: Id<"events"> }) {
+  const entries = useQuery(api.auditLog.list, { eventId });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <ScrollText className="size-4 text-muted-dim" aria-hidden />
+          Audit log
+        </CardTitle>
+        <CardDescription>
+          A record of waitlist activity for this event — most recent first.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {entries === undefined ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-9 rounded-md" />
+            <Skeleton className="h-9 rounded-md" />
+          </div>
+        ) : entries.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+            Nothing logged yet.
+          </p>
+        ) : (
+          <ul className="max-h-72 divide-y divide-border overflow-y-auto border-y border-border">
+            {entries.map((entry) => (
+              <li
+                key={entry._id}
+                className="flex min-h-10 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-1 py-1.5"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
+                    {entry.action}
+                  </Badge>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {entry.subjectEmail}
+                    {entry.actorEmail && entry.actorEmail !== entry.subjectEmail
+                      ? ` · by ${entry.actorEmail}`
+                      : ""}
+                    {entry.details ? ` · ${entry.details}` : ""}
+                  </span>
+                </div>
+                <span className="shrink-0 text-xs text-muted-dim tabular-nums">
+                  {new Date(entry._creationTime).toLocaleString()}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
