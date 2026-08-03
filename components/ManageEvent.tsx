@@ -476,11 +476,13 @@ function WaitlistCard({ eventId }: { eventId: Id<"events"> }) {
   async function handleApprove(requestId: Id<"accessRequests">, email: string) {
     setBusyId(requestId);
     try {
-      const { reserved } = await approve({ requestId });
+      const { reserved, alreadyClaimed } = await approve({ requestId });
       toast.success(`Approved ${email}`, {
         description: reserved
           ? "Whitelisted and reserved a code."
-          : "Whitelisted — no unreserved codes were left to reserve.",
+          : alreadyClaimed
+            ? "Whitelisted — they already claimed a code."
+            : "Whitelisted — no unreserved codes were left to reserve.",
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to approve");
