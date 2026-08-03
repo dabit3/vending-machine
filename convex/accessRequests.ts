@@ -171,8 +171,29 @@ export const approve = mutation({
     const request = await ctx.db.get(args.id);
     if (!request) throw new Error("Request not found");
     const adminEmail = await requireEventAdmin(ctx, request.eventId);
-    if (request.status !== "pending") {
-      throw new Error(`Request was already ${request.status}`);
+    if (request.status === "denied") {
+      throw new Error("Request was already denied");
+    }
+    // Re-approving is a no-op: report the existing outcome without reserving
+    // another code, re-sending the email, or adding an audit entry.
+    if (request.status === "approved") {
+      const claimed = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", request.eventId).eq("claimedBy", request.email)
+        )
+        .first();
+      const reserved = await ctx.db
+        .query("codes")
+        .withIndex("by_event_reservedFor", (q) =>
+          q.eq("eventId", request.eventId).eq("reservedFor", request.email)
+        )
+        .first();
+      return {
+        codeReserved: reserved !== null,
+        alreadyClaimed: claimed !== null,
+        alreadyApproved: true,
+      };
     }
     const event = await ctx.db.get(request.eventId);
     if (!event) throw new Error("Event not found");
@@ -254,6 +275,7 @@ export const approve = mutation({
     return {
       codeReserved: reservedCode !== null,
       alreadyClaimed: alreadyClaimed !== null,
+      alreadyApproved: false,
     };
   },
 });
