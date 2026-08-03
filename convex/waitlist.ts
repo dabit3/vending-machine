@@ -201,7 +201,10 @@ export const approve = mutation({
       reserved: reservedCode !== undefined || alreadyClaimed !== null,
     });
 
-    return { reserved: reservedCode !== undefined };
+    return {
+      reserved: reservedCode !== undefined,
+      alreadyClaimed: alreadyClaimed !== null,
+    };
   },
 });
 
