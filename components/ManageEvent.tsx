@@ -566,13 +566,29 @@ function WaitlistCard({ eventId }: { eventId: Id<"events"> }) {
                     </Button>
                   </div>
                 ) : (
-                  <Badge
-                    variant="secondary"
-                    className="shrink-0 text-[10px]"
-                  >
-                    {REQUEST_STATUS_LABEL[request.status]}
-                    {request.decidedBy ? ` by ${request.decidedBy}` : ""}
-                  </Badge>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0 text-[10px]"
+                    >
+                      {REQUEST_STATUS_LABEL[request.status]}
+                      {request.decidedBy ? ` by ${request.decidedBy}` : ""}
+                    </Badge>
+                    {request.status === "denied" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={busyId === request._id}
+                        aria-busy={busyId === request._id}
+                        onClick={() =>
+                          handleApprove(request._id, request.email)
+                        }
+                      >
+                        <UserCheck data-icon="inline-start" />
+                        Approve
+                      </Button>
+                    ) : null}
+                  </div>
                 )}
               </li>
             ))}
