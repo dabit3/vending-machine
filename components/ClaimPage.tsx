@@ -7,7 +7,9 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Hourglass,
   LogIn,
+  MailPlus,
   OctagonX,
   QrCode,
   SearchX,
@@ -26,7 +28,7 @@ import {
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +47,7 @@ import {
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type ClaimResult =
@@ -75,6 +78,10 @@ function urlLabel(url: string) {
   }
 }
 
+// Matches the error claims.claim returns when the email isn't whitelisted,
+// which is the case where offering to join the waitlist makes sense.
+const NOT_ON_LIST_FRAGMENT = "not on the participant list";
+
 export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
@@ -84,6 +91,10 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const myRequest = useQuery(
+    api.waitlist.myRequest,
+    isAuthenticated ? { slug } : "skip",
+  );
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
@@ -259,6 +270,18 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         <AlertTitle>{result.error}</AlertTitle>
                       </Alert>
                     ) : null}
+                    {myRequest && myRequest.status !== "approved" ? (
+                      <RequestStatusAlert
+                        status={myRequest.status}
+                        decidedAt={myRequest.decidedAt}
+                      />
+                    ) : null}
+                    {myRequest === null &&
+                    result &&
+                    !result.ok &&
+                    result.error.includes(NOT_ON_LIST_FRAGMENT) ? (
+                      <RequestAccessPanel slug={slug} />
+                    ) : null}
                     <Button
                       variant="brand"
                       size="lg"
@@ -317,6 +340,105 @@ export default function ClaimPage({ slug }: { slug: string }) {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function RequestStatusAlert({
+  status,
+  decidedAt,
+}: {
+  status: "pending" | "denied";
+  decidedAt?: number;
+}) {
+  if (status === "denied") {
+    return (
+      <Alert variant="destructive">
+        <OctagonX />
+        <AlertTitle>Your access request was denied</AlertTitle>
+        {decidedAt ? (
+          <AlertDescription>
+            Decided {new Date(decidedAt).toLocaleDateString()}. Contact the
+            event organizers if you think this is a mistake.
+          </AlertDescription>
+        ) : null}
+      </Alert>
+    );
+  }
+  return (
+    <Alert>
+      <Hourglass />
+      <AlertTitle>Access request pending</AlertTitle>
+      <AlertDescription>
+        The event admins are reviewing your request. You&apos;ll get an email
+        if you&apos;re approved — then come back here to claim your code.
+      </AlertDescription>
+    </Alert>
+  );
+}
+
+function RequestAccessPanel({ slug }: { slug: string }) {
+  const requestAccess = useMutation(api.waitlist.requestAccess);
+  const [note, setNote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await requestAccess({ slug, note: note.trim() || undefined });
+      if (res.ok) {
+        toast.success(
+          res.alreadyRequested
+            ? "You already have a request on file"
+            : "Access request sent",
+        );
+      } else {
+        toast.error(res.error);
+      }
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong p-4"
+    >
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Not on the list? Request access and the event admins will review it.
+      </p>
+      <Textarea
+        aria-label="Optional note for the event admins"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        rows={2}
+        maxLength={500}
+        placeholder="Optional note — e.g. how you registered"
+        className="resize-y text-sm"
+      />
+      <Button
+        type="submit"
+        variant="secondary"
+        disabled={submitting}
+        aria-busy={submitting}
+        className="self-start"
+      >
+        {submitting ? (
+          <>
+            <Spinner data-icon="inline-start" />
+            Sending...
+          </>
+        ) : (
+          <>
+            <MailPlus data-icon="inline-start" />
+            Request access
+          </>
+        )}
+      </Button>
+    </form>
   );
 }
 
