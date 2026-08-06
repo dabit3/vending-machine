@@ -150,13 +150,17 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const slug = slugify(args.slug?.trim() || args.name);
-    if (!slug) throw new Error("Event name must contain letters or numbers");
-    const existing = await ctx.db
-      .query("events")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .unique();
-    if (existing) throw new Error(`Slug "${slug}" is already taken`);
+    const base = slugify(args.slug?.trim() || args.name);
+    if (!base) throw new Error("Event name must contain letters or numbers");
+    let slug = base;
+    while (
+      await ctx.db
+        .query("events")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .unique()
+    ) {
+      slug = `${base}-${Math.random().toString(36).slice(2, 8)}`;
+    }
     const id = await ctx.db.insert("events", {
       name: args.name.trim(),
       slug,
