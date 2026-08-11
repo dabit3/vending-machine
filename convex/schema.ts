@@ -1,7 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// Temporarily disabled pending cleanup of legacy eventUrl fields.
 export default defineSchema({
   admins: defineTable({
     email: v.string(),
@@ -66,4 +65,4 @@ export default defineSchema({
     subjectEmail: v.optional(v.string()),
     details: v.optional(v.string()),
   }).index("by_event", ["eventId"]),
-}, { schemaValidation: false });
+});
