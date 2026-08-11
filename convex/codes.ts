@@ -64,7 +64,6 @@ export const mine = query({
                 slug: event.slug,
                 creditAmount: event.creditAmount,
                 eventDate: event.eventDate,
-                eventUrl: event.eventUrl,
               }
             : null,
         };

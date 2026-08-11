@@ -47,7 +47,6 @@ interface EventInfo {
   slug: string;
   creditAmount?: string;
   eventDate?: string;
-  eventUrl?: string;
 }
 
 function eventMeta(event: EventInfo) {
