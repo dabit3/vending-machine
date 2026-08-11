@@ -12,21 +12,6 @@ function slugify(name: string): string {
     .replace(/^-|-$/g, "");
 }
 
-// Empty -> undefined; bare domains get https://; anything unparseable throws.
-function normalizeUrl(raw?: string): string | undefined {
-  const trimmed = raw?.trim();
-  if (!trimmed) return undefined;
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  try {
-    new URL(withProtocol);
-  } catch {
-    throw new Error("Enter a valid event URL");
-  }
-  return withProtocol;
-}
-
 // Empty -> undefined; expects YYYY-MM-DD from the date input.
 function normalizeEventDate(raw?: string): string | undefined {
   const trimmed = raw?.trim();
@@ -92,7 +77,6 @@ export const getBySlug = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
-      eventUrl: event.eventUrl,
       eventDate: event.eventDate,
       soldOut: available === null,
     };
@@ -103,7 +87,17 @@ export const get = query({
   args: { id: v.id("events") },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
-    return await ctx.db.get(args.id);
+    const event = await ctx.db.get(args.id);
+    if (!event) return null;
+    return {
+      _id: event._id,
+      _creationTime: event._creationTime,
+      name: event.name,
+      slug: event.slug,
+      description: event.description,
+      creditAmount: event.creditAmount,
+      eventDate: event.eventDate,
+    };
   },
 });
 
@@ -145,7 +139,6 @@ export const create = mutation({
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
-    eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -166,7 +159,6 @@ export const create = mutation({
       slug,
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
-      eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
     });
     return { id, slug };
@@ -180,7 +172,6 @@ export const update = mutation({
     slug: v.string(),
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
-    eventUrl: v.optional(v.string()),
     eventDate: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -199,7 +190,6 @@ export const update = mutation({
       slug,
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
-      eventUrl: normalizeUrl(args.eventUrl),
       eventDate: normalizeEventDate(args.eventDate),
     });
     return { slug };

@@ -662,7 +662,6 @@ function EventDetailsForm({
   const [description, setDescription] = useState(event.description ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
-  const [eventUrl, setEventUrl] = useState(event.eventUrl ?? "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -676,7 +675,6 @@ function EventDetailsForm({
         description: description || undefined,
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
-        eventUrl: eventUrl || undefined,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -754,19 +752,6 @@ function EventDetailsForm({
                 placeholder="$100"
               />
               <FieldDescription>Shown on the claim page.</FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="detail-url">Event URL</FieldLabel>
-              <Input
-                id="detail-url"
-                type="url"
-                value={eventUrl}
-                onChange={(e) => setEventUrl(e.target.value)}
-                placeholder="https://tokyohackathon.com"
-              />
-              <FieldDescription>
-                Optional — linked from the claim page.
-              </FieldDescription>
             </Field>
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">

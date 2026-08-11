@@ -67,14 +67,6 @@ function subscribeNoop() {
   return () => {};
 }
 
-function urlLabel(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
 export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
@@ -186,7 +178,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                     {event.description}
                   </CardDescription>
                 ) : null}
-                {event.eventDate || event.eventUrl ? (
+                {event.eventDate ? (
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                     {event.eventDate ? (
                       <span className="flex items-center gap-1.5 tabular-nums">
@@ -208,20 +200,6 @@ export default function ClaimPage({ slug }: { slug: string }) {
                           )
                         ) : null}
                       </span>
-                    ) : null}
-                    {event.eventUrl ? (
-                      <a
-                        href={event.eventUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="group flex w-fit items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
-                      >
-                        {urlLabel(event.eventUrl)}
-                        <ArrowUpRight
-                          className="size-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                          aria-hidden
-                        />
-                      </a>
                     ) : null}
                   </div>
                 ) : null}
