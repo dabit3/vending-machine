@@ -29,7 +29,7 @@ export function ThemeToggle() {
             cy="6"
             r="6"
             fill="black"
-            className="transition-[cx,cy] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:[cx:17] dark:[cy:7]"
+            className="transition-[cx,cy] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:[cx:17px] dark:[cy:7px]"
           />
         </mask>
         <circle
@@ -38,7 +38,7 @@ export function ThemeToggle() {
           r="5"
           fill="currentColor"
           mask="url(#theme-toggle-moon-mask)"
-          className="transition-[r] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:[r:8]"
+          className="transition-[r] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:[r:8px]"
         />
         <g
           stroke="currentColor"
