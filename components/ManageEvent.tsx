@@ -154,15 +154,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         eventId: id,
         emails: list,
       });
-      toast.success(`Added ${added} emails`, {
-        description:
-          [
-            flagged ? `${flagged} flagged for review (found in past events).` : "",
-            skipped ? `Skipped ${skipped} (duplicates/invalid).` : "",
-          ]
-            .filter(Boolean)
-            .join(" ") || undefined,
-      });
+      const description =
+        [
+          flagged ? `${flagged} flagged for review (found in past events).` : "",
+          skipped ? `Skipped ${skipped} (duplicates/invalid).` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined;
+      if (added === 0 && flagged > 0) {
+        toast.warning(`${flagged} emails awaiting review`, { description });
+      } else {
+        toast.success(`Added ${added} emails`, { description });
+      }
       setEmailInput("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add emails");
@@ -246,16 +249,24 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         skipped += res.skipped;
         flagged += res.flagged ?? 0;
       }
-      toast.success(`Added ${added} from ${file.name}`, {
-        id: toastId,
-        description:
-          [
-            flagged ? `${flagged} flagged for review (found in past events).` : "",
-            skipped ? `Skipped ${skipped} duplicates or invalid rows.` : "",
-          ]
-            .filter(Boolean)
-            .join(" ") || undefined,
-      });
+      const description =
+        [
+          flagged ? `${flagged} flagged for review (found in past events).` : "",
+          skipped ? `Skipped ${skipped} duplicates or invalid rows.` : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined;
+      if (added === 0 && flagged > 0) {
+        toast.warning(`${flagged} from ${file.name} awaiting review`, {
+          id: toastId,
+          description,
+        });
+      } else {
+        toast.success(`Added ${added} from ${file.name}`, {
+          id: toastId,
+          description,
+        });
+      }
     } catch {
       toast.error(`Could not read ${file.name}`, {
         id: toastId,
