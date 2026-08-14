@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   Check,
@@ -70,10 +71,13 @@ const UPLOAD_CHUNK_SIZE = 500;
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
+  const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
+  const approveFlagged = useMutation(api.emails.approveFlagged);
+  const rejectFlagged = useMutation(api.emails.rejectFlagged);
   const addCodes = useMutation(api.codes.add);
   const removeCode = useMutation(api.codes.remove);
 
@@ -146,9 +150,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     if (list.length === 0) return;
     setEmailBusy(true);
     try {
-      const { added, skipped } = await addEmails({ eventId: id, emails: list });
+      const { added, skipped, flagged } = await addEmails({
+        eventId: id,
+        emails: list,
+      });
       toast.success(`Added ${added} emails`, {
-        description: skipped ? `Skipped ${skipped} (duplicates/invalid).` : undefined,
+        description:
+          [
+            flagged ? `${flagged} flagged for review (found in past events).` : "",
+            skipped ? `Skipped ${skipped} (duplicates/invalid).` : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined,
       });
       setEmailInput("");
     } catch (err) {
@@ -199,7 +212,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   async function importFile(
     file: File,
     kind: "emails" | "codes",
-    send: (items: string[]) => Promise<{ added: number; skipped: number }>,
+    send: (
+      items: string[]
+    ) => Promise<{ added: number; skipped: number; flagged?: number }>,
     setBusy: (busy: boolean) => void
   ) {
     setBusy(true);
@@ -212,6 +227,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       }
       let added = 0;
       let skipped = 0;
+      let flagged = 0;
       for (let i = 0; i < items.length; i += UPLOAD_CHUNK_SIZE) {
         toast.loading(
           `Uploading ${Math.min(i + UPLOAD_CHUNK_SIZE, items.length)} / ${items.length}...`,
@@ -220,10 +236,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         const res = await send(items.slice(i, i + UPLOAD_CHUNK_SIZE));
         added += res.added;
         skipped += res.skipped;
+        flagged += res.flagged ?? 0;
       }
       toast.success(`Added ${added} from ${file.name}`, {
         id: toastId,
-        description: skipped ? `Skipped ${skipped} duplicates or invalid rows.` : undefined,
+        description:
+          [
+            flagged ? `${flagged} flagged for review (found in past events).` : "",
+            skipped ? `Skipped ${skipped} duplicates or invalid rows.` : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined,
       });
     } catch {
       toast.error(`Could not read ${file.name}`, {
@@ -314,6 +337,69 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         event={event}
         canDelete={access?.isGlobalAdmin ?? false}
       />
+
+      {flagged && flagged.length > 0 ? (
+        <Card className="border-amber-500/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-amber-500" aria-hidden />
+              Flagged for review
+              <Badge variant="secondary">{flagged.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              These uploaded emails already signed up for previous events.
+              Approve each one individually to add it to the eligible list, or
+              reject it to discard it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
+              {flagged.map((f) => (
+                <li
+                  key={f._id}
+                  className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
+                >
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm">{f.email}</span>
+                    <span className="truncate text-xs text-muted-dim">
+                      Also in:{" "}
+                      {f.matchedEvents.map((e) => e.name).join(", ") ||
+                        "deleted event(s)"}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        approveFlagged({ id: f._id })
+                          .then(() => toast.success(`Approved ${f.email}`))
+                          .catch(() => toast.error("Failed to approve"))
+                      }
+                    >
+                      <Check data-icon="inline-start" />
+                      Approve
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                      onClick={() =>
+                        rejectFlagged({ id: f._id })
+                          .then(() => toast.success(`Rejected ${f.email}`))
+                          .catch(() => toast.error("Failed to reject"))
+                      }
+                    >
+                      <X data-icon="inline-start" />
+                      Reject
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-8 lg:grid-cols-2">
         <Card>
