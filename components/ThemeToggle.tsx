@@ -35,14 +35,14 @@ export function ThemeToggle() {
         <circle
           cx="12"
           cy="12"
-          r="5"
+          r="4.25"
           fill="currentColor"
           mask="url(#theme-toggle-moon-mask)"
           className="transition-[r] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:[r:8px]"
         />
         <g
           stroke="currentColor"
-          strokeWidth="1.75"
+          strokeWidth="1.6"
           strokeLinecap="round"
           className="transition-opacity duration-300 motion-reduce:transition-none dark:opacity-0"
         >
@@ -50,9 +50,9 @@ export function ThemeToggle() {
             <line
               key={angle}
               x1="12"
-              y1="3.5"
+              y1="6.4"
               x2="12"
-              y2="1.5"
+              y2="2.6"
               transform={`rotate(${angle} 12 12)`}
               className="origin-center transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:scale-0"
             />
