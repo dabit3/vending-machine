@@ -1,0 +1,408 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		262E6FA87E6D2AF6351CF456 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40783BDDC35BCC4608892D2D /* BoardView.swift */; };
+		2BD02C6ED0DE4E0DA4C7CA82 /* GameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 609C5ED49D4F27CFE6CC64DE /* GameEngine.swift */; };
+		2D8C697A8BE79AF9E1240D42 /* Tetromino.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDDFE98741657679248C8515 /* Tetromino.swift */; };
+		3B8FB1E3E9E4D20CE1283E39 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E1C582C8D9EBC720F557A /* GameView.swift */; };
+		807C1C12B9C8E47CED849D2E /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62685271166F4E387662859E /* GameEngineTests.swift */; };
+		97A686558A19063CA6A0C7A0 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7450D91BA3E1BCBFEBC23658 /* Haptics.swift */; };
+		C01C748147D7163FA1CFFF52 /* TetrisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD255A95AB33B7A69628221 /* TetrisApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		FD10D4ED099ED0C2677AC6F9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5FB45E5109A04A610CD1DE01 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2389D453726E91D1E62BCF88;
+			remoteInfo = Tetris;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		16FC9002A9619D4BBC6DE810 /* Tetris.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Tetris.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		40783BDDC35BCC4608892D2D /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		609C5ED49D4F27CFE6CC64DE /* GameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine.swift; sourceTree = "<group>"; };
+		62685271166F4E387662859E /* GameEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngineTests.swift; sourceTree = "<group>"; };
+		7450D91BA3E1BCBFEBC23658 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		EF8B052B81B313A1760CB9D9 /* TetrisTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = TetrisTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F78E1C582C8D9EBC720F557A /* GameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameView.swift; sourceTree = "<group>"; };
+		FBD255A95AB33B7A69628221 /* TetrisApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TetrisApp.swift; sourceTree = "<group>"; };
+		FDDFE98741657679248C8515 /* Tetromino.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tetromino.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		5B2914F7528A8FFE5663C531 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				40783BDDC35BCC4608892D2D /* BoardView.swift */,
+				609C5ED49D4F27CFE6CC64DE /* GameEngine.swift */,
+				F78E1C582C8D9EBC720F557A /* GameView.swift */,
+				7450D91BA3E1BCBFEBC23658 /* Haptics.swift */,
+				FBD255A95AB33B7A69628221 /* TetrisApp.swift */,
+				FDDFE98741657679248C8515 /* Tetromino.swift */,
+			);
+			name = Sources;
+			path = Tetris/Sources;
+			sourceTree = "<group>";
+		};
+		5DBB68825DE0DF9ED8C5BC1C = {
+			isa = PBXGroup;
+			children = (
+				5B2914F7528A8FFE5663C531 /* Sources */,
+				92CF724BCBD43E944D8243FC /* TetrisTests */,
+				A779147BF93CF3002F237326 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		92CF724BCBD43E944D8243FC /* TetrisTests */ = {
+			isa = PBXGroup;
+			children = (
+				62685271166F4E387662859E /* GameEngineTests.swift */,
+			);
+			path = TetrisTests;
+			sourceTree = "<group>";
+		};
+		A779147BF93CF3002F237326 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				16FC9002A9619D4BBC6DE810 /* Tetris.app */,
+				EF8B052B81B313A1760CB9D9 /* TetrisTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2389D453726E91D1E62BCF88 /* Tetris */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B969ECA5B3210E53C28CEAB6 /* Build configuration list for PBXNativeTarget "Tetris" */;
+			buildPhases = (
+				716E875FBEFACC9DD3AF8DB8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Tetris;
+			packageProductDependencies = (
+			);
+			productName = Tetris;
+			productReference = 16FC9002A9619D4BBC6DE810 /* Tetris.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C6F803C2080D712FCCB49600 /* TetrisTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5C62AD506261C301DFF44FB9 /* Build configuration list for PBXNativeTarget "TetrisTests" */;
+			buildPhases = (
+				EC885B478EE4BA5C3C54F4E4 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DC929CBD5939FB11F3C73E34 /* PBXTargetDependency */,
+			);
+			name = TetrisTests;
+			packageProductDependencies = (
+			);
+			productName = TetrisTests;
+			productReference = EF8B052B81B313A1760CB9D9 /* TetrisTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5FB45E5109A04A610CD1DE01 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 626CAA0D5BFECF0FE0DD813E /* Build configuration list for PBXProject "Tetris" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5DBB68825DE0DF9ED8C5BC1C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A779147BF93CF3002F237326 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2389D453726E91D1E62BCF88 /* Tetris */,
+				C6F803C2080D712FCCB49600 /* TetrisTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		716E875FBEFACC9DD3AF8DB8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				262E6FA87E6D2AF6351CF456 /* BoardView.swift in Sources */,
+				2BD02C6ED0DE4E0DA4C7CA82 /* GameEngine.swift in Sources */,
+				3B8FB1E3E9E4D20CE1283E39 /* GameView.swift in Sources */,
+				97A686558A19063CA6A0C7A0 /* Haptics.swift in Sources */,
+				C01C748147D7163FA1CFFF52 /* TetrisApp.swift in Sources */,
+				2D8C697A8BE79AF9E1240D42 /* Tetromino.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EC885B478EE4BA5C3C54F4E4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				807C1C12B9C8E47CED849D2E /* GameEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DC929CBD5939FB11F3C73E34 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2389D453726E91D1E62BCF88 /* Tetris */;
+			targetProxy = FD10D4ED099ED0C2677AC6F9 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		6DCCE9C2D5C3FAF6E0FF37E0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dabit3.TetrisTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tetris.app/Tetris";
+			};
+			name = Debug;
+		};
+		7545BD66FFD6F3196B08968F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Tetris/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dabit3.tetris;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		90F4D1FCFEE0FE96CED57172 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGNING_ALLOWED = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dabit3.TetrisTests;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Tetris.app/Tetris";
+			};
+			name = Release;
+		};
+		966DC5E4F5A83242C33CEC47 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		BF43E0B9C0CF7C3C9FA187A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGNING_ALLOWED = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Tetris/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dabit3.tetris;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		F7EF7BBEB879C8D1F9B6015C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5C62AD506261C301DFF44FB9 /* Build configuration list for PBXNativeTarget "TetrisTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6DCCE9C2D5C3FAF6E0FF37E0 /* Debug */,
+				90F4D1FCFEE0FE96CED57172 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		626CAA0D5BFECF0FE0DD813E /* Build configuration list for PBXProject "Tetris" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				966DC5E4F5A83242C33CEC47 /* Debug */,
+				F7EF7BBEB879C8D1F9B6015C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B969ECA5B3210E53C28CEAB6 /* Build configuration list for PBXNativeTarget "Tetris" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF43E0B9C0CF7C3C9FA187A5 /* Debug */,
+				7545BD66FFD6F3196B08968F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5FB45E5109A04A610CD1DE01 /* Project object */;
+}

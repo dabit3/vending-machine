@@ -1,0 +1,36 @@
+name: Tetris
+options:
+  bundleIdPrefix: com.dabit3
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  Tetris:
+    type: application
+    platform: iOS
+    sources:
+      - Tetris/Sources
+    info:
+      path: Tetris/Info.plist
+      properties:
+        CFBundleDisplayName: Tetris
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UIUserInterfaceStyle: Dark
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dabit3.tetris
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_ALLOWED: "NO"
+  TetrisTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - TetrisTests
+    dependencies:
+      - target: Tetris
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        CODE_SIGNING_ALLOWED: "NO"
