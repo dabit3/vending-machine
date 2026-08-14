@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireEventAdmin } from "./admins";
+import type { Id } from "./_generated/dataModel";
+import { adminEmailStatus, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 
 export const list = query({
@@ -52,15 +53,18 @@ export const add = mutation({
             q.eq("eventId", args.eventId).eq("email", email)
           )
           .unique();
+        const matchedEventIds = [...new Set(otherEvents.map((e) => e.eventId))];
         if (alreadyFlagged) {
-          // Still pending review — report as flagged so callers don't treat
-          // it as an ordinary duplicate that can already claim.
+          // Still pending review — refresh the matches so the organizer sees
+          // every event the address appears in, and report as flagged so
+          // callers don't treat it as an ordinary duplicate that can claim.
+          await ctx.db.patch(alreadyFlagged._id, { matchedEventIds });
           flagged++;
         } else {
           await ctx.db.insert("flaggedEmails", {
             eventId: args.eventId,
             email,
-            matchedEventIds: [...new Set(otherEvents.map((e) => e.eventId))],
+            matchedEventIds,
           });
           flagged++;
         }
@@ -87,23 +91,39 @@ export const add = mutation({
 export const listFlagged = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    await requireEventAdmin(ctx, args.eventId);
-    const flagged = await ctx.db
-      .query("flaggedEmails")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .collect();
+    const callerEmail = await requireEventAdmin(ctx, args.eventId);
+    const { isAdmin: isGlobalAdmin } = await adminEmailStatus(ctx);
     return await Promise.all(
-      flagged.map(async (f) => {
-        const events = await Promise.all(
-          f.matchedEventIds.map((id) => ctx.db.get(id))
-        );
-        return {
-          _id: f._id,
-          email: f.email,
-          matchedEvents: events
-            .filter((e) => e !== null)
-            .map((e) => ({ id: e._id, name: e.name })),
-        };
+      (
+        await ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+          .collect()
+      ).map(async (f) => {
+        // Event names are only disclosed for events the caller can manage;
+        // matches in other admins' events are reported as a count.
+        const matchedEvents: { id: Id<"events">; name: string }[] = [];
+        let otherMatchCount = 0;
+        for (const eventId of f.matchedEventIds) {
+          const event = await ctx.db.get(eventId);
+          if (!event) continue;
+          let canSee = isGlobalAdmin;
+          if (!canSee && callerEmail) {
+            const membership = await ctx.db
+              .query("eventAdmins")
+              .withIndex("by_event_email", (q) =>
+                q.eq("eventId", eventId).eq("email", callerEmail)
+              )
+              .unique();
+            canSee = membership !== null;
+          }
+          if (canSee) {
+            matchedEvents.push({ id: event._id, name: event.name });
+          } else {
+            otherMatchCount++;
+          }
+        }
+        return { _id: f._id, email: f.email, matchedEvents, otherMatchCount };
       })
     );
   },

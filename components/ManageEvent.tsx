@@ -363,8 +363,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     <span className="truncate text-sm">{f.email}</span>
                     <span className="truncate text-xs text-muted-dim">
                       Also in:{" "}
-                      {f.matchedEvents.map((e) => e.name).join(", ") ||
-                        "deleted event(s)"}
+                      {[
+                        f.matchedEvents.map((e) => e.name).join(", "),
+                        f.otherMatchCount > 0
+                          ? `${f.otherMatchCount} other event(s)`
+                          : "",
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "deleted event(s)"}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
