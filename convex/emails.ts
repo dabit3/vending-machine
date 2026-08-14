@@ -67,6 +67,17 @@ export const add = mutation({
         continue;
       }
       await ctx.db.insert("emails", { eventId: args.eventId, email });
+      // A stale review entry (e.g. left over after the matching event was
+      // deleted) is resolved by the address becoming eligible normally.
+      const staleFlag = await ctx.db
+        .query("flaggedEmails")
+        .withIndex("by_event_email", (q) =>
+          q.eq("eventId", args.eventId).eq("email", email)
+        )
+        .unique();
+      if (staleFlag) {
+        await ctx.db.delete(staleFlag._id);
+      }
       added++;
     }
     return { added, skipped, flagged };
@@ -159,6 +170,17 @@ export const rejectFlagged = mutation({
         .collect();
       for (const code of reserved) {
         await ctx.db.patch(code._id, { reservedFor: undefined });
+      }
+      // Drop an approved access request so the attendee isn't stuck showing
+      // "approved" while no longer being eligible.
+      const request = await ctx.db
+        .query("accessRequests")
+        .withIndex("by_event_email", (q) =>
+          q.eq("eventId", flagged.eventId).eq("email", flagged.email)
+        )
+        .unique();
+      if (request && request.status === "approved") {
+        await ctx.db.delete(request._id);
       }
     }
     await logAudit(ctx, {
