@@ -47,15 +47,15 @@ export function ThemeToggle() {
           className="transition-opacity duration-300 motion-reduce:transition-none dark:opacity-0"
         >
           {RAY_ANGLES.map((angle) => (
-            <line
-              key={angle}
-              x1="12"
-              y1="6.4"
-              x2="12"
-              y2="2.6"
-              transform={`rotate(${angle} 12 12)`}
-              className="origin-center transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:scale-0"
-            />
+            <g key={angle} transform={`rotate(${angle} 12 12)`}>
+              <line
+                x1="12"
+                y1="6.4"
+                x2="12"
+                y2="2.6"
+                className="[transform-box:view-box] [transform-origin:12px_12px] transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none dark:scale-0"
+              />
+            </g>
           ))}
         </g>
       </svg>
