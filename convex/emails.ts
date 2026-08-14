@@ -53,7 +53,9 @@ export const add = mutation({
           )
           .unique();
         if (alreadyFlagged) {
-          skipped++;
+          // Still pending review — report as flagged so callers don't treat
+          // it as an ordinary duplicate that can already claim.
+          flagged++;
         } else {
           await ctx.db.insert("flaggedEmails", {
             eventId: args.eventId,
@@ -137,6 +139,28 @@ export const rejectFlagged = mutation({
     if (!flagged) return;
     const actorEmail = await requireEventAdmin(ctx, flagged.eventId);
     await ctx.db.delete(args.id);
+    // The address may have become eligible through another path (e.g. an
+    // approved access request) while flagged — rejection removes it from the
+    // eligible list and releases any code held for it.
+    const eligible = await ctx.db
+      .query("emails")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", flagged.eventId).eq("email", flagged.email)
+      )
+      .unique();
+    if (eligible) {
+      await ctx.db.delete(eligible._id);
+      const reserved = await ctx.db
+        .query("codes")
+        .withIndex("by_event_reservedFor", (q) =>
+          q.eq("eventId", flagged.eventId).eq("reservedFor", flagged.email)
+        )
+        .filter((q) => q.eq(q.field("claimedBy"), undefined))
+        .collect();
+      for (const code of reserved) {
+        await ctx.db.patch(code._id, { reservedFor: undefined });
+      }
+    }
     await logAudit(ctx, {
       eventId: flagged.eventId,
       action: "flagged_email_rejected",

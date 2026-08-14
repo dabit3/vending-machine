@@ -173,6 +173,17 @@ export const approve = mutation({
         email: request.email,
       });
     }
+    // Approving an access request resolves any pending duplicate-review flag
+    // for the same address, so it doesn't sit both eligible and flagged.
+    const pendingFlag = await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", request.eventId).eq("email", request.email)
+      )
+      .unique();
+    if (pendingFlag) {
+      await ctx.db.delete(pendingFlag._id);
+    }
 
     // Reserve the first unclaimed, unreserved code so the pool can't be
     // exhausted before the approved attendee gets a chance to claim. Skip
