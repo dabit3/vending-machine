@@ -66,6 +66,8 @@ final class GameEngine: ObservableObject {
     private var isOnGround = false
     private var lockResets = 0
     private var lastTick = Date()
+    private var pendingGarbage = 0
+    private var pauseRequested = false
 
     private var gravityInterval: TimeInterval {
         // Guideline-ish gravity curve.
@@ -85,6 +87,8 @@ final class GameEngine: ObservableObject {
         bag = []
         nextQueue = []
         clearingRows = []
+        pendingGarbage = 0
+        pauseRequested = false
         refillQueue()
         spawnNext()
         phase = .playing
@@ -95,6 +99,10 @@ final class GameEngine: ObservableObject {
     }
 
     func togglePause() {
+        if !clearingRows.isEmpty {
+            pauseRequested.toggle()
+            return
+        }
         if phase == .playing {
             phase = .paused
         } else if phase == .paused {
@@ -126,6 +134,14 @@ final class GameEngine: ObservableObject {
 
     func addGarbage(_ count: Int) {
         guard phase == .playing || phase == .paused, count > 0 else { return }
+        if !clearingRows.isEmpty {
+            pendingGarbage += count
+            return
+        }
+        insertGarbageRows(count)
+    }
+
+    private func insertGarbageRows(_ count: Int) {
         let hole = Int.random(in: 0..<Self.width)
         for _ in 0..<count {
             board.removeFirst()
@@ -367,9 +383,15 @@ final class GameEngine: ObservableObject {
             }
             self.board = newBoard
             self.clearingRows = []
-            self.phase = .playing
+            self.phase = self.pauseRequested ? .paused : .playing
+            self.pauseRequested = false
             self.lastTick = Date()
             self.spawnNext()
+            if self.pendingGarbage > 0 {
+                let queued = self.pendingGarbage
+                self.pendingGarbage = 0
+                self.insertGarbageRows(queued)
+            }
         }
     }
 }

@@ -30,8 +30,14 @@ struct GameView: View {
             .onChange(of: engine.feedbackID) { _, _ in showClearFeedback() }
             .onChange(of: engine.lockPulseID) { _, _ in showLockGlow() }
             .onChange(of: match.allOpponentsOut) { _, allOut in
-                if allOut, vsMode, matchResult == nil, engine.phase != .gameOver {
+                if allOut, vsMode, matchResult == nil, engine.phase != .gameOver, !match.connectionLost {
                     matchResult = true
+                    if engine.phase == .playing { engine.togglePause() }
+                }
+            }
+            .onChange(of: match.connectionLost) { _, lost in
+                if lost, vsMode, matchResult == nil, engine.phase != .gameOver {
+                    matchResult = false
                     if engine.phase == .playing { engine.togglePause() }
                 }
             }
@@ -326,8 +332,8 @@ struct GameView: View {
 
     private func matchResultOverlay(won: Bool) -> some View {
         VStack(spacing: 14) {
-            Text(won ? "YOU WIN" : "DEFEAT")
-                .font(.system(size: 33, weight: .black, design: .rounded))
+            Text(match.connectionLost ? "CONNECTION LOST" : (won ? "YOU WIN" : "DEFEAT"))
+                .font(.system(size: match.connectionLost ? 24 : 33, weight: .black, design: .rounded))
                 .foregroundStyle(
                     LinearGradient(
                         colors: won ? [.yellow, .orange] : [.red, .purple],

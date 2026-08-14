@@ -16,6 +16,7 @@ final class MultiplayerClient: ObservableObject {
     @Published var state: MatchState = .idle
     @Published var playerID = -1
     @Published var opponents: [Int: Opponent] = [:]
+    @Published var connectionLost = false
 
     var onGarbage: ((Int) -> Void)?
     var onMatched: (() -> Void)?
@@ -43,6 +44,7 @@ final class MultiplayerClient: ObservableObject {
         state = .idle
         playerID = -1
         opponents = [:]
+        connectionLost = false
     }
 
     func sendState(board: [[Int]], score: Int, lines: Int) {
@@ -72,7 +74,9 @@ final class MultiplayerClient: ObservableObject {
                 switch result {
                 case .failure:
                     if self.state != .idle {
-                        for id in self.opponents.keys { self.opponents[id]?.left = true }
+                        self.connectionLost = true
+                        self.task?.cancel(with: .abnormalClosure, reason: nil)
+                        self.task = nil
                     }
                 case .success(let message):
                     if case .string(let text) = message,
