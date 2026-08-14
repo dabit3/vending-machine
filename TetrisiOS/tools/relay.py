@@ -32,8 +32,12 @@ async def handler(ws):
         room_members[room_id] = members
         for pid, sock in members.items():
             rooms[sock] = (room_id, pid)
+        for pid, sock in members.items():
             peers = [i for i in members if i != pid]
-            await sock.send(json.dumps({"type": "matched", "you": pid, "peers": peers}))
+            try:
+                await sock.send(json.dumps({"type": "matched", "you": pid, "peers": peers}))
+            except websockets.ConnectionClosed:
+                pass  # handler's finally block broadcasts opponentLeft for this pid
     try:
         async for message in ws:
             if ws not in rooms:

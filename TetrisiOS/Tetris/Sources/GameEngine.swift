@@ -294,12 +294,17 @@ final class GameEngine: ObservableObject {
             var piece = Piece.spawn(previous, boardWidth: Self.width)
             if collides(piece) { piece.y -= 1 }
             current = piece
+            if collides(piece) {
+                endGame()
+                return
+            }
         } else {
             spawnNext()
             canHold = false
         }
         gravityAccumulator = 0
         lockTimer = 0
+        lockResets = 0
         isOnGround = false
         Haptics.rotate()
     }

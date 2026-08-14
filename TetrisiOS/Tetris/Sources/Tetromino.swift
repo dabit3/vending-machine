@@ -40,9 +40,10 @@ struct Piece {
     /// Board-space cells occupied by the piece.
     var cells: [(Int, Int)] {
         let n = type.boxSize
+        let turns = type == .o ? 0 : rotation
         return type.baseCells.map { (cx, cy) in
             var px = cx, py = cy
-            for _ in 0..<rotation {
+            for _ in 0..<turns {
                 let t = px
                 px = n - 1 - py
                 py = t
