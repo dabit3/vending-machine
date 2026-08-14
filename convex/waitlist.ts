@@ -107,21 +107,34 @@ export const listRequests = query({
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
-    if (args.status !== undefined) {
-      const status = args.status;
-      return await ctx.db
-        .query("accessRequests")
-        .withIndex("by_event_status", (q) =>
-          q.eq("eventId", args.eventId).eq("status", status)
-        )
-        .order("desc")
-        .collect();
-    }
-    return await ctx.db
-      .query("accessRequests")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .order("desc")
-      .collect();
+    const status = args.status;
+    const requests =
+      status !== undefined
+        ? await ctx.db
+            .query("accessRequests")
+            .withIndex("by_event_status", (q) =>
+              q.eq("eventId", args.eventId).eq("status", status)
+            )
+            .order("desc")
+            .collect()
+        : await ctx.db
+            .query("accessRequests")
+            .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+            .order("desc")
+            .collect();
+    // Surface pending duplicate-review flags so approvers know the address
+    // appears on other events' lists before deciding.
+    return await Promise.all(
+      requests.map(async (r) => {
+        const pendingFlag = await ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", args.eventId).eq("email", r.email)
+          )
+          .unique();
+        return { ...r, flaggedForReview: pendingFlag !== null };
+      })
+    );
   },
 });
 
@@ -183,6 +196,13 @@ export const approve = mutation({
       .unique();
     if (pendingFlag) {
       await ctx.db.delete(pendingFlag._id);
+      await logAudit(ctx, {
+        eventId: request.eventId,
+        action: "flagged_email_approved",
+        actorEmail: adminEmail ?? undefined,
+        subjectEmail: request.email,
+        details: "Resolved via access request approval",
+      });
     }
 
     // Reserve the first unclaimed, unreserved code so the pool can't be
