@@ -90,53 +90,70 @@ export const add = mutation({
   },
 });
 
+const FLAGGED_PAGE_SIZE = 200;
+
 export const listFlagged = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const callerEmail = await requireEventAdmin(ctx, args.eventId);
     const { isAdmin: isGlobalAdmin } = await adminEmailStatus(ctx);
-    return await Promise.all(
-      (
-        await ctx.db
-          .query("flaggedEmails")
-          .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-          .collect()
-      ).map(async (f) => {
-        // Event names are only disclosed for events the caller can manage;
-        // matches in other admins' events are reported as a count.
-        const matchedEvents: { id: Id<"events">; name: string }[] = [];
-        let otherMatchCount = 0;
-        for (const eventId of f.matchedEventIds) {
+    // Bounded page plus memoized per-event lookups keep the query within
+    // Convex's per-request read limits after large uploads.
+    const rows = await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .take(FLAGGED_PAGE_SIZE + 1);
+    const hasMore = rows.length > FLAGGED_PAGE_SIZE;
+    const eventCache = new Map<
+      Id<"events">,
+      { name: string; canSee: boolean } | null
+    >();
+    const entries = [];
+    for (const f of rows.slice(0, FLAGGED_PAGE_SIZE)) {
+      // Event names are only disclosed for events the caller can manage;
+      // matches in other admins' events are reported as a count.
+      const matchedEvents: { id: Id<"events">; name: string }[] = [];
+      let otherMatchCount = 0;
+      for (const eventId of f.matchedEventIds) {
+        let info = eventCache.get(eventId);
+        if (info === undefined) {
           const event = await ctx.db.get(eventId);
-          if (!event) continue;
-          // The stored matches are a snapshot; only show events where the
-          // address is still on the eligible list.
-          const stillListed = await ctx.db
-            .query("emails")
-            .withIndex("by_event_email", (q) =>
-              q.eq("eventId", eventId).eq("email", f.email)
-            )
-            .unique();
-          if (!stillListed) continue;
-          let canSee = isGlobalAdmin;
-          if (!canSee && callerEmail) {
-            const membership = await ctx.db
-              .query("eventAdmins")
-              .withIndex("by_event_email", (q) =>
-                q.eq("eventId", eventId).eq("email", callerEmail)
-              )
-              .unique();
-            canSee = membership !== null;
-          }
-          if (canSee) {
-            matchedEvents.push({ id: event._id, name: event.name });
+          if (!event) {
+            info = null;
           } else {
-            otherMatchCount++;
+            let canSee = isGlobalAdmin;
+            if (!canSee && callerEmail) {
+              const membership = await ctx.db
+                .query("eventAdmins")
+                .withIndex("by_event_email", (q) =>
+                  q.eq("eventId", eventId).eq("email", callerEmail)
+                )
+                .unique();
+              canSee = membership !== null;
+            }
+            info = { name: event.name, canSee };
           }
+          eventCache.set(eventId, info);
         }
-        return { _id: f._id, email: f.email, matchedEvents, otherMatchCount };
-      })
-    );
+        if (!info) continue;
+        // The stored matches are a snapshot; only show events where the
+        // address is still on the eligible list.
+        const stillListed = await ctx.db
+          .query("emails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", eventId).eq("email", f.email)
+          )
+          .unique();
+        if (!stillListed) continue;
+        if (info.canSee) {
+          matchedEvents.push({ id: eventId, name: info.name });
+        } else {
+          otherMatchCount++;
+        }
+      }
+      entries.push({ _id: f._id, email: f.email, matchedEvents, otherMatchCount });
+    }
+    return { entries, hasMore };
   },
 });
 

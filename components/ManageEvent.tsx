@@ -357,23 +357,29 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         canDelete={access?.isGlobalAdmin ?? false}
       />
 
-      {flagged && flagged.length > 0 ? (
+      {flagged && flagged.entries.length > 0 ? (
         <Card className="border-amber-500/40">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="size-4 text-amber-500" aria-hidden />
               Flagged for review
-              <Badge variant="secondary">{flagged.length}</Badge>
+              <Badge variant="secondary">
+                {flagged.entries.length}
+                {flagged.hasMore ? "+" : ""}
+              </Badge>
             </CardTitle>
             <CardDescription>
               These uploaded emails already signed up for previous events.
               Approve each one individually to add it to the eligible list, or
               reject it to discard it.
+              {flagged.hasMore
+                ? " Showing the first batch; more will appear as these are resolved."
+                : ""}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
-              {flagged.map((f) => (
+              {flagged.entries.map((f) => (
                 <li
                   key={f._id}
                   className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
