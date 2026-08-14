@@ -1,6 +1,20 @@
 import SwiftUI
 import Combine
 
+struct RunSummary {
+    let score: Int
+    let lines: Int
+    let level: Int
+    let isNewBest: Bool
+}
+
+enum ClearKind: String {
+    case single = "SINGLE"
+    case double = "DOUBLE"
+    case triple = "TRIPLE"
+    case tetris = "TETRIS!"
+}
+
 @MainActor
 final class GameEngine: ObservableObject {
     static let width = 10
@@ -21,6 +35,28 @@ final class GameEngine: ObservableObject {
     @Published var clearingRows: Set<Int> = []
     @Published var lastClearWasTetris = false
     @Published var comboCount = -1
+    @Published var clearKind: ClearKind?
+    @Published var feedbackID = 0
+    @Published var lockPulseID = 0
+    @Published var bestLines = UserDefaults.standard.integer(forKey: "bestLines")
+    @Published var highestLevel = max(1, UserDefaults.standard.integer(forKey: "highestLevel"))
+    @Published var longestCombo = UserDefaults.standard.integer(forKey: "longestCombo")
+    @Published var lastRun: RunSummary?
+
+    var onLinesCleared: ((Int) -> Void)?
+    var onPieceLocked: (() -> Void)?
+    var onGameOver: (() -> Void)?
+
+    var holdAvailable: Bool { canHold }
+
+    var boardCode: [[Int]] {
+        board.map { row in
+            row.map { type in
+                guard let type else { return 0 }
+                return (PieceType.allCases.firstIndex(of: type) ?? 0) + 1
+            }
+        }
+    }
 
     private var bag: [PieceType] = []
     private var canHold = true
@@ -70,11 +106,38 @@ final class GameEngine: ObservableObject {
     private func endGame() {
         phase = .gameOver
         timer?.cancel()
-        if score > highScore {
+        let isNewBest = score > highScore
+        if isNewBest {
             highScore = score
             UserDefaults.standard.set(score, forKey: "highScore")
         }
+        if lines > bestLines {
+            bestLines = lines
+            UserDefaults.standard.set(lines, forKey: "bestLines")
+        }
+        if level > highestLevel {
+            highestLevel = level
+            UserDefaults.standard.set(level, forKey: "highestLevel")
+        }
+        lastRun = RunSummary(score: score, lines: lines, level: level, isNewBest: isNewBest)
         Haptics.gameOver()
+        onGameOver?()
+    }
+
+    func addGarbage(_ count: Int) {
+        guard phase == .playing || phase == .paused, count > 0 else { return }
+        let hole = Int.random(in: 0..<Self.width)
+        for _ in 0..<count {
+            board.removeFirst()
+            var row = [PieceType?](repeating: .j, count: Self.width)
+            row[hole] = nil
+            board.append(row)
+        }
+        if let p = current, collides(p) {
+            var moved = p
+            moved.y -= count
+            if !collides(moved) { current = moved }
+        }
     }
 
     // MARK: - Tick
@@ -248,6 +311,8 @@ final class GameEngine: ObservableObject {
             }
         }
         current = nil
+        lockPulseID += 1
+        onPieceLocked?()
         if topOut {
             endGame()
             return
@@ -263,9 +328,21 @@ final class GameEngine: ObservableObject {
             return
         }
         comboCount += 1
+        if comboCount > longestCombo {
+            longestCombo = comboCount
+            UserDefaults.standard.set(comboCount, forKey: "longestCombo")
+        }
         clearingRows = Set(full)
         lastClearWasTetris = full.count == 4
+        switch full.count {
+        case 1: clearKind = .single
+        case 2: clearKind = .double
+        case 3: clearKind = .triple
+        default: clearKind = .tetris
+        }
+        feedbackID += 1
         Haptics.lineClear(count: full.count)
+        onLinesCleared?(full.count)
 
         let base: Int
         switch full.count {

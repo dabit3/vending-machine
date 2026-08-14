@@ -144,7 +144,19 @@ final class GameEngineTests: XCTestCase {
             }
         }
         engine.current = Piece(type: .o, rotation: 0, x: 0, y: 0)
+        engine.nextQueue.insert(.o, at: 0)
         engine.hardDrop()
         XCTAssertEqual(engine.phase, .gameOver)
+    }
+
+    func testAddGarbageInsertsRowsWithHole() {
+        let engine = freshEngine()
+        engine.board[GameEngine.height - 1][0] = .j
+        engine.addGarbage(2)
+        let bottomTwo = Array(engine.board.suffix(2))
+        for row in bottomTwo {
+            XCTAssertEqual(row.filter { $0 == nil }.count, 1, "garbage row must have one hole")
+        }
+        XCTAssertEqual(engine.board[GameEngine.height - 3][0], .j, "stack must shift up")
     }
 }

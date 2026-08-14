@@ -89,6 +89,35 @@ struct BoardView: View {
     }
 }
 
+struct OpponentBoardView: View {
+    let board: [[Int]]
+
+    private static let palette: [Color] = [.clear] + PieceType.allCases.map(\.color)
+
+    var body: some View {
+        Canvas { ctx, size in
+            let cell = min(size.width / CGFloat(GameEngine.width),
+                           size.height / CGFloat(GameEngine.height))
+            let ox = (size.width - cell * CGFloat(GameEngine.width)) / 2
+            let oy = (size.height - cell * CGFloat(GameEngine.height)) / 2
+            ctx.fill(
+                Path(CGRect(x: ox, y: oy,
+                            width: cell * CGFloat(GameEngine.width),
+                            height: cell * CGFloat(GameEngine.height))),
+                with: .color(.black.opacity(0.55)))
+            for (r, row) in board.enumerated() {
+                for (c, code) in row.enumerated() where code > 0 {
+                    let color = Self.palette[min(code, Self.palette.count - 1)]
+                    ctx.fill(
+                        Path(CGRect(x: ox + CGFloat(c) * cell, y: oy + CGFloat(r) * cell,
+                                    width: cell, height: cell).insetBy(dx: 0.25, dy: 0.25)),
+                        with: .color(color))
+                }
+            }
+        }
+    }
+}
+
 struct MiniPieceView: View {
     let type: PieceType?
     var dimmed = false
