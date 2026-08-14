@@ -109,6 +109,15 @@ export const listFlagged = query({
         for (const eventId of f.matchedEventIds) {
           const event = await ctx.db.get(eventId);
           if (!event) continue;
+          // The stored matches are a snapshot; only show events where the
+          // address is still on the eligible list.
+          const stillListed = await ctx.db
+            .query("emails")
+            .withIndex("by_event_email", (q) =>
+              q.eq("eventId", eventId).eq("email", f.email)
+            )
+            .unique();
+          if (!stillListed) continue;
           let canSee = isGlobalAdmin;
           if (!canSee && callerEmail) {
             const membership = await ctx.db

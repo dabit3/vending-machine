@@ -389,7 +389,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                           : "",
                       ]
                         .filter(Boolean)
-                        .join(", ") || "deleted event(s)"}
+                        .join(", ") || "no longer on another event's list"}
                     </span>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
