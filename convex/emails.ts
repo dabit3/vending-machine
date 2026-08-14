@@ -102,6 +102,11 @@ export const approveFlagged = mutation({
     const flagged = await ctx.db.get(args.id);
     if (!flagged) return;
     const actorEmail = await requireEventAdmin(ctx, flagged.eventId);
+    const event = await ctx.db.get(flagged.eventId);
+    if (!event) {
+      await ctx.db.delete(args.id);
+      return;
+    }
     const existing = await ctx.db
       .query("emails")
       .withIndex("by_event_email", (q) =>

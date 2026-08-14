@@ -65,10 +65,17 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      const { added, skipped } = await addEmails({
+      const { added, skipped, flagged } = await addEmails({
         eventId: id,
         emails: [trimmed],
       });
+      if (flagged > 0) {
+        toast.warning(`${trimmed} needs organizer approval`, {
+          description:
+            "This email signed up for a previous event. Approve it under Flagged for review on the manage event page.",
+        });
+        return;
+      }
       if (added === 0 && skipped > 0) {
         toast.info(`${trimmed} is already on the list`, {
           description: "They can scan the code and claim right away.",
