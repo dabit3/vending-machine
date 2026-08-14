@@ -12,6 +12,7 @@
 		2D8C697A8BE79AF9E1240D42 /* Tetromino.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDDFE98741657679248C8515 /* Tetromino.swift */; };
 		3B8FB1E3E9E4D20CE1283E39 /* GameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78E1C582C8D9EBC720F557A /* GameView.swift */; };
 		807C1C12B9C8E47CED849D2E /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62685271166F4E387662859E /* GameEngineTests.swift */; };
+		8CD02C73309F26F1B9482D30 /* MultiplayerClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29A5E7D634A8749F92517AC6 /* MultiplayerClient.swift */; };
 		97A686558A19063CA6A0C7A0 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7450D91BA3E1BCBFEBC23658 /* Haptics.swift */; };
 		C01C748147D7163FA1CFFF52 /* TetrisApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBD255A95AB33B7A69628221 /* TetrisApp.swift */; };
 /* End PBXBuildFile section */
@@ -28,6 +29,7 @@
 
 /* Begin PBXFileReference section */
 		16FC9002A9619D4BBC6DE810 /* Tetris.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Tetris.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		29A5E7D634A8749F92517AC6 /* MultiplayerClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MultiplayerClient.swift; sourceTree = "<group>"; };
 		40783BDDC35BCC4608892D2D /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
 		609C5ED49D4F27CFE6CC64DE /* GameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine.swift; sourceTree = "<group>"; };
 		62685271166F4E387662859E /* GameEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngineTests.swift; sourceTree = "<group>"; };
@@ -46,6 +48,7 @@
 				609C5ED49D4F27CFE6CC64DE /* GameEngine.swift */,
 				F78E1C582C8D9EBC720F557A /* GameView.swift */,
 				7450D91BA3E1BCBFEBC23658 /* Haptics.swift */,
+				29A5E7D634A8749F92517AC6 /* MultiplayerClient.swift */,
 				FBD255A95AB33B7A69628221 /* TetrisApp.swift */,
 				FDDFE98741657679248C8515 /* Tetromino.swift */,
 			);
@@ -157,6 +160,7 @@
 				2BD02C6ED0DE4E0DA4C7CA82 /* GameEngine.swift in Sources */,
 				3B8FB1E3E9E4D20CE1283E39 /* GameView.swift in Sources */,
 				97A686558A19063CA6A0C7A0 /* Haptics.swift in Sources */,
+				8CD02C73309F26F1B9482D30 /* MultiplayerClient.swift in Sources */,
 				C01C748147D7163FA1CFFF52 /* TetrisApp.swift in Sources */,
 				2D8C697A8BE79AF9E1240D42 /* Tetromino.swift in Sources */,
 			);

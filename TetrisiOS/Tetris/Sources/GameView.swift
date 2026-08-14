@@ -32,13 +32,13 @@ struct GameView: View {
             .onChange(of: match.allOpponentsOut) { _, allOut in
                 if allOut, vsMode, matchResult == nil, engine.phase != .gameOver, !match.connectionLost {
                     matchResult = true
-                    if engine.phase == .playing { engine.togglePause() }
+                    if engine.phase == .playing || !engine.clearingRows.isEmpty { engine.togglePause() }
                 }
             }
             .onChange(of: match.connectionLost) { _, lost in
                 if lost, vsMode, matchResult == nil, engine.phase != .gameOver {
                     matchResult = false
-                    if engine.phase == .playing { engine.togglePause() }
+                    if engine.phase == .playing || !engine.clearingRows.isEmpty { engine.togglePause() }
                 }
             }
             .sheet(isPresented: $showingInfo) { infoSheet }

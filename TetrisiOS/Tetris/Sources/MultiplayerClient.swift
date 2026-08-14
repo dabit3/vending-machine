@@ -104,11 +104,15 @@ final class MultiplayerClient: ObservableObject {
             onMatched?()
         case "state":
             guard let from = json["from"] as? Int else { return }
-            if let board = json["board"] as? [[Int]] { opponents[from]?.board = board }
-            if let score = json["score"] as? Int { opponents[from]?.score = score }
-            if let lines = json["lines"] as? Int { opponents[from]?.lines = lines }
+            if let board = json["board"] as? [[Int]],
+               board.count == GameEngine.height,
+               board.allSatisfy({ $0.count == GameEngine.width && $0.allSatisfy { (0...7).contains($0) } }) {
+                opponents[from]?.board = board
+            }
+            if let score = json["score"] as? Int, score >= 0 { opponents[from]?.score = score }
+            if let lines = json["lines"] as? Int, lines >= 0 { opponents[from]?.lines = lines }
         case "garbage":
-            if let count = json["count"] as? Int { onGarbage?(count) }
+            if let count = json["count"] as? Int, count > 0 { onGarbage?(min(count, 8)) }
         case "gameOver":
             if let from = json["from"] as? Int { opponents[from]?.gameOver = true }
         case "opponentLeft":
