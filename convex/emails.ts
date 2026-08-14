@@ -22,12 +22,14 @@ export const add = mutation({
     let added = 0;
     let skipped = 0;
     let flagged = 0;
+    const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = raw.trim().toLowerCase();
-      if (!email || !email.includes("@")) {
+      if (!email || !email.includes("@") || seen.has(email)) {
         skipped++;
         continue;
       }
+      seen.add(email);
       const existing = await ctx.db
         .query("emails")
         .withIndex("by_event_email", (q) =>

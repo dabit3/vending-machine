@@ -220,13 +220,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     setBusy(true);
     const toastId = toast.loading(`Reading ${file.name}...`);
     try {
-      const items = await fileToItems(file, kind);
+      const rows = await fileToItems(file, kind);
+      // Dedupe up front so repeats split across upload chunks aren't
+      // double-counted by the server.
+      const items = [
+        ...new Set(
+          rows.map((r) => (kind === "emails" ? r.trim().toLowerCase() : r.trim()))
+        ),
+      ];
+      const dropped = rows.length - items.length;
       if (items.length === 0) {
         toast.warning(`Nothing to import found in ${file.name}`, { id: toastId });
         return;
       }
       let added = 0;
-      let skipped = 0;
+      let skipped = dropped;
       let flagged = 0;
       for (let i = 0; i < items.length; i += UPLOAD_CHUNK_SIZE) {
         toast.loading(
