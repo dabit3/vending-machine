@@ -17,6 +17,8 @@ description: Run and test the Vending Machine app locally (Next.js + Convex + Cl
    grep -v -E 'CLERK_COOKIE' /run/repo_secrets/dabit3/vending-machine/.env.secrets | sed 's/^export //' > .env.local
    ```
 2. `npm install` then `npm run dev`. Home `/` and claim pages `/<slug>` are public; `/admin` requires auth.
+3. If the branch under test changes `convex/` (schema or functions), push them with `npx convex dev --once`. Watch out: the shared dev deployment's data may have drifted from the schema, which makes schema validation fail the deploy. Workaround: temporarily add the missing optional field to the schema before deploying, clean up the stale data (see `git log -S removeLegacyEventUrl` for a prior migration example), then restore the strict schema.
+4. Inspect backend state (e.g. `auditLogs`, `flaggedEmails`) with `npx convex data <table> --order desc --limit N`.
 
 ## Authenticating as admin for testing
 `CLERK_COOKIE` (repo secret) is a base64 blob that decodes to `;`-separated JSON cookie objects for localhost. **Caveat:** it may only contain the Clerk dev-browser token (`__clerk_db_jwt`) with `__client_uat=0` (a signed-OUT state) and therefore may NOT authenticate on its own — after injecting it `window.Clerk.user` stays `null` and `/admin` redirects to `${_repo_secret_dabit3/vending-machine_NEXT_PUBLIC_CLERK_SIGN_IN_URL}`. Verify by decoding it and checking for a real session; if it lacks `__session`/`__client_uat>0`, it needs re-exporting while signed in.
@@ -24,7 +26,7 @@ description: Run and test the Vending Machine app locally (Next.js + Convex + Cl
 Reliable fallback (uses `CLERK_SECRET_KEY` from repo secrets): mint a single-use sign-in ticket for the admin user and consume it via Clerk's ticket strategy.
 1. Find the admin user id: `GET https://api.clerk.com/v1/users?email_address=dabit3@gmail.com` with `Authorization: Bearer $CLERK_SECRET_KEY`.
 2. `POST https://api.clerk.com/v1/sign_in_tokens` with `{"user_id":"<id>","expires_in_seconds":1800}` → returns `token`.
-3. In the browser, navigate to `http://localhost:3000${_repo_secret_dabit3/vending-machine_NEXT_PUBLIC_CLERK_SIGN_IN_URL}?__clerk_ticket=<token>`. Clerk's `<SignIn>` consumes the ticket, sets `__session`, and redirects. Drive this via Playwright over CDP (`http://localhost:29229`) using the already-running Chrome so cookies persist; `playwright-core` can be installed with `npm install --no-save playwright-core` and run with `NODE_PATH=<repo>/node_modules`.
+3. In the browser, navigate to `http://localhost:3000${_repo_secret_dabit3/vending-machine_NEXT_PUBLIC_CLERK_SIGN_IN_URL}?__clerk_ticket=<token>`. Clerk's `<SignIn>` consumes the ticket, sets `__session`, and redirects. Easiest: open the ticket URL with `DISPLAY=:1 xdg-open "$URL"` in the already-running Chrome (typing the long URL into the omnibox via keyboard emulation can drop characters and yield "This ticket is invalid"). Tickets are single-use — mint a fresh one per attempt. Alternatively drive it via Playwright over CDP (`http://localhost:29229`) using the already-running Chrome so cookies persist; `playwright-core` can be installed with `npm install --no-save playwright-core` and run with `NODE_PATH=<repo>/node_modules`.
 
 After sign-in, `/admin` shows the "Admin" badge + avatar and the Events dashboard. Global admins see the "New event" button and per-event "Delete event" button (they render only when `access.isGlobalAdmin`).
 

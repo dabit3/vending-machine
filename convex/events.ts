@@ -205,6 +205,11 @@ export const remove = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
     for (const email of emails) await ctx.db.delete(email._id);
+    const flagged = await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    for (const entry of flagged) await ctx.db.delete(entry._id);
     const codes = await ctx.db
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))

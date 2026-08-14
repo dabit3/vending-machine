@@ -27,6 +27,15 @@ export default defineSchema({
     email: v.string(),
   })
     .index("by_event", ["eventId"])
+    .index("by_event_email", ["eventId", "email"])
+    .index("by_email", ["email"]),
+
+  flaggedEmails: defineTable({
+    eventId: v.id("events"),
+    email: v.string(),
+    matchedEventIds: v.array(v.id("events")),
+  })
+    .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"]),
 
   codes: defineTable({
