@@ -30,6 +30,19 @@ export default defineSchema({
     .index("by_event_email", ["eventId", "email"])
     .index("by_email", ["email"]),
 
+  blacklistedEmails: defineTable({
+    email: v.string(),
+    addedBy: v.optional(v.string()),
+  }).index("by_email", ["email"]),
+
+  blacklistHits: defineTable({
+    eventId: v.id("events"),
+    email: v.string(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_event_email", ["eventId", "email"])
+    .index("by_email", ["email"]),
+
   flaggedEmails: defineTable({
     eventId: v.id("events"),
     email: v.string(),

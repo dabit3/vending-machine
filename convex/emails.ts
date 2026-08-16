@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireEventAdmin } from "./admins";
+import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
 
 export const list = query({
@@ -22,6 +23,7 @@ export const add = mutation({
     let added = 0;
     let skipped = 0;
     let flagged = 0;
+    let blacklisted = 0;
     const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = raw.trim().toLowerCase();
@@ -30,6 +32,11 @@ export const add = mutation({
         continue;
       }
       seen.add(email);
+      if (await isBlacklisted(ctx, email)) {
+        await recordBlacklistHit(ctx, args.eventId, email);
+        blacklisted++;
+        continue;
+      }
       const existing = await ctx.db
         .query("emails")
         .withIndex("by_event_email", (q) =>
@@ -86,7 +93,7 @@ export const add = mutation({
       }
       added++;
     }
-    return { added, skipped, flagged };
+    return { added, skipped, flagged, blacklisted };
   },
 });
 
@@ -167,6 +174,9 @@ export const approveFlagged = mutation({
     if (!event) {
       await ctx.db.delete(args.id);
       return;
+    }
+    if (await isBlacklisted(ctx, flagged.email)) {
+      throw new Error(`${flagged.email} is blacklisted and cannot be added`);
     }
     const existing = await ctx.db
       .query("emails")

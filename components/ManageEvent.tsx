@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
+  Ban,
   Check,
   Download,
   Inbox,
@@ -72,6 +73,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
+  const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
@@ -150,18 +152,23 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     if (list.length === 0) return;
     setEmailBusy(true);
     try {
-      const { added, skipped, flagged } = await addEmails({
+      const { added, skipped, flagged, blacklisted } = await addEmails({
         eventId: id,
         emails: list,
       });
       const description =
         [
+          blacklisted ? `${blacklisted} rejected (blacklisted).` : "",
           flagged ? `${flagged} flagged for review (found in past events).` : "",
           skipped ? `Skipped ${skipped} (duplicates/invalid).` : "",
         ]
           .filter(Boolean)
           .join(" ") || undefined;
-      if (added === 0 && flagged > 0) {
+      if (added === 0 && blacklisted > 0 && flagged === 0) {
+        toast.warning(`${blacklisted} emails rejected (blacklisted)`, {
+          description,
+        });
+      } else if (added === 0 && flagged > 0) {
         toast.warning(`${flagged} emails awaiting review`, { description });
       } else {
         toast.success(`Added ${added} emails`, { description });
@@ -217,7 +224,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     kind: "emails" | "codes",
     send: (
       items: string[]
-    ) => Promise<{ added: number; skipped: number; flagged?: number }>,
+    ) => Promise<{
+      added: number;
+      skipped: number;
+      flagged?: number;
+      blacklisted?: number;
+    }>,
     setBusy: (busy: boolean) => void
   ) {
     setBusy(true);
@@ -239,6 +251,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       let added = 0;
       let skipped = dropped;
       let flagged = 0;
+      let blacklisted = 0;
       for (let i = 0; i < items.length; i += UPLOAD_CHUNK_SIZE) {
         toast.loading(
           `Uploading ${Math.min(i + UPLOAD_CHUNK_SIZE, items.length)} / ${items.length}...`,
@@ -248,15 +261,22 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         added += res.added;
         skipped += res.skipped;
         flagged += res.flagged ?? 0;
+        blacklisted += res.blacklisted ?? 0;
       }
       const description =
         [
+          blacklisted ? `${blacklisted} rejected (blacklisted).` : "",
           flagged ? `${flagged} flagged for review (found in past events).` : "",
           skipped ? `Skipped ${skipped} duplicates or invalid rows.` : "",
         ]
           .filter(Boolean)
           .join(" ") || undefined;
-      if (added === 0 && flagged > 0) {
+      if (added === 0 && blacklisted > 0 && flagged === 0) {
+        toast.warning(`${blacklisted} from ${file.name} rejected (blacklisted)`, {
+          id: toastId,
+          description,
+        });
+      } else if (added === 0 && flagged > 0) {
         toast.warning(`${flagged} from ${file.name} awaiting review`, {
           id: toastId,
           description,
@@ -356,6 +376,34 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         event={event}
         canDelete={access?.isGlobalAdmin ?? false}
       />
+
+      {blacklistHits && blacklistHits.length > 0 ? (
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Ban className="size-4 text-destructive" aria-hidden />
+              Blacklisted
+              <Badge variant="secondary">{blacklistHits.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              These uploaded emails are on the app-wide blacklist and were
+              rejected. Only global admins can manage the blacklist.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
+              {blacklistHits.map((hit) => (
+                <li
+                  key={hit._id}
+                  className="flex min-h-10 items-center px-1 py-2 transition-colors hover:bg-surface"
+                >
+                  <span className="truncate text-sm">{hit.email}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {flagged && flagged.entries.length > 0 ? (
         <Card className="border-amber-500/40">

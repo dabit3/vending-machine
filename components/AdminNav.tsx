@@ -19,7 +19,10 @@ export default function AdminNav() {
   const links = [
     { href: "/admin", label: "Events" },
     ...(access?.isGlobalAdmin
-      ? [{ href: "/admin/admins", label: "Admins" }]
+      ? [
+          { href: "/admin/admins", label: "Admins" },
+          { href: "/admin/blacklist", label: "Blacklist" },
+        ]
       : []),
   ];
 
