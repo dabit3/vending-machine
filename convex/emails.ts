@@ -32,11 +32,6 @@ export const add = mutation({
         continue;
       }
       seen.add(email);
-      if (await isBlacklisted(ctx, email)) {
-        await recordBlacklistHit(ctx, args.eventId, email);
-        blacklisted++;
-        continue;
-      }
       const existing = await ctx.db
         .query("emails")
         .withIndex("by_event_email", (q) =>
@@ -45,6 +40,11 @@ export const add = mutation({
         .unique();
       if (existing) {
         skipped++;
+        continue;
+      }
+      if (await isBlacklisted(ctx, email)) {
+        await recordBlacklistHit(ctx, args.eventId, email);
+        blacklisted++;
         continue;
       }
       // Emails already signed up for other events are held for manual
