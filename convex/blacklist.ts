@@ -61,6 +61,16 @@ export const add = mutation({
       email,
       addedBy: actorEmail ?? undefined,
     });
+    // Pending duplicate-review flags for the address can never be approved
+    // now, so convert them into per-event blacklist rejections.
+    const pendingFlags = await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    for (const flag of pendingFlags) {
+      await ctx.db.delete(flag._id);
+      await recordBlacklistHit(ctx, flag.eventId, email);
+    }
   },
 });
 

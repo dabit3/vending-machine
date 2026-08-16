@@ -44,6 +44,17 @@ export const add = mutation({
       }
       if (await isBlacklisted(ctx, email)) {
         await recordBlacklistHit(ctx, args.eventId, email);
+        // A pending review flag can never be approved for a blacklisted
+        // address, so it's superseded by the rejection record.
+        const pendingFlag = await ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", args.eventId).eq("email", email)
+          )
+          .unique();
+        if (pendingFlag) {
+          await ctx.db.delete(pendingFlag._id);
+        }
         blacklisted++;
         continue;
       }

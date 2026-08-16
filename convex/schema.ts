@@ -49,7 +49,8 @@ export default defineSchema({
     matchedEventIds: v.array(v.id("events")),
   })
     .index("by_event", ["eventId"])
-    .index("by_event_email", ["eventId", "email"]),
+    .index("by_event_email", ["eventId", "email"])
+    .index("by_email", ["email"]),
 
   codes: defineTable({
     eventId: v.id("events"),

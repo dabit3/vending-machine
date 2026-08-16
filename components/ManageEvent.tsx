@@ -453,7 +453,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                       onClick={() =>
                         approveFlagged({ id: f._id })
                           .then(() => toast.success(`Approved ${f.email}`))
-                          .catch(() => toast.error("Failed to approve"))
+                          .catch((err) =>
+                            toast.error(
+                              err instanceof Error &&
+                                err.message.includes("blacklisted")
+                                ? `${f.email} is blacklisted and cannot be added`
+                                : "Failed to approve"
+                            )
+                          )
                       }
                     >
                       <Check data-icon="inline-start" />
