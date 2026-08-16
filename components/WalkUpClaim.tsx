@@ -65,10 +65,17 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
     if (!trimmed) return;
     setSubmitting(true);
     try {
-      const { added, skipped, flagged } = await addEmails({
+      const { added, skipped, flagged, blacklisted } = await addEmails({
         eventId: id,
         emails: [trimmed],
       });
+      if (blacklisted > 0) {
+        toast.error(`${trimmed} is blacklisted`, {
+          description:
+            "This email is on the app-wide blacklist and cannot claim a code.",
+        });
+        return;
+      }
       if (flagged > 0) {
         toast.warning(`${trimmed} needs organizer approval`, {
           description:
