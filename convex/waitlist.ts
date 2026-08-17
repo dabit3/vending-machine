@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
+import { isBlacklisted } from "./blacklist";
 import { logAudit } from "./auditLog";
 
 // Attendees not on an event's whitelist can request access. Requests are
@@ -172,6 +173,12 @@ export const approve = mutation({
         reserved: priorReservation !== null,
         alreadyClaimed: priorClaim !== null,
       };
+    }
+
+    if (await isBlacklisted(ctx, request.email)) {
+      throw new Error(
+        `${request.email} is blacklisted and cannot be approved`
+      );
     }
 
     const whitelisted = await ctx.db

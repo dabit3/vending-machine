@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireEventAdmin } from "./admins";
+import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
 
 export const list = query({
@@ -22,6 +23,7 @@ export const add = mutation({
     let added = 0;
     let skipped = 0;
     let flagged = 0;
+    let blacklisted = 0;
     const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = raw.trim().toLowerCase();
@@ -38,6 +40,22 @@ export const add = mutation({
         .unique();
       if (existing) {
         skipped++;
+        continue;
+      }
+      if (await isBlacklisted(ctx, email)) {
+        await recordBlacklistHit(ctx, args.eventId, email);
+        // A pending review flag can never be approved for a blacklisted
+        // address, so it's superseded by the rejection record.
+        const pendingFlag = await ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", args.eventId).eq("email", email)
+          )
+          .unique();
+        if (pendingFlag) {
+          await ctx.db.delete(pendingFlag._id);
+        }
+        blacklisted++;
         continue;
       }
       // Emails already signed up for other events are held for manual
@@ -86,7 +104,7 @@ export const add = mutation({
       }
       added++;
     }
-    return { added, skipped, flagged };
+    return { added, skipped, flagged, blacklisted };
   },
 });
 
@@ -167,6 +185,9 @@ export const approveFlagged = mutation({
     if (!event) {
       await ctx.db.delete(args.id);
       return;
+    }
+    if (await isBlacklisted(ctx, flagged.email)) {
+      throw new Error(`${flagged.email} is blacklisted and cannot be added`);
     }
     const existing = await ctx.db
       .query("emails")

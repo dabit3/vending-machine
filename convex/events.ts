@@ -210,6 +210,11 @@ export const remove = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
     for (const entry of flagged) await ctx.db.delete(entry._id);
+    const blacklistHits = await ctx.db
+      .query("blacklistHits")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    for (const hit of blacklistHits) await ctx.db.delete(hit._id);
     const codes = await ctx.db
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
