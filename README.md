@@ -9,7 +9,7 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 - [Next.js](https://nextjs.org) (App Router) — deployed on Vercel
 - [Convex](https://convex.dev) — database & realtime backend
 - [Clerk](https://clerk.com) — admin authentication
-- Tailwind CSS — monochromatic dark theme
+- Tailwind CSS — monochromatic light/dark theme, switched with the sun/moon toggle in the header (persisted by `next-themes`, dark by default)
 
 ## How it works
 
@@ -22,7 +22,7 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 ### Fraud controls
 
 - **Cross-event duplicate flagging**: when emails are uploaded (CSV/XLSX or pasted), any address that already appears in another event's eligible list is not added directly. It goes to a "Flagged for review" section on the manage-event page, where the organizer must approve or reject each one individually. Both decisions are recorded in the audit log. Upload results report the number of flagged addresses.
-- **App-wide email blacklist**: global admins manage a blacklist at `/admin/blacklist`. A blacklisted address is rejected on every path that would add it to an event's eligible list after being blacklisted — uploads skip it (reported as `N rejected (blacklisted)` in the upload toast), and approving a flagged email or waitlist request for it fails with an error. Each rejected upload attempt is recorded and shown to event admins in a read-only "Blacklisted" card on the manage-event page. Addresses already on an event's list before being blacklisted are untouched; un-blacklisting an address clears its recorded hits.
+- **App-wide email blacklist**: global admins manage a blacklist at `/admin/blacklist`. A blacklisted address is rejected on every path that would add it to an event's eligible list after being blacklisted — uploads skip it (reported as `N rejected (blacklisted)` in the upload toast), adding it in the walk-up flow shows a "… is blacklisted" error instead of a QR code, and approving a flagged email or waitlist request for it fails with an error. Blacklisting an address also clears any duplicate-review flags still pending for it (they could never be approved) and records them as rejections on those events. Each rejected attempt is recorded and shown to event admins in a read-only "Blacklisted" card on the manage-event page. Addresses already on an event's list before being blacklisted are untouched; un-blacklisting an address clears its recorded hits.
 
 ## Routes
 
@@ -30,6 +30,7 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 - `/<slug>` — claim page for an event (requires signing in to verify email ownership)
 - `/admin` — admin dashboard (Clerk-protected): create events
 - `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats, review flagged emails
+- `/admin/events/<id>/walkup` — walk-up desk: add one attendee's email to the event, then show a QR code to the claim page (a cross-event duplicate is flagged for review and a blacklisted address is rejected, in both cases without a QR code)
 - `/admin/blacklist` — app-wide email blacklist (global admins only)
 - `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)
 
