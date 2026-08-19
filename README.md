@@ -19,12 +19,18 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 4. If the verified sign-in email is on the list, they're assigned an unclaimed code (idempotent — the same email always gets the same code back).
 5. If not, they can't claim.
 
+### Fraud controls
+
+- **Cross-event duplicate flagging**: when emails are uploaded (CSV/XLSX or pasted), any address that already appears in another event's eligible list is not added directly. It goes to a "Flagged for review" section on the manage-event page, where the organizer must approve or reject each one individually. Both decisions are recorded in the audit log. Upload results report the number of flagged addresses.
+- **App-wide email blacklist**: global admins manage a blacklist at `/admin/blacklist`. A blacklisted address is rejected on every path that would add it to an event's eligible list after being blacklisted — uploads skip it (reported as `N rejected (blacklisted)` in the upload toast), and approving a flagged email or waitlist request for it fails with an error. Each rejected upload attempt is recorded and shown to event admins in a read-only "Blacklisted" card on the manage-event page. Addresses already on an event's list before being blacklisted are untouched; un-blacklisting an address clears its recorded hits.
+
 ## Routes
 
 - `/` — public list of events (newest first)
 - `/<slug>` — claim page for an event (requires signing in to verify email ownership)
 - `/admin` — admin dashboard (Clerk-protected): create events
-- `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats
+- `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats, review flagged emails
+- `/admin/blacklist` — app-wide email blacklist (global admins only)
 - `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)
 
 ## Setup
