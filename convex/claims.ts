@@ -36,10 +36,12 @@ export const eligibility = query({
         q.eq("eventId", event._id).eq("claimedBy", email)
       )
       .unique();
+    const instructionsViewed = allowed.instructionsViewedAt !== undefined;
     if (claimed) {
       return {
         eligible: true as const,
         email,
+        instructionsViewed,
         claimed: {
           code: claimed.code,
           codeType: claimed.codeType,
@@ -47,7 +49,32 @@ export const eligibility = query({
         },
       };
     }
-    return { eligible: true as const, email };
+    return { eligible: true as const, email, instructionsViewed };
+  },
+});
+
+// Records that the signed-in attendee confirmed reading the redemption
+// instructions, unlocking the claim UI for events that have instructions.
+export const markInstructionsRead = mutation({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return;
+    const email = identity.email?.trim().toLowerCase();
+    if (!email || identity.emailVerified !== true) return;
+    const event = await ctx.db
+      .query("events")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+    if (!event) return;
+    const allowed = await ctx.db
+      .query("emails")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", event._id).eq("email", email)
+      )
+      .unique();
+    if (!allowed || allowed.instructionsViewedAt !== undefined) return;
+    await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });
   },
 });
 
@@ -103,6 +130,13 @@ export const claim = mutation({
         codeType: alreadyClaimed.codeType,
         alreadyClaimed: true,
         creditAmount: event.creditAmount,
+      };
+    }
+
+    if (event.claimInstructions && allowed.instructionsViewedAt === undefined) {
+      return {
+        ok: false as const,
+        error: "Read the redemption instructions before claiming your code.",
       };
     }
 

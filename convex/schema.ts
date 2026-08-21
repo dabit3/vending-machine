@@ -30,6 +30,9 @@ export default defineSchema({
   emails: defineTable({
     eventId: v.id("events"),
     email: v.string(),
+    // When the attendee confirmed reading the redemption instructions,
+    // required once (per event) before claiming when instructions exist.
+    instructionsViewedAt: v.optional(v.number()),
   })
     .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"])
