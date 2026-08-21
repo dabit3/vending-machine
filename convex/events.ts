@@ -47,26 +47,40 @@ export const getBySlug = query({
     if (!event) return null;
     // A code counts as available for the viewer when it is unclaimed and
     // either unreserved or reserved for the viewer's verified email, matching
-    // what claims.claim would actually hand out. Distinct available types are
-    // gathered by streaming the unclaimed pool and stopping as soon as both
-    // possible types are seen (an event has at most two, enforced on upload),
-    // so the read-set stays small for large pools. An unnamed pool is
-    // represented as ""; two pools are always both named.
+    // what claims.claim would actually hand out. The event carries its
+    // (at most two) distinct code types, so availability is one bounded probe
+    // per type instead of a scan of the pool. An unnamed pool is represented
+    // as ""; two pools are always both named. Events created before the type
+    // list existed have a single unnamed pool.
     const identity = await ctx.auth.getUserIdentity();
     const viewerEmail =
       identity?.emailVerified === true
         ? identity.email?.trim().toLowerCase()
         : undefined;
+    const candidateTypes = event.codeTypes ?? [""];
     const availableTypes = new Set<string>();
-    for await (const code of ctx.db
-      .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", event._id).eq("claimedBy", undefined)
-      )) {
-      if (code.reservedFor === undefined || code.reservedFor === viewerEmail) {
-        availableTypes.add(code.codeType ?? "");
-        if (availableTypes.size === 2) break;
-      }
+    for (const typeKey of candidateTypes) {
+      const hit = await ctx.db
+        .query("codes")
+        .withIndex("by_event_codeType_claimedBy", (q) =>
+          q
+            .eq("eventId", event._id)
+            .eq("codeType", typeKey === "" ? undefined : typeKey)
+            .eq("claimedBy", undefined)
+        )
+        .filter((q) => q.eq(q.field("reservedFor"), undefined))
+        .first();
+      if (hit) availableTypes.add(typeKey);
+    }
+    if (viewerEmail) {
+      const reserved = await ctx.db
+        .query("codes")
+        .withIndex("by_event_reservedFor", (q) =>
+          q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
+        )
+        .filter((q) => q.eq(q.field("claimedBy"), undefined))
+        .first();
+      if (reserved) availableTypes.add(reserved.codeType ?? "");
     }
     return {
       _id: event._id,

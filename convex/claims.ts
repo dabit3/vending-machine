@@ -69,20 +69,24 @@ export const claim = mutation({
       .first();
     const unclaimed = reserved
       ? null
-      : await ctx.db
-          .query("codes")
-          .withIndex("by_event_claimedBy", (q) =>
-            q.eq("eventId", event._id).eq("claimedBy", undefined)
-          )
-          .filter((q) =>
-            requestedType !== undefined
-              ? q.and(
-                  q.eq(q.field("reservedFor"), undefined),
-                  q.eq(q.field("codeType"), requestedType)
-                )
-              : q.eq(q.field("reservedFor"), undefined)
-          )
-          .first();
+      : requestedType !== undefined
+        ? await ctx.db
+            .query("codes")
+            .withIndex("by_event_codeType_claimedBy", (q) =>
+              q
+                .eq("eventId", event._id)
+                .eq("codeType", requestedType)
+                .eq("claimedBy", undefined)
+            )
+            .filter((q) => q.eq(q.field("reservedFor"), undefined))
+            .first()
+        : await ctx.db
+            .query("codes")
+            .withIndex("by_event_claimedBy", (q) =>
+              q.eq("eventId", event._id).eq("claimedBy", undefined)
+            )
+            .filter((q) => q.eq(q.field("reservedFor"), undefined))
+            .first();
     const available = reserved ?? unclaimed;
     if (!available) {
       return {

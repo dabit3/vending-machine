@@ -20,6 +20,9 @@ export default defineSchema({
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    // Distinct code types in this event's pool ("" = unnamed), maintained by
+    // codes.add/remove so availability checks don't scan the pool.
+    codeTypes: v.optional(v.array(v.string())),
   }).index("by_slug", ["slug"]),
 
   emails: defineTable({
@@ -62,6 +65,7 @@ export default defineSchema({
   })
     .index("by_event", ["eventId"])
     .index("by_event_claimedBy", ["eventId", "claimedBy"])
+    .index("by_event_codeType_claimedBy", ["eventId", "codeType", "claimedBy"])
     .index("by_event_reservedFor", ["eventId", "reservedFor"])
     .index("by_claimedBy", ["claimedBy"]),
 
