@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
+  BookOpen,
   CalendarDays,
   Check,
   Copy,
@@ -36,6 +37,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Empty,
   EmptyDescription,
@@ -149,6 +158,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
           ) : result?.ok ? (
             <Receipt
               eventName={event.name}
+              instructions={event.claimInstructions}
               creditAmount={result.creditAmount}
               code={result.code}
               codeType={result.codeType}
@@ -395,6 +405,7 @@ function QrPanel({
 
 function Receipt({
   eventName,
+  instructions,
   creditAmount,
   code,
   codeType,
@@ -403,6 +414,7 @@ function Receipt({
   onCopy,
 }: {
   eventName: string;
+  instructions?: string;
   creditAmount?: string;
   code: string;
   codeType?: string;
@@ -472,6 +484,27 @@ function Receipt({
               </>
             )}
           </Button>
+          {instructions ? (
+            <Dialog>
+              <DialogTrigger render={<Button variant="outline" size="lg" />}>
+                <BookOpen data-icon="inline-start" />
+                How to redeem
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-heading tracking-tight">
+                    How to redeem your code
+                  </DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Redemption instructions for {eventName}
+                  </DialogDescription>
+                </DialogHeader>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                  {instructions}
+                </p>
+              </DialogContent>
+            </Dialog>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"

@@ -216,6 +216,7 @@ function NewEventDialog() {
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [creditAmount, setCreditAmount] = useState("");
+  const [claimInstructions, setClaimInstructions] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -230,6 +231,7 @@ function NewEventDialog() {
         description: description || undefined,
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
+        claimInstructions: claimInstructions || undefined,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -310,6 +312,22 @@ function NewEventDialog() {
                 onChange={(e) => setCreditAmount(e.target.value)}
                 placeholder="$100"
               />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="event-instructions">
+                Redemption instructions
+              </FieldLabel>
+              <Textarea
+                id="event-instructions"
+                value={claimInstructions}
+                onChange={(e) => setClaimInstructions(e.target.value)}
+                placeholder="How to redeem the code after claiming"
+                rows={4}
+                className="resize-y"
+              />
+              <FieldDescription>
+                Optional — shown to attendees after they claim a code.
+              </FieldDescription>
             </Field>
           </FieldGroup>
           {error ? (

@@ -1162,6 +1162,9 @@ function EventDetailsForm({
   const [description, setDescription] = useState(event.description ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
+  const [claimInstructions, setClaimInstructions] = useState(
+    event.claimInstructions ?? ""
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -1175,6 +1178,7 @@ function EventDetailsForm({
         description: description || undefined,
         eventDate: eventDate || undefined,
         creditAmount: creditAmount || undefined,
+        claimInstructions: claimInstructions || undefined,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1252,6 +1256,22 @@ function EventDetailsForm({
                 placeholder="$100"
               />
               <FieldDescription>Shown on the claim page.</FieldDescription>
+            </Field>
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="detail-instructions">
+                Redemption instructions
+              </FieldLabel>
+              <Textarea
+                id="detail-instructions"
+                value={claimInstructions}
+                onChange={(e) => setClaimInstructions(e.target.value)}
+                rows={4}
+                className="resize-y"
+              />
+              <FieldDescription>
+                Optional — when set, attendees see a &ldquo;How to
+                redeem&rdquo; button after claiming their code.
+              </FieldDescription>
             </Field>
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">
