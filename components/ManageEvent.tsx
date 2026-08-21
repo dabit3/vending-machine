@@ -616,7 +616,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4">
+          <CardContent className="flex flex-1 flex-col gap-4">
             <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
               <Textarea
                 aria-label="Email addresses to add"
@@ -644,6 +644,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             <RowList
+              fill
               items={emails?.map((e) => ({
                 key: e._id,
                 label: e.email,
@@ -1073,6 +1074,7 @@ function RowList({
   items,
   emptyText,
   mono,
+  fill,
 }: {
   items?: {
     key: string;
@@ -1083,6 +1085,9 @@ function RowList({
   }[];
   emptyText: string;
   mono?: boolean;
+  // Grow to take the remaining height of a flex parent (scrolling inside)
+  // instead of capping at a fixed max height.
+  fill?: boolean;
 }) {
   if (!items) {
     return (
@@ -1100,7 +1105,12 @@ function RowList({
     );
   }
   return (
-    <ul className="max-h-72 divide-y divide-border overflow-y-auto border-y border-border">
+    <ul
+      className={cn(
+        "divide-y divide-border overflow-y-auto border-y border-border",
+        fill ? "h-0 min-h-56 flex-1" : "max-h-72"
+      )}
+    >
       {items.map((item) => (
         <li
           key={item.key}
