@@ -53,9 +53,8 @@
   --sidebar-accent-foreground: #2b2723;
   --sidebar-border: #e7e1d3;
   --sidebar-ring: #7a7266;
-  /* Heading face slot: kept on the body sans for now — font-variant branches
-     swap this to a distinct editorial face. */
-  --font-heading-family: var(--font-geist-sans);
+  /* Heading face slot: Lora, a distinct editorial serif for headings. */
+  --font-heading-family: var(--font-lora);
 }
 
 @theme inline {
@@ -67,8 +66,8 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-fira-code);
   /* Headings draw from a dedicated slot so a display face can be swapped in
      without touching component markup. */
   --font-heading: var(--font-heading-family);
