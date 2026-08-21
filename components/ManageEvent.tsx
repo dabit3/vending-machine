@@ -66,12 +66,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
@@ -792,26 +786,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             {blockTypes.length > 1 ? (
-              // Keyed on the block names so a rename remounts the tabs and
-              // re-applies defaultValue instead of leaving a stale selection.
-              <Tabs key={blockTypes.join("\u0000")} defaultValue={blockTypes[0]}>
-                <TabsList>
-                  {blockTypes.map((t) => (
-                    <TabsTrigger key={t || "__unnamed"} value={t}>
-                      {t || "Unnamed"}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {blockTypes.map((t) => (
-                  <TabsContent key={t || "__unnamed"} value={t}>
-                    <RowList
-                      mono
-                      items={codeRows(t)}
-                      emptyText="No codes in this block yet."
-                    />
-                  </TabsContent>
-                ))}
-              </Tabs>
+              // The "Add codes to" selection doubles as the list filter, so
+              // one toggle controls both where codes go and which are shown.
+              <RowList
+                mono
+                items={codeRows(selectedType ?? blockTypes[0])}
+                emptyText="No codes in this block yet."
+              />
             ) : (
               <RowList mono items={codeRows()} emptyText="No codes yet." />
             )}
