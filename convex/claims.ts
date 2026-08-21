@@ -1,5 +1,38 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+// Whether the signed-in viewer is on the participant list for the event,
+// so the claim UI can hold back code options until eligibility is confirmed.
+export const eligibility = query({
+  args: { slug: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return { eligible: false as const, reason: "unauthenticated" as const };
+    }
+    const email = identity.email?.trim().toLowerCase();
+    if (!email || identity.emailVerified !== true) {
+      return { eligible: false as const, reason: "unverified" as const };
+    }
+    const event = await ctx.db
+      .query("events")
+      .withIndex("by_slug", (q) => q.eq("slug", args.slug))
+      .unique();
+    if (!event) {
+      return { eligible: false as const, reason: "not_found" as const };
+    }
+    const allowed = await ctx.db
+      .query("emails")
+      .withIndex("by_event_email", (q) =>
+        q.eq("eventId", event._id).eq("email", email)
+      )
+      .unique();
+    if (!allowed) {
+      return { eligible: false as const, reason: "not_listed" as const, email };
+    }
+    return { eligible: true as const, email };
+  },
+});
 
 export const claim = mutation({
   args: { slug: v.string(), codeType: v.optional(v.string()) },

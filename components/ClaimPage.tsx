@@ -81,6 +81,10 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
+  const eligibility = useQuery(
+    api.claims.eligibility,
+    isAuthenticated ? { slug } : "skip",
+  );
   const { user } = useUser();
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
@@ -249,6 +253,39 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         yours is still here.
                       </p>
                     ) : null}
+                  </div>
+                ) : eligibility === undefined ? (
+                  <div className="flex flex-col gap-3">
+                    <Skeleton className="h-12 rounded-md" />
+                    <Skeleton className="h-10 rounded-lg" />
+                  </div>
+                ) : !eligibility.eligible ? (
+                  <div className="flex flex-col gap-5">
+                    <Alert variant="destructive">
+                      <OctagonX />
+                      <AlertTitle>
+                        {eligibility.reason === "unverified"
+                          ? "Your account has no verified email address. Sign in with the email you registered with."
+                          : `${eligibility.email ?? "This email"} is not on the participant list for this event. Sign in with the email you registered with.`}
+                      </AlertTitle>
+                    </Alert>
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInEmail ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={`/${slug}`}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-5">
