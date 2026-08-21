@@ -20,6 +20,8 @@ export default defineSchema({
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    // Optional post-claim redemption instructions shown to attendees.
+    claimInstructions: v.optional(v.string()),
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),

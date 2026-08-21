@@ -89,6 +89,7 @@ export const getBySlug = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
+      claimInstructions: event.claimInstructions,
       soldOut: availableTypes.size === 0,
       codeTypes: [...availableTypes].sort(),
     };
@@ -109,6 +110,7 @@ export const get = query({
       description: event.description,
       creditAmount: event.creditAmount,
       eventDate: event.eventDate,
+      claimInstructions: event.claimInstructions,
     };
   },
 });
@@ -152,6 +154,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    claimInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -172,6 +175,7 @@ export const create = mutation({
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
+      claimInstructions: args.claimInstructions?.trim() || undefined,
     });
     return { id, slug };
   },
@@ -185,6 +189,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    claimInstructions: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
@@ -203,6 +208,7 @@ export const update = mutation({
       description: args.description?.trim() || undefined,
       creditAmount: args.creditAmount?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
+      claimInstructions: args.claimInstructions?.trim() || undefined,
     });
     return { slug };
   },
