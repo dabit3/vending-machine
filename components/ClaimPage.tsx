@@ -349,6 +349,12 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         "Dispense my code"
                       )}
                     </Button>
+                    {event.claimInstructions ? (
+                      <RedeemInstructionsDialog
+                        eventName={event.name}
+                        instructions={event.claimInstructions}
+                      />
+                    ) : null}
                     {event.soldOut ? (
                       <p className="text-center text-xs text-muted-foreground">
                         All codes have been dispensed — if you already claimed,
@@ -389,6 +395,36 @@ export default function ClaimPage({ slug }: { slug: string }) {
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function RedeemInstructionsDialog({
+  eventName,
+  instructions,
+}: {
+  eventName: string;
+  instructions: string;
+}) {
+  return (
+    <Dialog>
+      <DialogTrigger render={<Button variant="outline" size="lg" />}>
+        <BookOpen data-icon="inline-start" />
+        How to redeem
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-heading tracking-tight">
+            How to redeem your code
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Redemption instructions for {eventName}
+          </DialogDescription>
+        </DialogHeader>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          {instructions}
+        </p>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -533,25 +569,10 @@ function Receipt({
             )}
           </Button>
           {instructions ? (
-            <Dialog>
-              <DialogTrigger render={<Button variant="outline" size="lg" />}>
-                <BookOpen data-icon="inline-start" />
-                How to redeem
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="font-heading tracking-tight">
-                    How to redeem your code
-                  </DialogTitle>
-                  <DialogDescription className="sr-only">
-                    Redemption instructions for {eventName}
-                  </DialogDescription>
-                </DialogHeader>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                  {instructions}
-                </p>
-              </DialogContent>
-            </Dialog>
+            <RedeemInstructionsDialog
+              eventName={eventName}
+              instructions={instructions}
+            />
           ) : null}
           <Button
             variant="ghost"
