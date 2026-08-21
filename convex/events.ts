@@ -91,7 +91,11 @@ export const getBySlug = query({
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       soldOut: availableTypes.size === 0,
-      codeTypes: [...availableTypes].sort(),
+      // Preserve the event's stored (creation) order of code types.
+      codeTypes: [
+        ...candidateTypes.filter((t) => availableTypes.has(t)),
+        ...[...availableTypes].filter((t) => !candidateTypes.includes(t)),
+      ],
     };
   },
 });

@@ -52,11 +52,18 @@ export const add = mutation({
       added++;
     }
     // Keep the event's denormalized type list in sync so availability checks
-    // can probe per type instead of scanning the pool.
+    // can probe per type instead of scanning the pool. Types are ordered by
+    // when each block was first created, not alphabetically.
     if (added > 0) {
-      await ctx.db.patch(args.eventId, {
-        codeTypes: [...resultingTypes].sort(),
-      });
+      const ordered = [
+        ...new Set(
+          [...existing]
+            .sort((a, b) => a._creationTime - b._creationTime)
+            .map((c) => c.codeType ?? "")
+        ),
+      ];
+      if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
+      await ctx.db.patch(args.eventId, { codeTypes: ordered });
     }
     return { added, skipped };
   },
@@ -84,10 +91,16 @@ export const renameType = mutation({
       await ctx.db.patch(code._id, { codeType: to });
     }
     const event = await ctx.db.get(args.eventId);
-    const types = new Set(event?.codeTypes ?? []);
-    types.delete(from ?? "");
-    if (targets.length > 0) types.add(to);
-    await ctx.db.patch(args.eventId, { codeTypes: [...types].sort() });
+    // Rename in place so the block keeps its creation-order position.
+    const ordered = (event?.codeTypes ?? []).map((t) =>
+      t === (from ?? "") && targets.length > 0 ? to : t
+    );
+    // Legacy events may have no stored type list; ensure the new name lands.
+    if (targets.length > 0 && !ordered.includes(to)) ordered.push(to);
+    const codeTypes = [...new Set(ordered)].filter(
+      (t) => targets.length > 0 || t !== (from ?? "")
+    );
+    await ctx.db.patch(args.eventId, { codeTypes });
     return { renamed: targets.length };
   },
 });

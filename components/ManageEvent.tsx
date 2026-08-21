@@ -66,12 +66,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
@@ -101,8 +95,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
-  const blockTypes = [...new Set((codes ?? []).map((c) => c.codeType ?? ""))]
-    .sort();
+  // Blocks are ordered by when each was first created, not alphabetically.
+  const blockTypes = [
+    ...new Set(
+      [...(codes ?? [])]
+        .sort((a, b) => a._creationTime - b._creationTime)
+        .map((c) => c.codeType ?? "")
+    ),
+  ];
   // Target values are namespaced ("existing:<type>" / "new") so a block
   // whose name matches a sentinel can't be confused with new-block creation.
   const targetOptions = [
@@ -616,7 +616,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
+          <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow">
             <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
               <Textarea
                 aria-label="Email addresses to add"
@@ -680,9 +680,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-4">
             <CodeBlocks
               codes={codes}
-              onRename={(from, to) =>
-                renameCodeType({ eventId: id, from, to })
-              }
+              onRename={async (from, to) => {
+                await renameCodeType({ eventId: id, from, to });
+                // Keep the selection (and the filtered list) on the block
+                // that was just renamed.
+                setBlockTarget((prev) =>
+                  prev === `existing:${from ?? ""}` ? `existing:${to}` : prev
+                );
+              }}
             />
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
               {hasBlocks ? (
@@ -786,26 +791,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             {blockTypes.length > 1 ? (
-              // Keyed on the block names so a rename remounts the tabs and
-              // re-applies defaultValue instead of leaving a stale selection.
-              <Tabs key={blockTypes.join("\u0000")} defaultValue={blockTypes[0]}>
-                <TabsList>
-                  {blockTypes.map((t) => (
-                    <TabsTrigger key={t || "__unnamed"} value={t}>
-                      {t || "Unnamed"}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-                {blockTypes.map((t) => (
-                  <TabsContent key={t || "__unnamed"} value={t}>
-                    <RowList
-                      mono
-                      items={codeRows(t)}
-                      emptyText="No codes in this block yet."
-                    />
-                  </TabsContent>
-                ))}
-              </Tabs>
+              // The "Add codes to" selection doubles as the list filter, so
+              // one toggle controls both where codes go and which are shown.
+              <RowList
+                mono
+                items={codeRows(selectedType ?? blockTypes[0])}
+                emptyText="No codes in this block yet."
+              />
             ) : (
               <RowList mono items={codeRows()} emptyText="No codes yet." />
             )}
@@ -825,17 +817,19 @@ function CodeBlocks({
   codes: Doc<"codes">[] | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
 }) {
+  // Map insertion order follows creation time, so blocks list in the order
+  // they were first created rather than alphabetically.
   const blocks = new Map<string, number>();
-  for (const c of codes ?? []) {
+  for (const c of [...(codes ?? [])].sort(
+    (a, b) => a._creationTime - b._creationTime
+  )) {
     const key = c.codeType ?? "";
     blocks.set(key, (blocks.get(key) ?? 0) + 1);
   }
   if (blocks.size === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {[...blocks.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([type, count]) => (
+      {[...blocks.entries()].map(([type, count]) => (
           <CodeBlockRow
             key={type || "__unnamed"}
             type={type}
@@ -1108,7 +1102,14 @@ function RowList({
     <ul
       className={cn(
         "divide-y divide-border overflow-y-auto border-y border-border",
-        fill ? "h-0 min-h-56 flex-1" : "max-h-72"
+        // grow + h-0 (not flex-1) so the list's flex basis is 0 rather than
+        // 0% — a percentage basis in an indefinite-height column falls back
+        // to content size, letting a long list grow the page instead of
+        // scrolling within the space left by the taller sibling card.
+        // Only zero the basis on lg, where the grid row is stretched by the
+        // sibling card; in the single-column stack nothing stretches the row,
+        // so a zero height would collapse the card entirely.
+        fill ? "max-h-72 lg:h-0 lg:max-h-none lg:min-h-56 lg:grow" : "max-h-72"
       )}
     >
       {items.map((item) => (
