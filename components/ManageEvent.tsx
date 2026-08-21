@@ -11,6 +11,7 @@ import {
   Check,
   Download,
   Inbox,
+  Plus,
   QrCode,
   ShieldCheck,
   Ticket,
@@ -65,6 +66,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
@@ -86,9 +93,38 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
-  const [codeName, setCodeName] = useState("");
+  const [blockTarget, setBlockTarget] = useState<string | null>(null);
+  const [newBlockName, setNewBlockName] = useState("");
+  const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+
+  // Existing code blocks ("" = unnamed) drive the add form: codes go into a
+  // selected existing block, or into a new named block when only one exists.
+  const blockTypes = [...new Set((codes ?? []).map((c) => c.codeType ?? ""))]
+    .sort();
+  // Target values are namespaced ("existing:<type>" / "new") so a block
+  // whose name matches a sentinel can't be confused with new-block creation.
+  const targetOptions = [
+    ...blockTypes.map((t) => `existing:${t}`),
+    ...(blockTypes.length < 2 ? ["new"] : []),
+  ];
+  const effectiveTarget =
+    blockTarget !== null && targetOptions.includes(blockTarget)
+      ? blockTarget
+      : (targetOptions[0] ?? "new");
+  const isNewBlock = effectiveTarget === "new";
+  const selectedType = isNewBlock
+    ? null
+    : effectiveTarget.slice("existing:".length);
+  const hasBlocks = blockTypes.length > 0;
+  // A second block requires both blocks to be named, so creating one next to
+  // an unnamed block also asks for the existing block's name.
+  const needsFirstBlockName =
+    isNewBlock && hasBlocks && blockTypes.includes("");
+  const codeFormReady =
+    (!isNewBlock || !hasBlocks || newBlockName.trim().length > 0) &&
+    (!needsFirstBlockName || firstBlockName.trim().length > 0);
 
   // Computed before the early returns so the count-up hook can run
   // unconditionally; 0 while the codes query is still in flight.
@@ -183,26 +219,92 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     }
   }
 
+  // Resolves which block incoming codes belong to, naming the existing
+  // unnamed block first when a second block is being created next to it.
+  async function resolveTargetType(): Promise<string | undefined> {
+    if (!isNewBlock) return selectedType || undefined;
+    if (needsFirstBlockName) {
+      await renameCodeType({ eventId: id, to: firstBlockName.trim() });
+    }
+    return newBlockName.trim() || undefined;
+  }
+
+  function codeRows(type?: string) {
+    return codes
+      ?.filter((c) => type === undefined || (c.codeType ?? "") === type)
+      .map((c) => ({
+        key: c._id,
+        label: c.code,
+        tag: type === undefined ? (c.codeType ?? undefined) : undefined,
+        claimedBy: c.claimedBy ?? undefined,
+        onRemove: c.claimedBy
+          ? undefined
+          : () =>
+              removeCode({ id: c._id }).catch((err) =>
+                toast.error(
+                  err instanceof Error ? err.message : "Failed to remove code"
+                )
+              ),
+      }));
+  }
+
+  function resetBlockForm(codeType: string | undefined) {
+    setBlockTarget(`existing:${codeType ?? ""}`);
+    setNewBlockName("");
+    setFirstBlockName("");
+  }
+
   async function handleAddCodes(e: React.FormEvent) {
     e.preventDefault();
     const list = codeInput.split(/[\n,;\s]+/).filter(Boolean);
-    if (list.length === 0) return;
+    if (list.length === 0 || !codeFormReady) return;
     setCodeBusy(true);
     try {
+      const codeType = await resolveTargetType();
       const { added, skipped } = await addCodes({
         eventId: id,
         codes: list,
-        codeType: codeName.trim() || undefined,
+        codeType,
       });
       toast.success(`Added ${added} codes`, {
         description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
       });
       setCodeInput("");
+      resetBlockForm(codeType);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add codes");
     } finally {
       setCodeBusy(false);
     }
+  }
+
+  async function handleCodeFile(file: File) {
+    if (!codeFormReady) {
+      toast.error(
+        needsFirstBlockName && !firstBlockName.trim()
+          ? "Name the existing block before uploading a second block."
+          : "Name the new block before uploading its codes."
+      );
+      return;
+    }
+    // The rename of an unnamed existing block is deferred until the file has
+    // actually produced codes to import, so an empty or unreadable upload
+    // leaves the current block untouched.
+    let codeType: string | undefined;
+    let resolved = false;
+    await importFile(
+      file,
+      "codes",
+      async (items) => {
+        if (!resolved) {
+          codeType = await resolveTargetType();
+          resolved = true;
+        }
+        return addCodes({ eventId: id, codes: items, codeType });
+      },
+      setCodeBusy
+    );
+    if (resolved) resetBlockForm(codeType);
   }
 
   function exportEmails() {
@@ -571,7 +673,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   Export
                 </Button>
               ) : null}
-              <UploadButton busy={codeBusy} onFile={(f) => importFile(f, "codes", (items) => addCodes({ eventId: id, codes: items, codeType: codeName.trim() || undefined }), setCodeBusy)} />
+              <UploadButton busy={codeBusy} onFile={handleCodeFile} />
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
@@ -582,21 +684,81 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               }
             />
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
-              <Field>
-                <FieldLabel htmlFor="code-name">Code name</FieldLabel>
-                <Input
-                  id="code-name"
-                  value={codeName}
-                  onChange={(e) => setCodeName(e.target.value)}
-                  placeholder="e.g. $50 credits"
-                  className="text-sm"
-                />
-                <FieldDescription>
-                  Optional with a single code block — to add a second block,
-                  name both blocks so attendees can tell them apart. Applies
-                  to pasted and uploaded codes.
-                </FieldDescription>
-              </Field>
+              {hasBlocks ? (
+                <Field>
+                  <FieldLabel>Add codes to</FieldLabel>
+                  <div className="flex flex-wrap gap-2">
+                    {blockTypes.map((t) => (
+                      <Button
+                        key={t || "__unnamed"}
+                        type="button"
+                        size="sm"
+                        variant={
+                          !isNewBlock && selectedType === t
+                            ? "secondary"
+                            : "outline"
+                        }
+                        onClick={() => setBlockTarget(`existing:${t}`)}
+                      >
+                        {t || "Unnamed block"}
+                      </Button>
+                    ))}
+                    {blockTypes.length < 2 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isNewBlock ? "secondary" : "outline"}
+                        onClick={() => setBlockTarget("new")}
+                      >
+                        <Plus data-icon="inline-start" />
+                        Second code block
+                      </Button>
+                    ) : null}
+                  </div>
+                  <FieldDescription>
+                    {blockTypes.length < 2
+                      ? "Events can have up to two code blocks — attendees pick one by name when there are two."
+                      : "This event has both code blocks — pasted and uploaded codes go into the selected one."}
+                  </FieldDescription>
+                </Field>
+              ) : null}
+              {!hasBlocks || isNewBlock ? (
+                <Field>
+                  <FieldLabel htmlFor="new-block-name">
+                    {hasBlocks ? "Second block name" : "Code name"}
+                  </FieldLabel>
+                  <Input
+                    id="new-block-name"
+                    value={newBlockName}
+                    onChange={(e) => setNewBlockName(e.target.value)}
+                    placeholder="e.g. $50 credits"
+                    className="text-sm"
+                  />
+                  <FieldDescription>
+                    {hasBlocks
+                      ? "Required — attendees choose between the two blocks by name."
+                      : "Optional with a single code block. Applies to pasted and uploaded codes."}
+                  </FieldDescription>
+                </Field>
+              ) : null}
+              {needsFirstBlockName ? (
+                <Field>
+                  <FieldLabel htmlFor="first-block-name">
+                    Name the existing block
+                  </FieldLabel>
+                  <Input
+                    id="first-block-name"
+                    value={firstBlockName}
+                    onChange={(e) => setFirstBlockName(e.target.value)}
+                    placeholder="e.g. $25 credits"
+                    className="text-sm"
+                  />
+                  <FieldDescription>
+                    Your current codes are unnamed — give them a name so
+                    attendees can tell the two blocks apart.
+                  </FieldDescription>
+                </Field>
+              ) : null}
               <Textarea
                 aria-label="Credit codes to add"
                 value={codeInput}
@@ -609,7 +771,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 type="submit"
                 variant="secondary"
                 className="self-start"
-                disabled={codeBusy || !codeInput.trim()}
+                disabled={codeBusy || !codeInput.trim() || !codeFormReady}
                 aria-busy={codeBusy}
               >
                 {codeBusy ? (
@@ -622,26 +784,30 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 )}
               </Button>
             </form>
-            <RowList
-              mono
-              items={codes?.map((c) => ({
-                key: c._id,
-                label: c.code,
-                tag: c.codeType ?? undefined,
-                claimedBy: c.claimedBy ?? undefined,
-                onRemove: c.claimedBy
-                  ? undefined
-                  : () =>
-                      removeCode({ id: c._id }).catch((err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to remove code"
-                        )
-                      ),
-              }))}
-              emptyText="No codes yet."
-            />
+            {blockTypes.length > 1 ? (
+              // Keyed on the block names so a rename remounts the tabs and
+              // re-applies defaultValue instead of leaving a stale selection.
+              <Tabs key={blockTypes.join("\u0000")} defaultValue={blockTypes[0]}>
+                <TabsList>
+                  {blockTypes.map((t) => (
+                    <TabsTrigger key={t || "__unnamed"} value={t}>
+                      {t || "Unnamed"}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {blockTypes.map((t) => (
+                  <TabsContent key={t || "__unnamed"} value={t}>
+                    <RowList
+                      mono
+                      items={codeRows(t)}
+                      emptyText="No codes in this block yet."
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            ) : (
+              <RowList mono items={codeRows()} emptyText="No codes yet." />
+            )}
           </CardContent>
         </Card>
       </div>
