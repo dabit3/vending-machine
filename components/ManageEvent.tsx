@@ -84,11 +84,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const addCodes = useMutation(api.codes.add);
   const removeCode = useMutation(api.codes.remove);
   const renameCodeType = useMutation(api.codes.renameType);
+  const setTypeValue = useMutation(api.codes.setTypeValue);
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [blockTarget, setBlockTarget] = useState<string | null>(null);
   const [newBlockName, setNewBlockName] = useState("");
+  const [newBlockValue, setNewBlockValue] = useState("");
   const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
@@ -251,6 +253,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   function resetBlockForm(codeType: string | undefined) {
     setBlockTarget(`existing:${codeType ?? ""}`);
     setNewBlockName("");
+    setNewBlockValue("");
     setFirstBlockName("");
   }
 
@@ -265,6 +268,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         eventId: id,
         codes: list,
         codeType,
+        value: isNewBlock ? newBlockValue.trim() || undefined : undefined,
       });
       toast.success(`Added ${added} codes`, {
         description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
@@ -300,7 +304,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           codeType = await resolveTargetType();
           resolved = true;
         }
-        return addCodes({ eventId: id, codes: items, codeType });
+        return addCodes({
+          eventId: id,
+          codes: items,
+          codeType,
+          value: isNewBlock ? newBlockValue.trim() || undefined : undefined,
+        });
       },
       setCodeBusy
     );
@@ -680,6 +689,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-4">
             <CodeBlocks
               codes={codes}
+              values={event.codeTypeValues}
+              onSetValue={(codeType, value) =>
+                setTypeValue({ eventId: id, codeType, value })
+              }
               onRename={async (from, to) => {
                 await renameCodeType({ eventId: id, from, to });
                 // Keep the selection (and the filtered list) on the block
@@ -744,6 +757,22 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     {hasBlocks
                       ? "Required — attendees choose between the two blocks by name."
                       : "Optional with a single code block. Applies to pasted and uploaded codes."}
+                  </FieldDescription>
+                </Field>
+              ) : null}
+              {!hasBlocks || isNewBlock ? (
+                <Field>
+                  <FieldLabel htmlFor="new-block-value">Value</FieldLabel>
+                  <Input
+                    id="new-block-value"
+                    value={newBlockValue}
+                    onChange={(e) => setNewBlockValue(e.target.value)}
+                    placeholder="e.g. 100 or Team plan"
+                    className="text-sm"
+                  />
+                  <FieldDescription>
+                    Optional — shown on the claim page. Numbers get a
+                    &ldquo;$&rdquo; prefix; anything else is shown as-is.
                   </FieldDescription>
                 </Field>
               ) : null}
@@ -812,10 +841,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
 function CodeBlocks({
   codes,
+  values,
   onRename,
+  onSetValue,
 }: {
   codes: Doc<"codes">[] | undefined;
+  values: Record<string, string> | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
+  onSetValue: (
+    codeType: string | undefined,
+    value: string | undefined
+  ) => Promise<unknown>;
 }) {
   // Map insertion order follows creation time, so blocks list in the order
   // they were first created rather than alphabetically.
@@ -834,7 +870,9 @@ function CodeBlocks({
             key={type || "__unnamed"}
             type={type}
             count={count}
+            value={values?.[type]}
             onRename={onRename}
+            onSetValue={onSetValue}
           />
         ))}
     </div>
@@ -844,34 +882,55 @@ function CodeBlocks({
 function CodeBlockRow({
   type,
   count,
+  value,
   onRename,
+  onSetValue,
 }: {
   type: string;
   count: number;
+  value?: string;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
+  onSetValue: (
+    codeType: string | undefined,
+    value: string | undefined
+  ) => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type);
+  const [valueInput, setValueInput] = useState(value ?? "");
   const [busy, setBusy] = useState(false);
 
-  async function handleRename(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     const to = name.trim();
-    if (!to || to === type) {
+    const newValue = valueInput.trim();
+    const renaming = to !== "" && to !== type;
+    const valueChanged = newValue !== (value ?? "");
+    if (!renaming && !valueChanged) {
       setEditing(false);
       setName(type);
+      setValueInput(value ?? "");
       return;
     }
     setBusy(true);
     try {
-      await onRename(type || undefined, to);
-      toast.success(
-        type ? `Renamed “${type}” to “${to}”` : `Named code block “${to}”`
-      );
+      if (renaming) {
+        await onRename(type || undefined, to);
+        toast.success(
+          type ? `Renamed “${type}” to “${to}”` : `Named code block “${to}”`
+        );
+      }
+      if (valueChanged) {
+        await onSetValue(
+          (renaming ? to : type) || undefined,
+          newValue || undefined
+        );
+        toast.success(newValue ? "Block value saved" : "Block value cleared");
+      }
       setEditing(false);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to rename code block"
+        err instanceof Error ? err.message : "Failed to update code block"
       );
     } finally {
       setBusy(false);
@@ -881,13 +940,23 @@ function CodeBlockRow({
   return (
     <div className="flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5">
       {editing ? (
-        <form onSubmit={handleRename} className="flex flex-1 items-center gap-2">
+        <form
+          onSubmit={handleSave}
+          className="flex flex-1 flex-wrap items-center gap-2"
+        >
           <Input
             autoFocus
             aria-label="Code block name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. $50 credits"
+            className="h-7 max-w-48 text-sm"
+          />
+          <Input
+            aria-label="Code block value"
+            value={valueInput}
+            onChange={(e) => setValueInput(e.target.value)}
+            placeholder="Value, e.g. 100 or Team plan"
             className="h-7 max-w-48 text-sm"
           />
           <Button type="submit" size="xs" variant="secondary" disabled={busy}>
@@ -902,6 +971,7 @@ function CodeBlockRow({
             onClick={() => {
               setEditing(false);
               setName(type);
+              setValueInput(value ?? "");
             }}
           >
             Cancel
@@ -915,13 +985,18 @@ function CodeBlockRow({
           <span className="text-xs text-muted-dim tabular-nums">
             {count} code{count === 1 ? "" : "s"}
           </span>
+          {value ? (
+            <span className="max-w-40 truncate text-xs text-muted-foreground">
+              {value}
+            </span>
+          ) : null}
           <Button
             size="xs"
             variant="ghost"
             className="ml-auto text-muted-foreground"
             onClick={() => setEditing(true)}
           >
-            {type ? "Rename" : "Name this block"}
+            Edit
           </Button>
         </>
       )}
@@ -1172,7 +1247,6 @@ function EventDetailsForm({
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
-  const [creditAmount, setCreditAmount] = useState(event.creditAmount ?? "");
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
@@ -1188,7 +1262,6 @@ function EventDetailsForm({
         slug,
         description: description || undefined,
         eventDate: eventDate || undefined,
-        creditAmount: creditAmount || undefined,
         claimInstructions: claimInstructions || undefined,
       });
       setSlug(savedSlug);
@@ -1257,16 +1330,6 @@ function EventDetailsForm({
               <FieldDescription>
                 Optional — shown on the home and claim pages.
               </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="detail-credit">Credit amount</FieldLabel>
-              <Input
-                id="detail-credit"
-                value={creditAmount}
-                onChange={(e) => setCreditAmount(e.target.value)}
-                placeholder="$100"
-              />
-              <FieldDescription>Shown on the claim page.</FieldDescription>
             </Field>
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="detail-instructions">

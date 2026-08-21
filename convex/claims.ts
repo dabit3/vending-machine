@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { blockValue } from "./blockValues";
 
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
@@ -45,7 +46,7 @@ export const eligibility = query({
         claimed: {
           code: claimed.code,
           codeType: claimed.codeType,
-          creditAmount: event.creditAmount,
+          creditAmount: blockValue(event, claimed.codeType),
         },
       };
     }
@@ -129,7 +130,7 @@ export const claim = mutation({
         code: alreadyClaimed.code,
         codeType: alreadyClaimed.codeType,
         alreadyClaimed: true,
-        creditAmount: event.creditAmount,
+        creditAmount: blockValue(event, alreadyClaimed.codeType),
       };
     }
 
@@ -192,7 +193,7 @@ export const claim = mutation({
       code: available.code,
       codeType: available.codeType,
       alreadyClaimed: false,
-      creditAmount: event.creditAmount,
+      creditAmount: blockValue(event, available.codeType),
     };
   },
 });

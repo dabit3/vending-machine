@@ -11,6 +11,7 @@
 import type * as admins from "../admins.js";
 import type * as auditLog from "../auditLog.js";
 import type * as blacklist from "../blacklist.js";
+import type * as blockValues from "../blockValues.js";
 import type * as claims from "../claims.js";
 import type * as codes from "../codes.js";
 import type * as emails from "../emails.js";
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   admins: typeof admins;
   auditLog: typeof auditLog;
   blacklist: typeof blacklist;
+  blockValues: typeof blockValues;
   claims: typeof claims;
   codes: typeof codes;
   emails: typeof emails;

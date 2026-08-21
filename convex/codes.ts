@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
+import { blockValue } from "./blockValues";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -18,6 +19,7 @@ export const add = mutation({
     eventId: v.id("events"),
     codes: v.array(v.string()),
     codeType: v.optional(v.string()),
+    value: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
@@ -64,8 +66,41 @@ export const add = mutation({
       ];
       if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
       await ctx.db.patch(args.eventId, { codeTypes: ordered });
+      const value = args.value?.trim();
+      if (value) {
+        const event = await ctx.db.get(args.eventId);
+        await ctx.db.patch(args.eventId, {
+          codeTypeValues: {
+            ...(event?.codeTypeValues ?? {}),
+            [codeType ?? ""]: value,
+          },
+        });
+      }
     }
     return { added, skipped };
+  },
+});
+
+// Sets or clears the free-text value shown for a code block.
+export const setTypeValue = mutation({
+  args: {
+    eventId: v.id("events"),
+    codeType: v.optional(v.string()),
+    value: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+    const key = args.codeType?.trim() || "";
+    const value = args.value?.trim();
+    const values = { ...(event.codeTypeValues ?? {}) };
+    if (value) {
+      values[key] = value;
+    } else {
+      delete values[key];
+    }
+    await ctx.db.patch(args.eventId, { codeTypeValues: values });
   },
 });
 
@@ -100,7 +135,14 @@ export const renameType = mutation({
     const codeTypes = [...new Set(ordered)].filter(
       (t) => targets.length > 0 || t !== (from ?? "")
     );
-    await ctx.db.patch(args.eventId, { codeTypes });
+    // Carry the block's value over to its new name.
+    const values = { ...(event?.codeTypeValues ?? {}) };
+    const fromKey = from ?? "";
+    if (targets.length > 0 && fromKey in values && !(to in values)) {
+      values[to] = values[fromKey];
+    }
+    delete values[fromKey];
+    await ctx.db.patch(args.eventId, { codeTypes, codeTypeValues: values });
     return { renamed: targets.length };
   },
 });
@@ -130,7 +172,7 @@ export const mine = query({
                 _id: event._id,
                 name: event.name,
                 slug: event.slug,
-                creditAmount: event.creditAmount,
+                creditAmount: blockValue(event, c.codeType),
                 eventDate: event.eventDate,
               }
             : null,
@@ -165,8 +207,11 @@ export const remove = mutation({
       const event = await ctx.db.get(code.eventId);
       const typeKey = code.codeType ?? "";
       if (event?.codeTypes?.includes(typeKey)) {
+        const values = { ...(event.codeTypeValues ?? {}) };
+        delete values[typeKey];
         await ctx.db.patch(code.eventId, {
           codeTypes: event.codeTypes.filter((t) => t !== typeKey),
+          codeTypeValues: values,
         });
       }
     }

@@ -37,9 +37,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function formatCredits(amount: string) {
-  const trimmed = amount.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+// Block values are free text: numeric values ("100") render as dollar
+// credits ("$100 in credits"); anything else ("Team plan", "$200") renders
+// as-is.
+function formatValue(value: string) {
+  const trimmed = value.trim();
+  return /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
 }
 
 interface EventInfo {
@@ -53,7 +56,7 @@ interface EventInfo {
 function eventMeta(event: EventInfo) {
   const parts: string[] = [];
   if (event.eventDate) parts.push(formatEventDate(event.eventDate));
-  if (event.creditAmount) parts.push(`${formatCredits(event.creditAmount)} in credits`);
+  if (event.creditAmount) parts.push(formatValue(event.creditAmount));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 

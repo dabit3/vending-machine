@@ -66,11 +66,12 @@ type ClaimResult =
     }
   | { ok: false; error: string };
 
-// creditAmount is free text; prefix "$" only when it starts with a number
-// so already-prefixed values ("$100") or other currencies stay untouched.
-function formatCredits(amount: string) {
-  const trimmed = amount.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+// Block values are free text: numeric values ("100") render as dollar
+// credits ("$100 in credits"); anything else ("Team plan", "$200") renders
+// as-is.
+function formatValue(value: string) {
+  const trimmed = value.trim();
+  return /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
 }
 
 function subscribeNoop() {
@@ -329,7 +330,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         }
                       >
                         <BookOpen data-icon="inline-start" />
-                        Read how to redeem
+                        Read redemption instructions to claim.
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
@@ -386,22 +387,30 @@ export default function ClaimPage({ slug }: { slug: string }) {
                           Choose your code type
                         </legend>
                         <div className="grid grid-cols-2 gap-2">
-                          {codeTypes.map((type) => (
-                            <Button
-                              key={type}
-                              type="button"
-                              variant="outline"
-                              aria-pressed={selectedType === type}
-                              onClick={() => setSelectedType(type)}
-                              className={cn(
-                                "h-auto min-h-10 whitespace-normal py-2",
-                                selectedType === type &&
-                                  "border-brand ring-1 ring-brand",
-                              )}
-                            >
-                              {type}
-                            </Button>
-                          ))}
+                          {codeTypes.map((type) => {
+                            const value = event.codeTypeValues?.[type];
+                            return (
+                              <Button
+                                key={type}
+                                type="button"
+                                variant="outline"
+                                aria-pressed={selectedType === type}
+                                onClick={() => setSelectedType(type)}
+                                className={cn(
+                                  "h-auto min-h-10 flex-col gap-0.5 whitespace-normal py-2",
+                                  selectedType === type &&
+                                    "border-brand ring-1 ring-brand",
+                                )}
+                              >
+                                <span>{type}</span>
+                                {value ? (
+                                  <span className="text-xs font-normal text-muted-foreground">
+                                    {formatValue(value)}
+                                  </span>
+                                ) : null}
+                              </Button>
+                            );
+                          })}
                         </div>
                       </fieldset>
                     ) : null}
@@ -602,7 +611,7 @@ function Receipt({
           </h1>
           {creditAmount ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              {formatCredits(creditAmount)} in credits
+              {formatValue(creditAmount)}
             </p>
           ) : null}
         </div>

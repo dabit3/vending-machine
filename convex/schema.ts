@@ -18,6 +18,7 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
+    // Legacy event-wide value; superseded by per-block codeTypeValues.
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     // Optional post-claim redemption instructions shown to attendees.
@@ -25,6 +26,9 @@ export default defineSchema({
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),
+    // Optional free-text value per code block, keyed by type ("" = unnamed),
+    // e.g. "100" or "Team plan". Rendered with a "$" prefix only when numeric.
+    codeTypeValues: v.optional(v.record(v.string(), v.string())),
   }).index("by_slug", ["slug"]),
 
   emails: defineTable({
