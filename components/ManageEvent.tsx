@@ -785,7 +785,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Button>
             </form>
             {blockTypes.length > 1 ? (
-              <Tabs defaultValue={blockTypes[0]}>
+              // Keyed on the block names so a rename remounts the tabs and
+              // re-applies defaultValue instead of leaving a stale selection.
+              <Tabs key={blockTypes.join("\u0000")} defaultValue={blockTypes[0]}>
                 <TabsList>
                   {blockTypes.map((t) => (
                     <TabsTrigger key={t || "__unnamed"} value={t}>
