@@ -90,6 +90,7 @@ export const getBySlug = query({
       description: event.description,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
+      codeTypeValues: event.codeTypeValues,
       soldOut: availableTypes.size === 0,
       // Preserve the event's stored (creation) order of code types.
       codeTypes: [
@@ -113,6 +114,7 @@ export const get = query({
       slug: event.slug,
       description: event.description,
       creditAmount: event.creditAmount,
+      codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
     };
@@ -156,7 +158,6 @@ export const create = mutation({
     name: v.string(),
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
-    creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
   },
@@ -177,7 +178,6 @@ export const create = mutation({
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
-      creditAmount: args.creditAmount?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
     });
@@ -191,7 +191,6 @@ export const update = mutation({
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
-    creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
   },
@@ -210,7 +209,6 @@ export const update = mutation({
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
-      creditAmount: args.creditAmount?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
     });

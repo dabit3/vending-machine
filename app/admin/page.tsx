@@ -215,7 +215,6 @@ function NewEventDialog() {
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [creditAmount, setCreditAmount] = useState("");
   const [claimInstructions, setClaimInstructions] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -230,7 +229,6 @@ function NewEventDialog() {
         slug: slug || undefined,
         description: description || undefined,
         eventDate: eventDate || undefined,
-        creditAmount: creditAmount || undefined,
         claimInstructions: claimInstructions || undefined,
       });
       toast.success(`Event "${name}" created`);
@@ -303,15 +301,6 @@ function NewEventDialog() {
               <FieldDescription>
                 Optional — shown on the home and claim pages.
               </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-credit">Credit amount</FieldLabel>
-              <Input
-                id="event-credit"
-                value={creditAmount}
-                onChange={(e) => setCreditAmount(e.target.value)}
-                placeholder="$100"
-              />
             </Field>
             <Field>
               <FieldLabel htmlFor="event-instructions">
