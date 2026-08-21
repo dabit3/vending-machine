@@ -4,57 +4,58 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Warm Editorial": a warm cream page field with ivory
+   cards, warm charcoal ink, and a burnt-terracotta accent. Print-inspired:
+   soft diffuse shadows, generous radii, and paper-toned tints throughout. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #f3efe6;
+  --surface-hover: #ede8dc;
+  --border: #e7e1d3;
+  --border-strong: #d3cab7;
+  --muted: #f0ebdf;
+  --muted-dim: #7a7266;
+  --background: #faf7f0;
+  --foreground: #2b2723;
+  --card: #fffdf8;
+  --card-foreground: #2b2723;
+  --popover: #fffdf8;
+  --popover-foreground: #2b2723;
+  --primary: #2b2723;
+  --primary-foreground: #faf7f0;
+  --secondary: #f0ebdf;
+  --secondary-foreground: #2b2723;
+  --muted-foreground: #5c5548;
+  --accent: #f0ebdf;
+  --accent-foreground: #2b2723;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #c2410c;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
+  --ring: #4a4438;
+  --selection: #f4d9c7;
+  --selection-foreground: #431c07;
+  /* Larger, softer diffuse shadow: cards float gently off the cream field
+     like sheets of paper. Dark mode zeroes it out and relies on surface
+     contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+    0 2px 4px rgb(43 39 35 / 0.04), 0 12px 32px -8px rgb(43 39 35 / 0.08);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --radius: 1rem;
+  --sidebar: #fffdf8;
+  --sidebar-foreground: #2b2723;
+  --sidebar-primary: #2b2723;
+  --sidebar-primary-foreground: #faf7f0;
+  --sidebar-accent: #f0ebdf;
+  --sidebar-accent-foreground: #2b2723;
+  --sidebar-border: #e7e1d3;
+  --sidebar-ring: #7a7266;
+  /* Heading face slot: kept on the body sans for now — font-variant branches
+     swap this to a distinct editorial face. */
+  --font-heading-family: var(--font-geist-sans);
 }
 
 @theme inline {
@@ -68,9 +69,9 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  /* Headings draw from a dedicated slot so a display face can be swapped in
+     without touching component markup. */
+  --font-heading: var(--font-heading-family);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -113,8 +114,8 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection picks up a pale terracotta wash — a quiet echo of the brand
+   accent rather than a competing highlight. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -132,19 +133,25 @@ input:-webkit-autofill:focus {
   transition: background-color 9999999s ease-in-out 0s;
 }
 
-/* Micro-label: the recurring uppercase mono eyebrow used across the app. */
+/* Micro-label: the recurring uppercase mono eyebrow used across the app.
+   Soft-spoken: smaller, wider-tracked, and muted so it reads as a printed
+   folio mark rather than a UI label. */
 @utility eyebrow {
   font-family: var(--font-mono), monospace;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
+  color: var(--muted-dim);
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Very faint, wide-spaced dot grid — reads as paper texture, not a grid. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(
+    color-mix(in srgb, var(--border) 60%, transparent) 1px,
+    transparent 1px
+  );
+  background-size: 36px 36px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -184,50 +191,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Warm Editorial" after dark: warm charcoal (not black) with
+   warm off-white text; the terracotta accent lifts a step for contrast on
+   the darker field. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #1d1a17;
+  --surface-hover: #24201c;
+  --border: #2e2a25;
+  --border-strong: #443e36;
+  --muted: #262220;
+  --muted-dim: #8a8276;
+  --background: #16130f;
+  --foreground: #ece7de;
+  --card: #1d1a17;
+  --card-foreground: #ece7de;
+  --popover: #24201c;
+  --popover-foreground: #ece7de;
+  --primary: #ece7de;
+  --primary-foreground: #16130f;
+  --secondary: #322d28;
+  --secondary-foreground: #ece7de;
+  --muted-foreground: #b0a89c;
+  --accent: #322d28;
+  --accent-foreground: #ece7de;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #ea6a2f;
+  --brand-foreground: #1c0a02;
+  --ring: #c9c2b6;
+  --selection: #4a2c1a;
+  --selection-foreground: #f6ded0;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #1d1a17;
+  --sidebar-foreground: #ece7de;
+  --sidebar-primary: #ece7de;
+  --sidebar-primary-foreground: #16130f;
+  --sidebar-accent: #322d28;
+  --sidebar-accent-foreground: #ece7de;
+  --sidebar-border: #2e2a25;
+  --sidebar-ring: #8a8276;
 }
 
 @layer base {

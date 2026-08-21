@@ -125,7 +125,7 @@ export default function AdminDashboard() {
             <span className="inline-block size-1.5 rounded-full bg-border-strong" />
             Control room
           </p>
-          <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+          <h1 className="mt-3 font-heading text-3xl font-medium tracking-[-0.03em]">
             Events
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
