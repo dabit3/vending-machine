@@ -53,9 +53,8 @@
   --sidebar-accent-foreground: #2b2723;
   --sidebar-border: #e7e1d3;
   --sidebar-ring: #7a7266;
-  /* Heading face slot: kept on the body sans for now — font-variant branches
-     swap this to a distinct editorial face. */
-  --font-heading-family: var(--font-geist-sans);
+  /* Heading face slot: Fraunces, a warm editorial serif with optical sizing. */
+  --font-heading-family: var(--font-fraunces);
 }
 
 @theme inline {
@@ -67,7 +66,7 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
   /* Headings draw from a dedicated slot so a display face can be swapped in
      without touching component markup. */
