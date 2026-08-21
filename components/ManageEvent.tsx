@@ -66,6 +66,12 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
 const UPLOAD_CHUNK_SIZE = 500;
@@ -218,6 +224,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     return newBlockName.trim() || undefined;
   }
 
+  function codeRows(type?: string) {
+    return codes
+      ?.filter((c) => type === undefined || (c.codeType ?? "") === type)
+      .map((c) => ({
+        key: c._id,
+        label: c.code,
+        tag: type === undefined ? (c.codeType ?? undefined) : undefined,
+        claimedBy: c.claimedBy ?? undefined,
+        onRemove: c.claimedBy
+          ? undefined
+          : () =>
+              removeCode({ id: c._id }).catch((err) =>
+                toast.error(
+                  err instanceof Error ? err.message : "Failed to remove code"
+                )
+              ),
+      }));
+  }
+
   function resetBlockForm(codeType: string | undefined) {
     setBlockTarget(codeType ?? "");
     setNewBlockName("");
@@ -257,22 +282,24 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       );
       return;
     }
+    // The rename of an unnamed existing block is deferred until the file has
+    // actually produced codes to import, so an empty or unreadable upload
+    // leaves the current block untouched.
     let codeType: string | undefined;
-    try {
-      codeType = await resolveTargetType();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to prepare code block"
-      );
-      return;
-    }
+    let resolved = false;
     await importFile(
       file,
       "codes",
-      (items) => addCodes({ eventId: id, codes: items, codeType }),
+      async (items) => {
+        if (!resolved) {
+          codeType = await resolveTargetType();
+          resolved = true;
+        }
+        return addCodes({ eventId: id, codes: items, codeType });
+      },
       setCodeBusy
     );
-    resetBlockForm(codeType);
+    if (resolved) resetBlockForm(codeType);
   }
 
   function exportEmails() {
@@ -750,26 +777,28 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 )}
               </Button>
             </form>
-            <RowList
-              mono
-              items={codes?.map((c) => ({
-                key: c._id,
-                label: c.code,
-                tag: c.codeType ?? undefined,
-                claimedBy: c.claimedBy ?? undefined,
-                onRemove: c.claimedBy
-                  ? undefined
-                  : () =>
-                      removeCode({ id: c._id }).catch((err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to remove code"
-                        )
-                      ),
-              }))}
-              emptyText="No codes yet."
-            />
+            {blockTypes.length > 1 ? (
+              <Tabs defaultValue={blockTypes[0]}>
+                <TabsList>
+                  {blockTypes.map((t) => (
+                    <TabsTrigger key={t || "__unnamed"} value={t}>
+                      {t || "Unnamed"}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {blockTypes.map((t) => (
+                  <TabsContent key={t || "__unnamed"} value={t}>
+                    <RowList
+                      mono
+                      items={codeRows(t)}
+                      emptyText="No codes in this block yet."
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            ) : (
+              <RowList mono items={codeRows()} emptyText="No codes yet." />
+            )}
           </CardContent>
         </Card>
       </div>
