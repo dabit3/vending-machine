@@ -95,6 +95,8 @@ export const renameType = mutation({
     const ordered = (event?.codeTypes ?? []).map((t) =>
       t === (from ?? "") && targets.length > 0 ? to : t
     );
+    // Legacy events may have no stored type list; ensure the new name lands.
+    if (targets.length > 0 && !ordered.includes(to)) ordered.push(to);
     const codeTypes = [...new Set(ordered)].filter(
       (t) => targets.length > 0 || t !== (from ?? "")
     );
