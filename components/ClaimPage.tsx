@@ -80,6 +80,7 @@ function subscribeNoop() {
 export default function ClaimPage({ slug }: { slug: string }) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
+  const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
   const eligibility = useQuery(
     api.claims.eligibility,
@@ -91,6 +92,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [readOpen, setReadOpen] = useState(false);
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
@@ -98,6 +100,22 @@ export default function ClaimPage({ slug }: { slug: string }) {
   );
 
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
+
+  // Events with redemption instructions require one confirmed read (stored
+  // per attendee) before the claim UI unlocks; return visits skip the gate.
+  const mustReadInstructions =
+    !!event?.claimInstructions &&
+    eligibility?.eligible === true &&
+    !eligibility.instructionsViewed;
+
+  async function handleConfirmRead() {
+    setReadOpen(false);
+    try {
+      await markInstructionsRead({ slug });
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    }
+  }
 
   // Two named pools means the user picks which one to draw from; a single
   // (possibly unnamed) pool claims without a choice.
@@ -280,6 +298,62 @@ export default function ClaimPage({ slug }: { slug: string }) {
                           : `${eligibility.email ?? "This email"} is not on the participant list for this event. Sign in with the email you registered with.`}
                       </AlertTitle>
                     </Alert>
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInEmail ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={`/${slug}`}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
+                  </div>
+                ) : mustReadInstructions ? (
+                  <div className="flex flex-col gap-5">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      You&apos;re on the list. Before your code is dispensed,
+                      take a moment to read how to redeem it.
+                    </p>
+                    <Dialog open={readOpen} onOpenChange={setReadOpen}>
+                      <DialogTrigger
+                        render={
+                          <Button variant="brand" size="lg" className="w-full" />
+                        }
+                      >
+                        <BookOpen data-icon="inline-start" />
+                        Read how to redeem
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="font-heading tracking-tight">
+                            How to redeem your code
+                          </DialogTitle>
+                          <DialogDescription className="sr-only">
+                            Redemption instructions for {event.name}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {event.claimInstructions}
+                        </p>
+                        <Button
+                          variant="brand"
+                          size="lg"
+                          className="w-full"
+                          onClick={handleConfirmRead}
+                        >
+                          <Check data-icon="inline-start" />
+                          Got it — continue to claim
+                        </Button>
+                      </DialogContent>
+                    </Dialog>
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
