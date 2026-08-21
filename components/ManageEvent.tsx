@@ -103,15 +103,20 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // selected existing block, or into a new named block when only one exists.
   const blockTypes = [...new Set((codes ?? []).map((c) => c.codeType ?? ""))]
     .sort();
+  // Target values are namespaced ("existing:<type>" / "new") so a block
+  // whose name matches a sentinel can't be confused with new-block creation.
   const targetOptions = [
-    ...blockTypes,
-    ...(blockTypes.length < 2 ? ["__new"] : []),
+    ...blockTypes.map((t) => `existing:${t}`),
+    ...(blockTypes.length < 2 ? ["new"] : []),
   ];
   const effectiveTarget =
     blockTarget !== null && targetOptions.includes(blockTarget)
       ? blockTarget
-      : (blockTypes[0] ?? "__new");
-  const isNewBlock = effectiveTarget === "__new";
+      : (targetOptions[0] ?? "new");
+  const isNewBlock = effectiveTarget === "new";
+  const selectedType = isNewBlock
+    ? null
+    : effectiveTarget.slice("existing:".length);
   const hasBlocks = blockTypes.length > 0;
   // A second block requires both blocks to be named, so creating one next to
   // an unnamed block also asks for the existing block's name.
@@ -217,7 +222,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Resolves which block incoming codes belong to, naming the existing
   // unnamed block first when a second block is being created next to it.
   async function resolveTargetType(): Promise<string | undefined> {
-    if (!isNewBlock) return effectiveTarget || undefined;
+    if (!isNewBlock) return selectedType || undefined;
     if (needsFirstBlockName) {
       await renameCodeType({ eventId: id, to: firstBlockName.trim() });
     }
@@ -244,7 +249,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   }
 
   function resetBlockForm(codeType: string | undefined) {
-    setBlockTarget(codeType ?? "");
+    setBlockTarget(`existing:${codeType ?? ""}`);
     setNewBlockName("");
     setFirstBlockName("");
   }
@@ -689,9 +694,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         type="button"
                         size="sm"
                         variant={
-                          effectiveTarget === t ? "secondary" : "outline"
+                          !isNewBlock && selectedType === t
+                            ? "secondary"
+                            : "outline"
                         }
-                        onClick={() => setBlockTarget(t)}
+                        onClick={() => setBlockTarget(`existing:${t}`)}
                       >
                         {t || "Unnamed block"}
                       </Button>
@@ -701,7 +708,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         type="button"
                         size="sm"
                         variant={isNewBlock ? "secondary" : "outline"}
-                        onClick={() => setBlockTarget("__new")}
+                        onClick={() => setBlockTarget("new")}
                       >
                         <Plus data-icon="inline-start" />
                         Second code block
