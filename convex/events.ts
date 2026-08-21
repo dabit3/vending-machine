@@ -45,31 +45,42 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
-    // One row is enough to know whether anything is left to dispense —
-    // claimers who already have a code can still retrieve it regardless.
     // A code counts as available for the viewer when it is unclaimed and
     // either unreserved or reserved for the viewer's verified email, matching
-    // what claims.claim would actually hand out.
+    // what claims.claim would actually hand out. The event carries its
+    // (at most two) distinct code types, so availability is one bounded probe
+    // per type instead of a scan of the pool. An unnamed pool is represented
+    // as ""; two pools are always both named. Events created before the type
+    // list existed have a single unnamed pool.
     const identity = await ctx.auth.getUserIdentity();
     const viewerEmail =
       identity?.emailVerified === true
         ? identity.email?.trim().toLowerCase()
         : undefined;
-    let available = await ctx.db
-      .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", event._id).eq("claimedBy", undefined)
-      )
-      .filter((q) => q.eq(q.field("reservedFor"), undefined))
-      .first();
-    if (!available && viewerEmail) {
-      available = await ctx.db
+    const candidateTypes = event.codeTypes ?? [""];
+    const availableTypes = new Set<string>();
+    for (const typeKey of candidateTypes) {
+      const hit = await ctx.db
+        .query("codes")
+        .withIndex("by_event_codeType_claimedBy", (q) =>
+          q
+            .eq("eventId", event._id)
+            .eq("codeType", typeKey === "" ? undefined : typeKey)
+            .eq("claimedBy", undefined)
+        )
+        .filter((q) => q.eq(q.field("reservedFor"), undefined))
+        .first();
+      if (hit) availableTypes.add(typeKey);
+    }
+    if (viewerEmail) {
+      const reserved = await ctx.db
         .query("codes")
         .withIndex("by_event_reservedFor", (q) =>
           q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
         )
         .filter((q) => q.eq(q.field("claimedBy"), undefined))
         .first();
+      if (reserved) availableTypes.add(reserved.codeType ?? "");
     }
     return {
       _id: event._id,
@@ -78,7 +89,8 @@ export const getBySlug = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
-      soldOut: available === null,
+      soldOut: availableTypes.size === 0,
+      codeTypes: [...availableTypes].sort(),
     };
   },
 });

@@ -14,13 +14,30 @@ export const list = query({
 });
 
 export const add = mutation({
-  args: { eventId: v.id("events"), codes: v.array(v.string()) },
+  args: {
+    eventId: v.id("events"),
+    codes: v.array(v.string()),
+    codeType: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    const codeType = args.codeType?.trim() || undefined;
     const existing = await ctx.db
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
+    // Events support at most two code types, and both must be named so
+    // attendees can tell them apart on the claim page.
+    const resultingTypes = new Set(existing.map((c) => c.codeType ?? ""));
+    resultingTypes.add(codeType ?? "");
+    if (resultingTypes.size > 2) {
+      throw new Error("An event can have at most two code types.");
+    }
+    if (resultingTypes.size === 2 && resultingTypes.has("")) {
+      throw new Error(
+        "Both code types need a name so attendees can tell them apart. Name the unnamed codes or use the same name."
+      );
+    }
     const existingSet = new Set(existing.map((c) => c.code));
     let added = 0;
     let skipped = 0;
@@ -31,8 +48,15 @@ export const add = mutation({
         continue;
       }
       existingSet.add(code);
-      await ctx.db.insert("codes", { eventId: args.eventId, code });
+      await ctx.db.insert("codes", { eventId: args.eventId, code, codeType });
       added++;
+    }
+    // Keep the event's denormalized type list in sync so availability checks
+    // can probe per type instead of scanning the pool.
+    if (added > 0) {
+      await ctx.db.patch(args.eventId, {
+        codeTypes: [...resultingTypes].sort(),
+      });
     }
     return { added, skipped };
   },
@@ -56,6 +80,7 @@ export const mine = query({
         return {
           _id: c._id,
           code: c.code,
+          codeType: c.codeType,
           claimedAt: c.claimedAt,
           event: event
             ? {
@@ -85,5 +110,22 @@ export const remove = mutation({
       );
     }
     await ctx.db.delete(args.id);
+    // Drop the type from the event's denormalized list when its last code is
+    // removed.
+    const remaining = await ctx.db
+      .query("codes")
+      .withIndex("by_event_codeType_claimedBy", (q) =>
+        q.eq("eventId", code.eventId).eq("codeType", code.codeType)
+      )
+      .first();
+    if (!remaining) {
+      const event = await ctx.db.get(code.eventId);
+      const typeKey = code.codeType ?? "";
+      if (event?.codeTypes?.includes(typeKey)) {
+        await ctx.db.patch(code.eventId, {
+          codeTypes: event.codeTypes.filter((t) => t !== typeKey),
+        });
+      }
+    }
   },
 });

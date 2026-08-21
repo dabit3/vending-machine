@@ -34,6 +34,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function formatCredits(amount: string) {
@@ -183,6 +184,11 @@ export default function MyCodesPage() {
                       {meta ? <CardDescription>{meta}</CardDescription> : null}
                     </CardHeader>
                   <CardContent className="flex-1 pt-2 pb-1">
+                    {item.codeType ? (
+                      <Badge variant="secondary" className="mb-2 text-[10px]">
+                        {item.codeType}
+                      </Badge>
+                    ) : null}
                     <div className="font-mono text-xl font-medium tracking-[0.04em] break-all select-all">
                       {item.code}
                     </div>

@@ -51,6 +51,7 @@ type ClaimResult =
   | {
       ok: true;
       code: string;
+      codeType?: string;
       alreadyClaimed: boolean;
       creditAmount?: string;
     }
@@ -76,6 +77,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
@@ -84,11 +86,19 @@ export default function ClaimPage({ slug }: { slug: string }) {
 
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
 
+  // Two named pools means the user picks which one to draw from; a single
+  // (possibly unnamed) pool claims without a choice.
+  const codeTypes = (event?.codeTypes ?? []).filter((t) => t !== "");
+  const mustChoose = (event?.codeTypes.length ?? 0) > 1;
+
   async function handleClaim() {
     setSubmitting(true);
     setResult(null);
     try {
-      const res = await claim({ slug });
+      const res = await claim({
+        slug,
+        codeType: mustChoose && selectedType ? selectedType : undefined,
+      });
       setResult(res);
     } catch {
       setResult({ ok: false, error: "Something went wrong. Please try again." });
@@ -141,6 +151,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
               eventName={event.name}
               creditAmount={result.creditAmount}
               code={result.code}
+              codeType={result.codeType}
               alreadyClaimed={result.alreadyClaimed}
               copied={copied}
               onCopy={copyCode}
@@ -237,10 +248,35 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         <AlertTitle>{result.error}</AlertTitle>
                       </Alert>
                     ) : null}
+                    {mustChoose ? (
+                      <fieldset className="flex flex-col gap-2">
+                        <legend className="mb-2 text-xs font-medium text-muted-foreground">
+                          Choose your code type
+                        </legend>
+                        <div className="grid grid-cols-2 gap-2">
+                          {codeTypes.map((type) => (
+                            <Button
+                              key={type}
+                              type="button"
+                              variant="outline"
+                              aria-pressed={selectedType === type}
+                              onClick={() => setSelectedType(type)}
+                              className={cn(
+                                "h-auto min-h-10 whitespace-normal py-2",
+                                selectedType === type &&
+                                  "border-brand ring-1 ring-brand",
+                              )}
+                            >
+                              {type}
+                            </Button>
+                          ))}
+                        </div>
+                      </fieldset>
+                    ) : null}
                     <Button
                       variant="brand"
                       size="lg"
-                      disabled={submitting}
+                      disabled={submitting || (mustChoose && !selectedType)}
                       className="w-full"
                       onClick={handleClaim}
                       aria-busy={submitting}
@@ -361,6 +397,7 @@ function Receipt({
   eventName,
   creditAmount,
   code,
+  codeType,
   alreadyClaimed,
   copied,
   onCopy,
@@ -368,6 +405,7 @@ function Receipt({
   eventName: string;
   creditAmount?: string;
   code: string;
+  codeType?: string;
   alreadyClaimed: boolean;
   copied: boolean;
   onCopy: (code: string) => void;
@@ -409,7 +447,9 @@ function Receipt({
         ) : null}
 
         <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 py-2 motion-reduce:animate-none">
-          <div className="text-xs text-muted-dim">Your credit code</div>
+          <div className="text-xs text-muted-dim">
+            {codeType ? `Your “${codeType}” code` : "Your credit code"}
+          </div>
           <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
             {code}
           </div>
