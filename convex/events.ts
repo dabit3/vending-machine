@@ -55,21 +55,19 @@ export const getBySlug = query({
       identity?.emailVerified === true
         ? identity.email?.trim().toLowerCase()
         : undefined;
-    let available = await ctx.db
+    const unclaimed = await ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>
         q.eq("eventId", event._id).eq("claimedBy", undefined)
       )
-      .filter((q) => q.eq(q.field("reservedFor"), undefined))
-      .first();
-    if (!available && viewerEmail) {
-      available = await ctx.db
-        .query("codes")
-        .withIndex("by_event_reservedFor", (q) =>
-          q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
-        )
-        .filter((q) => q.eq(q.field("claimedBy"), undefined))
-        .first();
+      .collect();
+    // Distinct types among codes the viewer could actually receive. An
+    // unnamed pool is represented as ""; two pools are always both named.
+    const availableTypes = new Set<string>();
+    for (const code of unclaimed) {
+      if (code.reservedFor === undefined || code.reservedFor === viewerEmail) {
+        availableTypes.add(code.codeType ?? "");
+      }
     }
     return {
       _id: event._id,
@@ -78,7 +76,8 @@ export const getBySlug = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
-      soldOut: available === null,
+      soldOut: availableTypes.size === 0,
+      codeTypes: [...availableTypes].sort(),
     };
   },
 });

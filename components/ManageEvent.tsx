@@ -85,6 +85,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
+  const [codeName, setCodeName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
 
@@ -187,7 +188,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     if (list.length === 0) return;
     setCodeBusy(true);
     try {
-      const { added, skipped } = await addCodes({ eventId: id, codes: list });
+      const { added, skipped } = await addCodes({
+        eventId: id,
+        codes: list,
+        codeType: codeName.trim() || undefined,
+      });
       toast.success(`Added ${added} codes`, {
         description: skipped ? `Skipped ${skipped} (duplicates).` : undefined,
       });
@@ -210,9 +215,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   function exportCodes() {
     if (!codes || !event) return;
     downloadCsv(`${event.slug}-codes.csv`, [
-      ["code", "claimed_by", "claimed_at"],
+      ["code", "type", "claimed_by", "claimed_at"],
       ...codes.map((c) => [
         c.code,
+        c.codeType ?? "",
         c.claimedBy ?? "",
         c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
       ]),
@@ -564,11 +570,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   Export
                 </Button>
               ) : null}
-              <UploadButton busy={codeBusy} onFile={(f) => importFile(f, "codes", (items) => addCodes({ eventId: id, codes: items }), setCodeBusy)} />
+              <UploadButton busy={codeBusy} onFile={(f) => importFile(f, "codes", (items) => addCodes({ eventId: id, codes: items, codeType: codeName.trim() || undefined }), setCodeBusy)} />
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
+              <Field>
+                <FieldLabel htmlFor="code-name">Code name</FieldLabel>
+                <Input
+                  id="code-name"
+                  value={codeName}
+                  onChange={(e) => setCodeName(e.target.value)}
+                  placeholder="e.g. $50 credits"
+                  className="text-sm"
+                />
+                <FieldDescription>
+                  Optional with a single code type — required to tell two code
+                  types apart. Applies to pasted and uploaded codes.
+                </FieldDescription>
+              </Field>
               <Textarea
                 aria-label="Credit codes to add"
                 value={codeInput}
@@ -599,6 +619,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               items={codes?.map((c) => ({
                 key: c._id,
                 label: c.code,
+                tag: c.codeType ?? undefined,
                 claimedBy: c.claimedBy ?? undefined,
                 onRemove: c.claimedBy
                   ? undefined
@@ -762,7 +783,13 @@ function RowList({
   emptyText,
   mono,
 }: {
-  items?: { key: string; label: string; claimedBy?: string; onRemove?: () => void }[];
+  items?: {
+    key: string;
+    label: string;
+    tag?: string;
+    claimedBy?: string;
+    onRemove?: () => void;
+  }[];
   emptyText: string;
   mono?: boolean;
 }) {
@@ -788,10 +815,20 @@ function RowList({
           key={item.key}
           className="flex min-h-10 items-center justify-between gap-3 px-1 py-1.5 transition-colors hover:bg-surface"
         >
-          <span
-            className={cn("truncate text-sm", mono && "font-mono text-xs")}
-          >
-            {item.label}
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn("truncate text-sm", mono && "font-mono text-xs")}
+            >
+              {item.label}
+            </span>
+            {item.tag ? (
+              <Badge
+                variant="outline"
+                className="max-w-24 shrink-0 truncate text-[10px] sm:max-w-40"
+              >
+                {item.tag}
+              </Badge>
+            ) : null}
           </span>
           {item.claimedBy ? (
             <Badge

@@ -55,6 +55,7 @@ export default defineSchema({
   codes: defineTable({
     eventId: v.id("events"),
     code: v.string(),
+    codeType: v.optional(v.string()),
     claimedBy: v.optional(v.string()),
     claimedAt: v.optional(v.number()),
     reservedFor: v.optional(v.string()),

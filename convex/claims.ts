@@ -2,7 +2,7 @@ import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 export const claim = mutation({
-  args: { slug: v.string() },
+  args: { slug: v.string(), codeType: v.optional(v.string()) },
   handler: async (ctx, args) => {
     // Codes are only dispensed to the signed-in user's verified email, so
     // knowing someone else's registered address is not enough to take their code.
@@ -50,10 +50,13 @@ export const claim = mutation({
       return {
         ok: true as const,
         code: alreadyClaimed.code,
+        codeType: alreadyClaimed.codeType,
         alreadyClaimed: true,
         creditAmount: event.creditAmount,
       };
     }
+
+    const requestedType = args.codeType?.trim() || undefined;
 
     // A code reserved for this email (via waitlist approval) takes priority;
     // otherwise take any unclaimed code that isn't reserved for someone else.
@@ -71,13 +74,23 @@ export const claim = mutation({
           .withIndex("by_event_claimedBy", (q) =>
             q.eq("eventId", event._id).eq("claimedBy", undefined)
           )
-          .filter((q) => q.eq(q.field("reservedFor"), undefined))
+          .filter((q) =>
+            requestedType !== undefined
+              ? q.and(
+                  q.eq(q.field("reservedFor"), undefined),
+                  q.eq(q.field("codeType"), requestedType)
+                )
+              : q.eq(q.field("reservedFor"), undefined)
+          )
           .first();
     const available = reserved ?? unclaimed;
     if (!available) {
       return {
         ok: false as const,
-        error: "All codes for this event have been claimed.",
+        error:
+          requestedType !== undefined
+            ? `All "${requestedType}" codes for this event have been claimed.`
+            : "All codes for this event have been claimed.",
       };
     }
 
@@ -89,6 +102,7 @@ export const claim = mutation({
     return {
       ok: true as const,
       code: available.code,
+      codeType: available.codeType,
       alreadyClaimed: false,
       creditAmount: event.creditAmount,
     };
