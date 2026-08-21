@@ -680,9 +680,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-4">
             <CodeBlocks
               codes={codes}
-              onRename={(from, to) =>
-                renameCodeType({ eventId: id, from, to })
-              }
+              onRename={async (from, to) => {
+                await renameCodeType({ eventId: id, from, to });
+                // Keep the selection (and the filtered list) on the block
+                // that was just renamed.
+                setBlockTarget((prev) =>
+                  prev === `existing:${from ?? ""}` ? `existing:${to}` : prev
+                );
+              }}
             />
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
               {hasBlocks ? (
