@@ -45,28 +45,27 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
-    // One row is enough to know whether anything is left to dispense —
-    // claimers who already have a code can still retrieve it regardless.
     // A code counts as available for the viewer when it is unclaimed and
     // either unreserved or reserved for the viewer's verified email, matching
-    // what claims.claim would actually hand out.
+    // what claims.claim would actually hand out. Distinct available types are
+    // gathered by streaming the unclaimed pool and stopping as soon as both
+    // possible types are seen (an event has at most two, enforced on upload),
+    // so the read-set stays small for large pools. An unnamed pool is
+    // represented as ""; two pools are always both named.
     const identity = await ctx.auth.getUserIdentity();
     const viewerEmail =
       identity?.emailVerified === true
         ? identity.email?.trim().toLowerCase()
         : undefined;
-    const unclaimed = await ctx.db
+    const availableTypes = new Set<string>();
+    for await (const code of ctx.db
       .query("codes")
       .withIndex("by_event_claimedBy", (q) =>
         q.eq("eventId", event._id).eq("claimedBy", undefined)
-      )
-      .collect();
-    // Distinct types among codes the viewer could actually receive. An
-    // unnamed pool is represented as ""; two pools are always both named.
-    const availableTypes = new Set<string>();
-    for (const code of unclaimed) {
+      )) {
       if (code.reservedFor === undefined || code.reservedFor === viewerEmail) {
         availableTypes.add(code.codeType ?? "");
+        if (availableTypes.size === 2) break;
       }
     }
     return {
