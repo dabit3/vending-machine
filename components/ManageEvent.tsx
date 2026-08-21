@@ -101,8 +101,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
-  const blockTypes = [...new Set((codes ?? []).map((c) => c.codeType ?? ""))]
-    .sort();
+  // Blocks are ordered by when each was first created, not alphabetically.
+  const blockTypes = [
+    ...new Set(
+      [...(codes ?? [])]
+        .sort((a, b) => a._creationTime - b._creationTime)
+        .map((c) => c.codeType ?? "")
+    ),
+  ];
   // Target values are namespaced ("existing:<type>" / "new") so a block
   // whose name matches a sentinel can't be confused with new-block creation.
   const targetOptions = [
@@ -825,17 +831,19 @@ function CodeBlocks({
   codes: Doc<"codes">[] | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
 }) {
+  // Map insertion order follows creation time, so blocks list in the order
+  // they were first created rather than alphabetically.
   const blocks = new Map<string, number>();
-  for (const c of codes ?? []) {
+  for (const c of [...(codes ?? [])].sort(
+    (a, b) => a._creationTime - b._creationTime
+  )) {
     const key = c.codeType ?? "";
     blocks.set(key, (blocks.get(key) ?? 0) + 1);
   }
   if (blocks.size === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {[...blocks.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([type, count]) => (
+      {[...blocks.entries()].map(([type, count]) => (
           <CodeBlockRow
             key={type || "__unnamed"}
             type={type}
