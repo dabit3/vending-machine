@@ -82,6 +82,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const rejectFlagged = useMutation(api.emails.rejectFlagged);
   const addCodes = useMutation(api.codes.add);
   const removeCode = useMutation(api.codes.remove);
+  const renameCodeType = useMutation(api.codes.renameType);
 
   const [emailInput, setEmailInput] = useState("");
   const [codeInput, setCodeInput] = useState("");
@@ -574,6 +575,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <CodeBlocks
+              codes={codes}
+              onRename={(from, to) =>
+                renameCodeType({ eventId: id, from, to })
+              }
+            />
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
               <Field>
                 <FieldLabel htmlFor="code-name">Code name</FieldLabel>
@@ -585,8 +592,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   className="text-sm"
                 />
                 <FieldDescription>
-                  Optional with a single code type — required to tell two code
-                  types apart. Applies to pasted and uploaded codes.
+                  Optional with a single code block — to add a second block,
+                  name both blocks so attendees can tell them apart. Applies
+                  to pasted and uploaded codes.
                 </FieldDescription>
               </Field>
               <Textarea
@@ -639,6 +647,123 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       </div>
 
       <EventAdminsCard eventId={id} />
+    </div>
+  );
+}
+
+function CodeBlocks({
+  codes,
+  onRename,
+}: {
+  codes: Doc<"codes">[] | undefined;
+  onRename: (from: string | undefined, to: string) => Promise<unknown>;
+}) {
+  const blocks = new Map<string, number>();
+  for (const c of codes ?? []) {
+    const key = c.codeType ?? "";
+    blocks.set(key, (blocks.get(key) ?? 0) + 1);
+  }
+  if (blocks.size === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      {[...blocks.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([type, count]) => (
+          <CodeBlockRow
+            key={type || "__unnamed"}
+            type={type}
+            count={count}
+            onRename={onRename}
+          />
+        ))}
+    </div>
+  );
+}
+
+function CodeBlockRow({
+  type,
+  count,
+  onRename,
+}: {
+  type: string;
+  count: number;
+  onRename: (from: string | undefined, to: string) => Promise<unknown>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(type);
+  const [busy, setBusy] = useState(false);
+
+  async function handleRename(e: React.FormEvent) {
+    e.preventDefault();
+    const to = name.trim();
+    if (!to || to === type) {
+      setEditing(false);
+      setName(type);
+      return;
+    }
+    setBusy(true);
+    try {
+      await onRename(type || undefined, to);
+      toast.success(
+        type ? `Renamed “${type}” to “${to}”` : `Named code block “${to}”`
+      );
+      setEditing(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to rename code block"
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5">
+      {editing ? (
+        <form onSubmit={handleRename} className="flex flex-1 items-center gap-2">
+          <Input
+            autoFocus
+            aria-label="Code block name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. $50 credits"
+            className="h-7 max-w-48 text-sm"
+          />
+          <Button type="submit" size="xs" variant="secondary" disabled={busy}>
+            {busy ? <Spinner data-icon="inline-start" /> : null}
+            Save
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            className="text-muted-foreground"
+            onClick={() => {
+              setEditing(false);
+              setName(type);
+            }}
+          >
+            Cancel
+          </Button>
+        </form>
+      ) : (
+        <>
+          <Badge variant={type ? "secondary" : "outline"}>
+            {type || "Unnamed"}
+          </Badge>
+          <span className="text-xs text-muted-dim tabular-nums">
+            {count} code{count === 1 ? "" : "s"}
+          </span>
+          <Button
+            size="xs"
+            variant="ghost"
+            className="ml-auto text-muted-foreground"
+            onClick={() => setEditing(true)}
+          >
+            {type ? "Rename" : "Name this block"}
+          </Button>
+        </>
+      )}
     </div>
   );
 }
