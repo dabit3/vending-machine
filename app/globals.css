@@ -4,57 +4,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Industrial Terminal": cool machine greys on a
+   white field, crisp 1px hairlines, and near-black ink for higher contrast.
+   No shadows — depth comes from surface contrast and flat borders. The
+   signal-green accent is reserved for the claim flow only. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
+  --surface: #f4f5f6;
+  --surface-hover: #edeff1;
+  --border: #e3e5e8;
+  --border-strong: #b8bcc2;
+  --muted: #eef0f2;
+  --muted-dim: #697077;
   --background: #ffffff;
-  --foreground: #22211e;
+  --foreground: #15181b;
   --card: #ffffff;
-  --card-foreground: #22211e;
+  --card-foreground: #15181b;
   --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --popover-foreground: #15181b;
+  --primary: #15181b;
+  --primary-foreground: #f7f8f9;
+  --secondary: #eef0f2;
+  --secondary-foreground: #15181b;
+  --muted-foreground: #4b5158;
+  --accent: #eef0f2;
+  --accent-foreground: #15181b;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --input: oklch(0 0 0 / 10%);
+  --brand: #00c853;
+  --brand-foreground: #04220f;
+  --ring: #1c1f22;
+  --selection: #dce0e4;
+  --selection-foreground: #15181b;
+  /* Flat construction: no blur shadows in either mode — depth is expressed
+     through hairline borders and surface contrast. */
+  --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
+  --radius: 0.15rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #15181b;
+  --sidebar-primary: #15181b;
+  --sidebar-primary-foreground: #f7f8f9;
+  --sidebar-accent: #eef0f2;
+  --sidebar-accent-foreground: #15181b;
+  --sidebar-border: #e3e5e8;
+  --sidebar-ring: #697077;
 }
 
 @theme inline {
@@ -114,13 +111,13 @@ body {
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+   the one signal-green thing on screen. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
 }
 
-/* Chrome paints autofilled fields yellow, which clashes with the paper
+/* Chrome paints autofilled fields yellow, which clashes with the machine
    palette. The background is set via an internal style that can't be
    overridden directly, but it *can* be transitioned — delaying it
    indefinitely keeps the field transparent while the ink stays themed. */
@@ -137,14 +134,15 @@ input:-webkit-autofill:focus {
   font-family: var(--font-mono), monospace;
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Tight machined dot grid backdrop for hero surfaces — registration marks
+   on a punched panel rather than a faint texture. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -169,7 +167,8 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow blink reserved for the one signal-green element in
+   view — an indicator LED rather than a breath. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -184,50 +183,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — the terminal proper: true near-black, cool machine greys in
+   the tints, and a slightly brighter signal green. Focus rings pick up a
+   subtle green tint, like a phosphor cursor. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #101211;
+  --surface-hover: #171a18;
+  --border: #232725;
+  --border-strong: #3c4240;
+  --muted: #1b1e1c;
+  --muted-dim: #767d78;
+  --background: #060807;
+  --foreground: #e6e9e7;
+  --card: #101211;
+  --card-foreground: #e6e9e7;
+  --popover: #171a18;
+  --popover-foreground: #e6e9e7;
+  --primary: #e6e9e7;
+  --primary-foreground: #060807;
+  --secondary: #262b28;
+  --secondary-foreground: #e6e9e7;
+  --muted-foreground: #a6aca8;
+  --accent: #262b28;
+  --accent-foreground: #e6e9e7;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #00e676;
+  --brand-foreground: #04220f;
+  --ring: #57c98a;
+  --selection: #1f3a2b;
+  --selection-foreground: #e6e9e7;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #101211;
+  --sidebar-foreground: #e6e9e7;
+  --sidebar-primary: #e6e9e7;
+  --sidebar-primary-foreground: #060807;
+  --sidebar-accent: #262b28;
+  --sidebar-accent-foreground: #e6e9e7;
+  --sidebar-border: #232725;
+  --sidebar-ring: #57c98a;
 }
 
 @layer base {

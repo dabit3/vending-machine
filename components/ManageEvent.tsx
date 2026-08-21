@@ -466,7 +466,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             ) : null}
           </div>
           {codes ? (
-            <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+            <div className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
               {claimedDisplay}
               <span className="text-base text-muted-dim"> / {codeCount}</span>
             </div>
@@ -1019,7 +1019,7 @@ function StatCard({ label, value }: { label: string; value?: number }) {
       {value === undefined ? (
         <Skeleton className="h-9 w-14 rounded-md" />
       ) : (
-        <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+        <span className="font-mono text-3xl font-semibold tracking-tight tabular-nums">
           {display}
         </span>
       )}
