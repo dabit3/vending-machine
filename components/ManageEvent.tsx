@@ -616,7 +616,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-1 flex-col gap-4">
+          <CardContent className="flex h-0 grow flex-col gap-4">
             <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
               <Textarea
                 aria-label="Email addresses to add"
@@ -1108,7 +1108,11 @@ function RowList({
     <ul
       className={cn(
         "divide-y divide-border overflow-y-auto border-y border-border",
-        fill ? "h-0 min-h-56 flex-1" : "max-h-72"
+        // grow + h-0 (not flex-1) so the list's flex basis is 0 rather than
+        // 0% — a percentage basis in an indefinite-height column falls back
+        // to content size, letting a long list grow the page instead of
+        // scrolling within the space left by the taller sibling card.
+        fill ? "h-0 min-h-56 grow" : "max-h-72"
       )}
     >
       {items.map((item) => (
