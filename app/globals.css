@@ -4,17 +4,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Poster": neo-brutalist. Near-ink borders drawn at
+   full strength, hard offset shadows instead of blur, an electric violet
+   brand, and a chartreuse highlight for selection and small accents. */
 :root {
   --surface: #f6f6f6;
   --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
+  --border: #34322d;
+  --border-strong: #22211e;
   --muted: #f1efe8;
   --muted-dim: #78716a;
   --background: #ffffff;
@@ -32,28 +29,29 @@
   --accent-foreground: #22211e;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #7c3aed;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --highlight: #d4ff00;
+  --highlight-foreground: #1a1a05;
+  --ring: #7c3aed;
+  --selection: #d4ff00;
+  --selection-foreground: #1a1a05;
+  /* Hard offset shadow: a solid 4px 4px block with no blur — the poster
+     shadow. Dark mode zeroes it out and relies on bright borders instead. */
+  --shadow-card: 4px 4px 0 0 #22211e;
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
+  --radius: 0.375rem;
   --sidebar: #ffffff;
   --sidebar-foreground: #22211e;
   --sidebar-primary: #22211e;
   --sidebar-primary-foreground: #faf9f5;
   --sidebar-accent: #f1efe8;
   --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
+  --sidebar-border: #34322d;
   --sidebar-ring: #78716a;
 }
 
@@ -73,6 +71,8 @@
   --font-heading: var(--font-geist-sans);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -113,8 +113,8 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Chartreuse selection: the acid secondary highlight — selecting text is one
+   of the loudest moments on the page. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -132,19 +132,26 @@ input:-webkit-autofill:focus {
   transition: background-color 9999999s ease-in-out 0s;
 }
 
-/* Micro-label: the recurring uppercase mono eyebrow used across the app. */
+/* Micro-label: the recurring uppercase mono eyebrow — a bold chip on a
+   muted pill. */
 @utility eyebrow {
   font-family: var(--font-mono), monospace;
   font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
+  background: var(--muted);
+  border-radius: calc(var(--radius) * 0.6);
+  padding: 2px 6px;
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Bold dot grid backdrop for hero surfaces. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--border), transparent 55%) 1.5px,
+    transparent 1.5px
+  );
+  background-size: 24px 24px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -169,7 +176,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one brand-violet element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -184,14 +191,13 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Poster" after dark: shadows can't read on black, so the
+   structure comes from bright, high-contrast borders instead. */
 .dark {
   --surface: #141416;
   --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
+  --border: #55555e;
+  --border-strong: #8b8b96;
   --muted: #212125;
   --muted-dim: #7a7772;
   --background: #0c0c0e;
@@ -209,11 +215,13 @@ input:-webkit-autofill:focus {
   --accent-foreground: #e8e6e1;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #8b5cf6;
   --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --highlight: #d4ff00;
+  --highlight-foreground: #1a1a05;
+  --ring: #a78bfa;
+  --selection: #d4ff00;
+  --selection-foreground: #1a1a05;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -226,13 +234,21 @@ input:-webkit-autofill:focus {
   --sidebar-primary-foreground: #0c0c0e;
   --sidebar-accent: #2b2b30;
   --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
+  --sidebar-border: #55555e;
   --sidebar-ring: #7a7772;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  /* Poster type: headings hit hard — heavy weight, tight tracking. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 800;
+    letter-spacing: -0.02em;
   }
   body {
     @apply bg-background text-foreground;
