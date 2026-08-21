@@ -35,7 +35,7 @@ export const add = mutation({
     }
     if (resultingTypes.size === 2 && resultingTypes.has("")) {
       throw new Error(
-        "Both code types need a name so attendees can tell them apart. Name the unnamed codes or use the same name."
+        "Both code blocks need a name so attendees can tell them apart. Name the existing block (next to its badge above the form), then add the new block."
       );
     }
     const existingSet = new Set(existing.map((c) => c.code));
@@ -59,6 +59,36 @@ export const add = mutation({
       });
     }
     return { added, skipped };
+  },
+});
+
+export const renameType = mutation({
+  args: {
+    eventId: v.id("events"),
+    from: v.optional(v.string()),
+    to: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const to = args.to.trim();
+    if (!to) {
+      throw new Error("Enter a name for the code block.");
+    }
+    const from = args.from?.trim() || undefined;
+    const targets = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .filter((q) => q.eq(q.field("codeType"), from))
+      .collect();
+    for (const code of targets) {
+      await ctx.db.patch(code._id, { codeType: to });
+    }
+    const event = await ctx.db.get(args.eventId);
+    const types = new Set(event?.codeTypes ?? []);
+    types.delete(from ?? "");
+    if (targets.length > 0) types.add(to);
+    await ctx.db.patch(args.eventId, { codeTypes: [...types].sort() });
+    return { renamed: targets.length };
   },
 });
 
