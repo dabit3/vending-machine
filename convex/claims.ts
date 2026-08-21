@@ -30,6 +30,23 @@ export const eligibility = query({
     if (!allowed) {
       return { eligible: false as const, reason: "not_listed" as const, email };
     }
+    const claimed = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", event._id).eq("claimedBy", email)
+      )
+      .unique();
+    if (claimed) {
+      return {
+        eligible: true as const,
+        email,
+        claimed: {
+          code: claimed.code,
+          codeType: claimed.codeType,
+          creditAmount: event.creditAmount,
+        },
+      };
+    }
     return { eligible: true as const, email };
   },
 });

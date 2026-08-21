@@ -170,6 +170,17 @@ export default function ClaimPage({ slug }: { slug: string }) {
               copied={copied}
               onCopy={copyCode}
             />
+          ) : eligibility?.eligible && eligibility.claimed ? (
+            <Receipt
+              eventName={event.name}
+              instructions={event.claimInstructions}
+              creditAmount={eligibility.claimed.creditAmount}
+              code={eligibility.claimed.code}
+              codeType={eligibility.claimed.codeType}
+              alreadyClaimed
+              copied={copied}
+              onCopy={copyCode}
+            />
           ) : (
             <div className="perspective-distant">
               <div
