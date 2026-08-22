@@ -4,57 +4,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode — "Instrument, daylight": a cool paper-white field with a pure
+   grey axis (no warm cast), precise hairline borders, and ink text. The one
+   luminous thing on screen is the phosphor-green accent, held darker here so
+   it reads as printed signal ink rather than glow. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
+  --surface: #f5f6f5;
+  --surface-hover: #eff1ef;
+  --border: #e4e6e4;
+  --border-strong: #c9cdc9;
+  --muted: #eef0ee;
+  --muted-dim: #737a75;
+  --background: #fbfcfb;
+  --foreground: #171a18;
+  --card: #fbfcfb;
+  --card-foreground: #171a18;
   --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --popover-foreground: #171a18;
+  --primary: #171a18;
+  --primary-foreground: #f7f8f7;
+  --secondary: #eef0ee;
+  --secondary-foreground: #171a18;
+  --muted-foreground: #4d534f;
+  --accent: #eef0ee;
+  --accent-foreground: #171a18;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #0c7a3e;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --ring: #3c423e;
+  --selection: #d4efdd;
+  --selection-foreground: #10251a;
+  /* Instrument panels are flat: depth comes from hairline borders and
+     surface steps, never shadow. */
+  --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --radius: 0.25rem;
+  --sidebar: #fbfcfb;
+  --sidebar-foreground: #171a18;
+  --sidebar-primary: #171a18;
+  --sidebar-primary-foreground: #f7f8f7;
+  --sidebar-accent: #eef0ee;
+  --sidebar-accent-foreground: #171a18;
+  --sidebar-border: #e4e6e4;
+  --sidebar-ring: #737a75;
 }
 
 @theme inline {
@@ -111,10 +108,12 @@
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
+  /* Instrument numerals: every digit sits on the same grid, everywhere. */
+  font-variant-numeric: tabular-nums;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection carries a faint phosphor tint — the accent's only ambient
+   appearance outside the claim flow. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -147,6 +146,15 @@ input:-webkit-autofill:focus {
   background-size: 28px 28px;
 }
 
+/* Restrained 1px grid lines — the instrument-panel backdrop. Hairlines only:
+   the color already sits at border strength, so the mask does the fading. */
+@utility bg-gridlines {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
 @utility receipt-edge {
   mask-image: radial-gradient(circle at 8px 100%, transparent 5px, black 5.5px);
@@ -169,7 +177,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one luminous element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -184,50 +192,51 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Instrument, night": deep-ink near-black with a barely-cool
+   cast, hairline borders one step above the field, and a single luminous
+   phosphor-green accent. Text is a cool off-white held to ~15:1 so it reads
+   as etched lettering, not glare. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #0d1110;
+  --surface-hover: #121716;
+  --border: #1d2321;
+  --border-strong: #2e3634;
+  --muted: #161c1a;
+  --muted-dim: #6f7a75;
+  --background: #070909;
+  --foreground: #dfe4e1;
+  --card: #0d1110;
+  --card-foreground: #dfe4e1;
+  --popover: #121716;
+  --popover-foreground: #dfe4e1;
+  --primary: #dfe4e1;
+  --primary-foreground: #070909;
+  --secondary: #1b2220;
+  --secondary-foreground: #dfe4e1;
+  --muted-foreground: #9ba59f;
+  --accent: #1b2220;
+  --accent-foreground: #dfe4e1;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #3dffa0;
+  --brand-foreground: #04160c;
+  --ring: #57cf8f;
+  --selection: #12351f;
+  --selection-foreground: #c8ffe0;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #0d1110;
+  --sidebar-foreground: #dfe4e1;
+  --sidebar-primary: #dfe4e1;
+  --sidebar-primary-foreground: #070909;
+  --sidebar-accent: #1b2220;
+  --sidebar-accent-foreground: #dfe4e1;
+  --sidebar-border: #1d2321;
+  --sidebar-ring: #6f7a75;
 }
 
 @layer base {

@@ -8,7 +8,7 @@ export default function HeaderBar({
   children: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-40 bg-background/30 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-border/60 bg-background/30 backdrop-blur-md">
       {children}
     </header>
   );
