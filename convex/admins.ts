@@ -30,6 +30,24 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 }
 
 // Global admins pass for any event; otherwise the caller's email must be on
+// the event's admin list.
+export async function isEventAdmin(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">
+) {
+  const { email, isAdmin } = await adminEmailStatus(ctx);
+  if (isAdmin) return true;
+  if (!email) return false;
+  const match = await ctx.db
+    .query("eventAdmins")
+    .withIndex("by_event_email", (q) =>
+      q.eq("eventId", eventId).eq("email", email)
+    )
+    .unique();
+  return match !== null;
+}
+
+// Global admins pass for any event; otherwise the caller's email must be on
 // the event's admin list. Returns the caller's email.
 export async function requireEventAdmin(
   ctx: QueryCtx | MutationCtx,
@@ -38,13 +56,9 @@ export async function requireEventAdmin(
   const { email, isAdmin } = await adminEmailStatus(ctx);
   if (isAdmin) return email;
   if (!email) throw new Error("Not authenticated");
-  const match = await ctx.db
-    .query("eventAdmins")
-    .withIndex("by_event_email", (q) =>
-      q.eq("eventId", eventId).eq("email", email)
-    )
-    .unique();
-  if (!match) throw new Error("Not an admin for this event");
+  if (!(await isEventAdmin(ctx, eventId))) {
+    throw new Error("Not an admin for this event");
+  }
   return email;
 }
 
