@@ -14,7 +14,7 @@ export default function SiteHeader() {
           className="group flex min-w-0 items-center gap-2.5 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
         >
           <BrandMark className="size-5 shrink-0 transition-transform duration-300 group-hover:-rotate-6" />
-          <span className="max-w-36 truncate text-sm font-medium tracking-tight text-foreground transition-colors group-hover:text-muted-foreground sm:max-w-none">
+          <span className="max-w-36 truncate font-heading text-base font-medium tracking-tight text-foreground transition-colors group-hover:text-muted-foreground sm:max-w-none">
             {getAppName()}
           </span>
         </Link>

@@ -447,7 +447,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           All events
         </Button>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
+          <h1 className="font-heading text-3xl font-medium tracking-[-0.01em]">
             {event.name}
           </h1>
           <div className="flex flex-wrap items-center gap-2">
@@ -507,7 +507,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             ) : null}
           </div>
           {codes ? (
-            <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+            <div className="font-heading text-3xl font-medium tracking-tight tabular-nums">
               {claimedDisplay}
               <span className="text-base text-muted-dim"> / {codeCount}</span>
             </div>
@@ -1179,7 +1179,7 @@ function StatCard({ label, value }: { label: string; value?: number }) {
       {value === undefined ? (
         <Skeleton className="h-9 w-14 rounded-md" />
       ) : (
-        <span className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
+        <span className="font-heading text-3xl font-medium tracking-tight tabular-nums">
           {display}
         </span>
       )}
