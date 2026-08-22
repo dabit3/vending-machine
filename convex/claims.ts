@@ -1,6 +1,9 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireEventAdmin } from "./admins";
+import { logAudit } from "./auditLog";
 import { blockValue } from "./blockValues";
+import { dropTypeIfEmpty } from "./codes";
 
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
@@ -76,6 +79,41 @@ export const markInstructionsRead = mutation({
       .unique();
     if (!allowed || allowed.instructionsViewedAt !== undefined) return;
     await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });
+  },
+});
+
+// Admin action: lets a participant claim again after an issue with their
+// dispensed code. Deletes the code(s) they already claimed — the code may be
+// broken or compromised, so it must not return to the pool — which clears the
+// one-claim-per-email check in `claim`.
+export const allowReclaim = mutation({
+  args: { eventId: v.id("events"), email: v.string() },
+  handler: async (ctx, args) => {
+    const actorEmail = await requireEventAdmin(ctx, args.eventId);
+    const email = args.email.trim().toLowerCase();
+    const claimed = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", args.eventId).eq("claimedBy", email)
+      )
+      .collect();
+    if (claimed.length === 0) {
+      throw new Error(`${email} has not claimed a code for this event.`);
+    }
+    for (const code of claimed) {
+      await ctx.db.delete(code._id);
+      await logAudit(ctx, {
+        eventId: args.eventId,
+        action: "allow_reclaim",
+        actorEmail: actorEmail ?? undefined,
+        subjectEmail: email,
+        details: `Deleted claimed code ${code.code} so ${email} can claim again`,
+      });
+    }
+    for (const codeType of new Set(claimed.map((c) => c.codeType))) {
+      await dropTypeIfEmpty(ctx, args.eventId, codeType);
+    }
+    return { removed: claimed.length };
   },
 });
 

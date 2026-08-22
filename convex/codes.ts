@@ -1,7 +1,35 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
 import { blockValue } from "./blockValues";
+
+// Drop the type from the event's denormalized list when its last code is
+// removed.
+export async function dropTypeIfEmpty(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  codeType: string | undefined
+) {
+  const remaining = await ctx.db
+    .query("codes")
+    .withIndex("by_event_codeType_claimedBy", (q) =>
+      q.eq("eventId", eventId).eq("codeType", codeType)
+    )
+    .first();
+  if (!remaining) {
+    const event = await ctx.db.get(eventId);
+    const typeKey = codeType ?? "";
+    if (event?.codeTypes?.includes(typeKey)) {
+      const values = { ...(event.codeTypeValues ?? {}) };
+      delete values[typeKey];
+      await ctx.db.patch(eventId, {
+        codeTypes: event.codeTypes.filter((t) => t !== typeKey),
+        codeTypeValues: values,
+      });
+    }
+  }
+}
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -195,25 +223,6 @@ export const remove = mutation({
       );
     }
     await ctx.db.delete(args.id);
-    // Drop the type from the event's denormalized list when its last code is
-    // removed.
-    const remaining = await ctx.db
-      .query("codes")
-      .withIndex("by_event_codeType_claimedBy", (q) =>
-        q.eq("eventId", code.eventId).eq("codeType", code.codeType)
-      )
-      .first();
-    if (!remaining) {
-      const event = await ctx.db.get(code.eventId);
-      const typeKey = code.codeType ?? "";
-      if (event?.codeTypes?.includes(typeKey)) {
-        const values = { ...(event.codeTypeValues ?? {}) };
-        delete values[typeKey];
-        await ctx.db.patch(code.eventId, {
-          codeTypes: event.codeTypes.filter((t) => t !== typeKey),
-          codeTypeValues: values,
-        });
-      }
-    }
+    await dropTypeIfEmpty(ctx, code.eventId, code.codeType);
   },
 });

@@ -13,6 +13,7 @@ import {
   Inbox,
   Plus,
   QrCode,
+  RotateCcw,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -82,6 +83,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const approveFlagged = useMutation(api.emails.approveFlagged);
   const rejectFlagged = useMutation(api.emails.rejectFlagged);
   const addCodes = useMutation(api.codes.add);
+  const allowReclaim = useMutation(api.claims.allowReclaim);
   const removeCode = useMutation(api.codes.remove);
   const renameCodeType = useMutation(api.codes.renameType);
   const setTypeValue = useMutation(api.codes.setTypeValue);
@@ -94,6 +96,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [reclaimTarget, setReclaimTarget] = useState<{
+    email: string;
+    codes: string[];
+  } | null>(null);
+
+  // Emails that already claimed, mapped to their claimed code(s), so the
+  // eligible-emails list can offer an "allow re-claim" action per address.
+  const claimedCodesByEmail = new Map<string, string[]>();
+  for (const c of codes ?? []) {
+    if (!c.claimedBy) continue;
+    claimedCodesByEmail.set(c.claimedBy, [
+      ...(claimedCodesByEmail.get(c.claimedBy) ?? []),
+      c.code,
+    ]);
+  }
 
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
@@ -657,6 +674,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               items={emails?.map((e) => ({
                 key: e._id,
                 label: e.email,
+                onReclaim: claimedCodesByEmail.has(e.email)
+                  ? () =>
+                      setReclaimTarget({
+                        email: e.email,
+                        codes: claimedCodesByEmail.get(e.email) ?? [],
+                      })
+                  : undefined,
                 onRemove: () =>
                   removeEmail({ id: e._id }).catch(() =>
                     toast.error("Failed to remove email")
@@ -664,6 +688,52 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               }))}
               emptyText="No emails yet."
             />
+            <AlertDialog
+              open={reclaimTarget !== null}
+              onOpenChange={(open) => {
+                if (!open) setReclaimTarget(null);
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Let {reclaimTarget?.email} claim again?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This deletes the code they already claimed (
+                    {reclaimTarget?.codes.join(", ")}) so they can claim a
+                    fresh one. Use this when the dispensed code had an issue —
+                    the old code will not return to the pool.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      const target = reclaimTarget;
+                      setReclaimTarget(null);
+                      if (!target) return;
+                      allowReclaim({ eventId: id, email: target.email })
+                        .then(() =>
+                          toast.success(
+                            `${target.email} can now claim a new code`
+                          )
+                        )
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to allow re-claim"
+                          )
+                        );
+                    }}
+                  >
+                    <RotateCcw data-icon="inline-start" />
+                    Allow re-claim
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
 
@@ -1150,6 +1220,7 @@ function RowList({
     label: string;
     tag?: string;
     claimedBy?: string;
+    onReclaim?: () => void;
     onRemove?: () => void;
   }[];
   emptyText: string;
@@ -1207,25 +1278,39 @@ function RowList({
               </Badge>
             ) : null}
           </span>
-          {item.claimedBy ? (
-            <Badge
-              variant="secondary"
-              className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
-            >
-              <Check data-icon="inline-start" />
-              {item.claimedBy}
-            </Badge>
-          ) : item.onRemove ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${item.label}`}
-              onClick={item.onRemove}
-              className="shrink-0 text-muted-foreground"
-            >
-              <X />
-            </Button>
-          ) : null}
+          <span className="flex shrink-0 items-center gap-1">
+            {item.onReclaim ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Allow ${item.label} to claim again`}
+                title="Allow re-claim"
+                onClick={item.onReclaim}
+                className="shrink-0 text-muted-foreground"
+              >
+                <RotateCcw />
+              </Button>
+            ) : null}
+            {item.claimedBy ? (
+              <Badge
+                variant="secondary"
+                className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
+              >
+                <Check data-icon="inline-start" />
+                {item.claimedBy}
+              </Badge>
+            ) : item.onRemove ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Remove ${item.label}`}
+                onClick={item.onRemove}
+                className="shrink-0 text-muted-foreground"
+              >
+                <X />
+              </Button>
+            ) : null}
+          </span>
         </li>
       ))}
     </ul>
