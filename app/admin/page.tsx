@@ -122,7 +122,7 @@ export default function AdminDashboard() {
       <div className="mb-10 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div>
           <p className="eyebrow flex items-center gap-2 text-muted-foreground">
-            <span className="inline-block size-1.5 rounded-full bg-border-strong" />
+            <span className="animate-brand-pulse inline-block size-1.5 rounded-full bg-brand motion-reduce:animate-none" />
             Control room
           </p>
           <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
       ) : (
         <>
           <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
+            <h2 className="eyebrow text-muted-foreground">
               Active events
             </h2>
             <span className="font-mono text-xs text-muted-dim tabular-nums">
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
           {past.length > 0 ? (
             <>
               <div className="mt-12 flex items-baseline justify-between">
-                <h2 className="text-sm font-medium text-muted-foreground">
+                <h2 className="eyebrow text-muted-foreground">
                   Past events
                 </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">

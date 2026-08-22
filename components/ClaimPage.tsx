@@ -191,7 +191,7 @@ export default function ClaimPage({
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
+          className="pointer-events-none absolute inset-0 bg-gridlines [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
         />
         <div className="relative w-full max-w-md">
           {previewMode ? (
