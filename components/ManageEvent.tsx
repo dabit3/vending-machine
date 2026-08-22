@@ -87,6 +87,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const allowReclaim = useMutation(api.claims.allowReclaim);
   const removeCode = useMutation(api.codes.remove);
   const renameCodeType = useMutation(api.codes.renameType);
+  const removeCodeType = useMutation(api.codes.removeType);
   const setTypeValue = useMutation(api.codes.setTypeValue);
 
   const [emailInput, setEmailInput] = useState("");
@@ -786,6 +787,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   prev === `existing:${from ?? ""}` ? `existing:${to}` : prev
                 );
               }}
+              canDelete={(event.codeTypes ?? []).length === 2}
+              onDelete={async (codeType) => {
+                const res = await removeCodeType({ eventId: id, codeType });
+                setBlockTarget((prev) =>
+                  prev === `existing:${codeType ?? ""}` ? null : prev
+                );
+                return res;
+              }}
             />
             <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
               {hasBlocks ? (
@@ -929,6 +938,8 @@ function CodeBlocks({
   values,
   onRename,
   onSetValue,
+  canDelete,
+  onDelete,
 }: {
   codes: Doc<"codes">[] | undefined;
   values: Record<string, string> | undefined;
@@ -937,6 +948,10 @@ function CodeBlocks({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
+  canDelete: boolean;
+  onDelete: (
+    codeType: string | undefined
+  ) => Promise<{ removed: number; kept: number }>;
 }) {
   // Map insertion order follows creation time, so blocks list in the order
   // they were first created rather than alphabetically.
@@ -958,6 +973,8 @@ function CodeBlocks({
             value={values?.[type]}
             onRename={onRename}
             onSetValue={onSetValue}
+            canDelete={canDelete}
+            onDelete={onDelete}
           />
         ))}
     </div>
@@ -970,6 +987,8 @@ function CodeBlockRow({
   value,
   onRename,
   onSetValue,
+  canDelete,
+  onDelete,
 }: {
   type: string;
   count: number;
@@ -979,6 +998,10 @@ function CodeBlockRow({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
+  canDelete: boolean;
+  onDelete: (
+    codeType: string | undefined
+  ) => Promise<{ removed: number; kept: number }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type);
@@ -1083,6 +1106,56 @@ function CodeBlockRow({
           >
             Edit
           </Button>
+          {canDelete ? (
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className="shrink-0 text-muted-foreground"
+                    aria-label={`Delete block ${type || "Unnamed"}`}
+                  />
+                }
+              >
+                <Trash2 />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes the block and all of its unclaimed codes.
+                    Codes already dispensed are kept, so attendees keep their
+                    claim status and can still see their code.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      onDelete(type || undefined)
+                        .then(({ removed, kept }) =>
+                          toast.success(
+                            `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
+                          )
+                        )
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to delete code block"
+                          )
+                        );
+                    }}
+                  >
+                    Delete block
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : null}
         </>
       )}
     </div>

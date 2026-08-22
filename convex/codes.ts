@@ -2,6 +2,7 @@ import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
+import { logAudit } from "./auditLog";
 import { blockValue } from "./blockValues";
 
 // Drop the type from the event's denormalized list when its last code is
@@ -172,6 +173,59 @@ export const renameType = mutation({
     delete values[fromKey];
     await ctx.db.patch(args.eventId, { codeTypes, codeTypeValues: values });
     return { renamed: targets.length };
+  },
+});
+
+// Deletes an entire code block: its unclaimed codes plus the block's name
+// on the event. Claimed codes are kept so attendees keep their claim status
+// and receipts; the block's stored value also stays so those receipts keep
+// showing it. Only allowed while the event has two blocks, so the claim page
+// always has at least one block left.
+export const removeType = mutation({
+  args: { eventId: v.id("events"), codeType: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const actorEmail = await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+    if ((event.codeTypes ?? []).length !== 2) {
+      throw new Error(
+        "A code block can only be deleted while the event has two blocks."
+      );
+    }
+    const codeType = args.codeType?.trim() || undefined;
+    const typeKey = codeType ?? "";
+    if (!event.codeTypes?.includes(typeKey)) {
+      throw new Error("This event has no such code block.");
+    }
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event_codeType_claimedBy", (q) =>
+        q.eq("eventId", args.eventId).eq("codeType", codeType)
+      )
+      .collect();
+    let removed = 0;
+    let kept = 0;
+    for (const code of codes) {
+      if (code.claimedBy) {
+        kept++;
+        continue;
+      }
+      await ctx.db.delete(code._id);
+      removed++;
+    }
+    const values = { ...(event.codeTypeValues ?? {}) };
+    if (kept === 0) delete values[typeKey];
+    await ctx.db.patch(args.eventId, {
+      codeTypes: event.codeTypes.filter((t) => t !== typeKey),
+      codeTypeValues: values,
+    });
+    await logAudit(ctx, {
+      eventId: args.eventId,
+      action: "code_block_deleted",
+      actorEmail: actorEmail ?? undefined,
+      details: `Deleted block "${typeKey}": ${removed} unclaimed code(s) removed, ${kept} claimed code(s) kept`,
+    });
+    return { removed, kept };
   },
 });
 
