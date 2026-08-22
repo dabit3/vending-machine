@@ -53,7 +53,7 @@ function EventRow({
           {String(index + 1).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-normal tracking-tight sm:text-2xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -126,7 +126,7 @@ export default function Home() {
                 No. 01
               </span>
             </div>
-            <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-10 max-w-3xl font-heading text-6xl leading-[1.02] font-medium tracking-[-0.015em] text-balance motion-reduce:animate-none sm:text-8xl">
+            <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-10 max-w-3xl font-heading text-6xl leading-[1.02] font-normal tracking-[-0.015em] text-balance motion-reduce:animate-none sm:text-8xl">
               Claim your <em className="italic">credits</em>.
             </h1>
             <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-8 max-w-md font-heading text-lg leading-relaxed text-muted-foreground motion-reduce:animate-none">

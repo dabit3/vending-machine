@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Source_Serif_4 } from "next/font/google";
+import { Manrope, Geist_Mono, Libre_Caslon_Text } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -7,8 +7,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { getAppName } from "@/lib/app-name";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
 });
 
@@ -19,9 +19,10 @@ const geistMono = Geist_Mono({
 
 // Editorial serif for headings and display type; the sans stays for body
 // and UI chrome.
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
+const libreCaslon = Libre_Caslon_Text({
+  variable: "--font-libre-caslon",
   subsets: ["latin"],
+  weight: ["400", "700"],
   style: ["normal", "italic"],
 });
 
@@ -37,7 +38,7 @@ const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] 
     colorPrimary: "#8a3b2e",
     colorPrimaryForeground: "#ffffff",
     borderRadius: "0.625rem",
-    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    fontFamily: "var(--font-manrope), system-ui, sans-serif",
   },
   options: {
     unsafe_disableDevelopmentModeWarnings: true,
@@ -57,7 +58,7 @@ export default function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} ${sourceSerif.variable} h-full overscroll-none antialiased`}
+        className={`${manrope.variable} ${geistMono.variable} ${libreCaslon.variable} h-full overscroll-none antialiased`}
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col overscroll-none">

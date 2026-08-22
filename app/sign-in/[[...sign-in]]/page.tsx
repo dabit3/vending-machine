@@ -16,7 +16,7 @@ export default function SignInPage() {
         />
         <div className="relative flex flex-col items-center gap-3 text-center">
           <p className="eyebrow text-muted-foreground">Operator access</p>
-          <h1 className="font-heading text-3xl font-medium tracking-[-0.01em]">
+          <h1 className="font-heading text-3xl font-normal tracking-[-0.01em]">
             Sign in to the control room
           </h1>
         </div>
