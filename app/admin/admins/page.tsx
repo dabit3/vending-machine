@@ -88,7 +88,7 @@ export default function AdminsPage() {
           <span className="inline-block size-1.5 rounded-full bg-border-strong" />
           Access control
         </p>
-        <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+        <h1 className="mt-3 font-heading text-3xl font-medium tracking-[-0.01em]">
           Admins
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">

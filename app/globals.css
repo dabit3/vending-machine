@@ -70,11 +70,11 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-jetbrains-mono);
+  /* Headings use Sora — a rounded geometric face that stays calm at
+     lighter weights and gentle negative tracking. */
+  --font-heading: var(--font-sora);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
