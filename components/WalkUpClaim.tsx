@@ -115,7 +115,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
           <ArrowLeft data-icon="inline-start" />
           Manage event
         </Button>
-        <h1 className="mt-3 font-heading text-3xl font-medium tracking-[-0.01em]">
+        <h1 className="mt-3 font-heading text-3xl font-normal tracking-[-0.01em]">
           {event.name}
         </h1>
       </div>
@@ -135,7 +135,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
               <span className="eyebrow text-muted-foreground">
                 Walk-up claim
               </span>
-              <CardTitle className="font-heading text-2xl font-medium tracking-[-0.01em]">
+              <CardTitle className="font-heading text-2xl font-normal tracking-[-0.01em]">
                 Add an attendee
               </CardTitle>
               <CardDescription className="text-sm leading-relaxed">
@@ -186,7 +186,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
               <span className="eyebrow text-muted-foreground">
                 Scan to claim
               </span>
-              <CardTitle className="font-heading text-2xl font-medium tracking-[-0.01em] text-balance">
+              <CardTitle className="font-heading text-2xl font-normal tracking-[-0.01em] text-balance">
                 {event.name}
               </CardTitle>
               {lastAdded ? (

@@ -69,7 +69,7 @@ function AdminEventRow({
           {String(index + 1).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="font-heading font-medium tracking-tight">
+          <div className="font-heading font-normal tracking-tight">
             {event.name}
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
             <span className="inline-block size-1.5 rounded-full bg-border-strong" />
             Control room
           </p>
-          <h1 className="mt-3 font-heading text-4xl font-medium tracking-[-0.01em]">
+          <h1 className="mt-3 font-heading text-4xl font-normal tracking-[-0.01em]">
             Events
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">

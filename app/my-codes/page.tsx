@@ -111,7 +111,7 @@ export default function MyCodesPage() {
       <main id="main-content" className="flex-1">
         <section className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 sm:py-14">
           <div className="mb-10">
-            <h1 className="font-heading text-3xl font-medium tracking-[-0.01em]">
+            <h1 className="font-heading text-3xl font-normal tracking-[-0.01em]">
               My codes
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">

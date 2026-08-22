@@ -253,7 +253,7 @@ export default function ClaimPage({
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-medium tracking-[-0.01em] text-balance">
+                  <CardTitle className="font-heading text-3xl font-normal tracking-[-0.01em] text-balance">
                     {event.name}
                   </CardTitle>
                   <Button
@@ -572,7 +572,7 @@ function QrPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <span className="eyebrow text-muted-foreground">Scan to claim</span>
-            <CardTitle className="font-heading text-2xl font-medium tracking-[-0.01em] text-balance">
+            <CardTitle className="font-heading text-2xl font-normal tracking-[-0.01em] text-balance">
               {eventName}
             </CardTitle>
           </div>
@@ -647,7 +647,7 @@ function Receipt({
         </div>
 
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
+          <h1 className="font-heading text-2xl font-normal tracking-tight text-balance">
             {eventName}
           </h1>
           {creditAmount ? (
