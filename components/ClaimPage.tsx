@@ -589,7 +589,7 @@ function QrPanel({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col items-center justify-center gap-5 py-(--card-spacing)">
-        <div className="rounded-lg border border-border bg-background p-4 text-foreground">
+        <div className="rounded-2xl border border-border bg-background p-4 text-foreground">
           {url ? (
             <QRCodeSVG
               value={url}
