@@ -1,14 +1,16 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { requireEventAdmin } from "./admins";
+import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 import { blockValue } from "./blockValues";
 import { dropTypeIfEmpty } from "./codes";
 
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
+// With `preview`, event admins see the flow as a fresh eligible attendee
+// (no claim on record, instructions unread); non-admins get normal behavior.
 export const eligibility = query({
-  args: { slug: v.string() },
+  args: { slug: v.string(), preview: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -31,6 +33,14 @@ export const eligibility = query({
         q.eq("eventId", event._id).eq("email", email)
       )
       .unique();
+    if (args.preview && (await isEventAdmin(ctx, event._id))) {
+      return {
+        eligible: true as const,
+        email,
+        instructionsViewed: false,
+        preview: true as const,
+      };
+    }
     if (!allowed) {
       return { eligible: false as const, reason: "not_listed" as const, email };
     }

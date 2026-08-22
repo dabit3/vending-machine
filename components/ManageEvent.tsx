@@ -10,6 +10,7 @@ import {
   Ban,
   Check,
   Download,
+  Eye,
   Inbox,
   Plus,
   QrCode,
@@ -456,6 +457,20 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             >
               <QrCode data-icon="inline-start" />
               Walk-up claim
+            </Button>
+            <Button
+              variant="outline"
+              render={
+                <Link
+                  href={`/${event.slug}?preview=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+              nativeButton={false}
+            >
+              <Eye data-icon="inline-start" />
+              Preview claim
             </Button>
           <Button
             variant="outline"

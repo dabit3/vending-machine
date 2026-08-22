@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Check,
   Copy,
+  Eye,
   LogIn,
   OctagonX,
   QrCode,
@@ -78,14 +79,20 @@ function subscribeNoop() {
   return () => {};
 }
 
-export default function ClaimPage({ slug }: { slug: string }) {
+export default function ClaimPage({
+  slug,
+  preview = false,
+}: {
+  slug: string;
+  preview?: boolean;
+}) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
   const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
   const eligibility = useQuery(
     api.claims.eligibility,
-    isAuthenticated ? { slug } : "skip",
+    isAuthenticated ? { slug, preview: preview || undefined } : "skip",
   );
   const { user } = useUser();
   const [submitting, setSubmitting] = useState(false);
@@ -94,6 +101,7 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const [showQr, setShowQr] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
+  const [previewRead, setPreviewRead] = useState(false);
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
@@ -102,15 +110,24 @@ export default function ClaimPage({ slug }: { slug: string }) {
 
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
 
+  // Admin preview simulates a fresh eligible attendee entirely client-side:
+  // nothing is written, and no code leaves the pool.
+  const previewMode =
+    preview && eligibility?.eligible === true && "preview" in eligibility;
+
   // Events with redemption instructions require one confirmed read (stored
   // per attendee) before the claim UI unlocks; return visits skip the gate.
   const mustReadInstructions =
     !!event?.claimInstructions &&
     eligibility?.eligible === true &&
-    !eligibility.instructionsViewed;
+    (previewMode ? !previewRead : !eligibility.instructionsViewed);
 
   async function handleConfirmRead() {
     setReadOpen(false);
+    if (previewMode) {
+      setPreviewRead(true);
+      return;
+    }
     try {
       await markInstructionsRead({ slug });
     } catch {
@@ -124,6 +141,19 @@ export default function ClaimPage({ slug }: { slug: string }) {
   const mustChoose = (event?.codeTypes.length ?? 0) > 1;
 
   async function handleClaim() {
+    if (previewMode && event) {
+      const type =
+        (mustChoose && selectedType ? selectedType : event.codeTypes[0]) ||
+        undefined;
+      setResult({
+        ok: true,
+        code: "PREVIEW-CODE",
+        codeType: type,
+        alreadyClaimed: false,
+        creditAmount: event.codeTypeValues?.[type ?? ""] ?? event.creditAmount,
+      });
+      return;
+    }
     setSubmitting(true);
     setResult(null);
     try {
@@ -164,6 +194,15 @@ export default function ClaimPage({ slug }: { slug: string }) {
           className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
         />
         <div className="relative w-full max-w-md">
+          {previewMode ? (
+            <Alert className="mb-4">
+              <Eye />
+              <AlertTitle>
+                Admin preview — you&apos;re seeing this as an eligible
+                attendee. No code is dispensed.
+              </AlertTitle>
+            </Alert>
+          ) : null}
           {event === undefined ? (
             <Skeleton className="h-80 rounded-xl" />
           ) : event === null ? (
