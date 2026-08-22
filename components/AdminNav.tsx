@@ -39,7 +39,7 @@ export default function AdminNav() {
             href={link.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:px-3",
+              "rounded-full px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:px-3",
               active
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -52,7 +52,7 @@ export default function AdminNav() {
       {/* Sits where the Admins link will land, so the nav doesn't widen
           (and push the user button) once `access` resolves. */}
       {isAuthenticated && access === undefined ? (
-        <Skeleton className="h-8 w-[4.5rem] rounded-md" />
+        <Skeleton className="h-8 w-[4.5rem] rounded-full" />
       ) : null}
     </nav>
   );

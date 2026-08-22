@@ -72,7 +72,7 @@ function EventRow({
       <Link
         href={`/${event.slug}`}
         className={cn(
-          "group flex items-center gap-6 px-2 py-7 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-4",
+          "group flex items-center gap-6 rounded-2xl px-3 py-7 transition-all hover:bg-surface hover:shadow-(--shadow-card) focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-5",
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
@@ -183,7 +183,7 @@ export default function Home() {
               by project swaps it cleanly on theme change while the copy stays
               mounted. The scene's mouse interactivity listens on window, so
               the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131317] sm:h-[486px]">
             {heroProjectId ? (
               <div className="absolute inset-0" aria-hidden>
                 {/* Dev fetches fresh scene data on every load; deploys pin
@@ -199,10 +199,14 @@ export default function Home() {
                 />
               </div>
             ) : null}
-            {/* Soft scrim keeps the headline legible over the scenes; tune
-                or remove once the look settles. */}
+            {/* Soft scrim keeps the headline legible over the scenes; a
+                whisper of the pastel gradient warms the wash. */}
             <div
               className="absolute inset-0 bg-white/20 dark:bg-black/20"
+              aria-hidden
+            />
+            <div
+              className="bg-pastel-gradient absolute inset-0 opacity-30 mix-blend-soft-light"
               aria-hidden
             />
             {heroCopy}

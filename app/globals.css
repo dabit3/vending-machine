@@ -4,57 +4,61 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Soft Neo-Minimal": an airy off-white page field
+   with cool light-gray surfaces, generous rounded corners, and gently
+   diffused shadows. Cards sit as white islands on the soft field; borders
+   are whisper-light so depth comes from tone and shadow rather than lines.
+   A pastel-tinted violet accent is used sparingly. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
+  --surface: #ffffff;
+  --surface-hover: #f3f3f6;
+  --border: #e9e9ee;
+  --border-strong: #d8d8e0;
+  --muted: #efeff3;
+  --muted-dim: #83828e;
+  --background: #f6f6f8;
+  --foreground: #2a2a33;
   --card: #ffffff;
-  --card-foreground: #22211e;
+  --card-foreground: #2a2a33;
   --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --popover-foreground: #2a2a33;
+  --primary: #2a2a33;
+  --primary-foreground: #fafafc;
+  --secondary: #efeff3;
+  --secondary-foreground: #2a2a33;
+  --muted-foreground: #5d5c68;
+  --accent: #efeff3;
+  --accent-foreground: #2a2a33;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #6d5ae8;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
+  --ring: #6d5ae8;
+  --selection: #e6e2fa;
+  --selection-foreground: #2a2a33;
+  /* Pastel gradient stops — used sparingly for accent washes. */
+  --pastel-a: #e8e4fb;
+  --pastel-b: #fbe8ec;
+  --pastel-c: #e2f0fb;
+  /* Gently diffused, larger-radius shadow: reads as ambient light rather
+     than a hard drop. Dark mode zeroes it out and relies on surface
+     contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+    0 1px 2px rgb(42 42 51 / 0.03), 0 8px 24px -6px rgb(42 42 51 / 0.07);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
+  --radius: 1rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #2a2a33;
+  --sidebar-primary: #2a2a33;
+  --sidebar-primary-foreground: #fafafc;
+  --sidebar-accent: #efeff3;
+  --sidebar-accent-foreground: #2a2a33;
+  --sidebar-border: #e9e9ee;
+  --sidebar-ring: #83828e;
 }
 
 @theme inline {
@@ -141,6 +145,17 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
 }
 
+/* Pastel-tinted accent gradient: the direction's one moment of color,
+   used sparingly (hero wash, brand chips). */
+@utility bg-pastel-gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--pastel-a),
+    var(--pastel-b) 50%,
+    var(--pastel-c)
+  );
+}
+
 /* Faint dot grid backdrop for hero surfaces. */
 @utility bg-dotgrid {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
@@ -184,50 +199,53 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — Soft Neo-Minimal after dark: soft graphite rather than pure
+   black, with the same calm tonal layering as light mode; shadows are
+   zeroed and depth comes from surface contrast. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #1b1b21;
+  --surface-hover: #212127;
+  --border: #2a2a31;
+  --border-strong: #3d3d47;
+  --muted: #26262d;
+  --muted-dim: #83828e;
+  --background: #131317;
+  --foreground: #e9e8ee;
+  --card: #1b1b21;
+  --card-foreground: #e9e8ee;
+  --popover: #212127;
+  --popover-foreground: #e9e8ee;
+  --primary: #e9e8ee;
+  --primary-foreground: #131317;
+  --secondary: #2c2c34;
+  --secondary-foreground: #e9e8ee;
+  --muted-foreground: #a9a8b3;
+  --accent: #2c2c34;
+  --accent-foreground: #e9e8ee;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #8b7cf0;
+  --brand-foreground: #131317;
+  --ring: #8b7cf0;
+  --selection: #38344d;
+  --selection-foreground: #e9e8ee;
+  --pastel-a: #2f2b45;
+  --pastel-b: #3c2e37;
+  --pastel-c: #2a3542;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #1b1b21;
+  --sidebar-foreground: #e9e8ee;
+  --sidebar-primary: #e9e8ee;
+  --sidebar-primary-foreground: #131317;
+  --sidebar-accent: #2c2c34;
+  --sidebar-accent-foreground: #e9e8ee;
+  --sidebar-border: #2a2a31;
+  --sidebar-ring: #83828e;
 }
 
 @layer base {
