@@ -115,6 +115,7 @@ export const get = query({
       slug: event.slug,
       description: event.description,
       creditAmount: event.creditAmount,
+      codeTypes: event.codeTypes,
       codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
