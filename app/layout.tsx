@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Sora } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -7,13 +7,18 @@ import { Toaster } from "@/components/ui/sonner";
 import { getAppName } from "@/lib/app-name";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sora = Sora({
+  variable: "--font-sora",
+  subsets: ["latin"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -29,7 +34,7 @@ const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] 
     colorPrimary: "#6d5ae8",
     colorPrimaryForeground: "#ffffff",
     borderRadius: "1rem",
-    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    fontFamily: "var(--font-inter), system-ui, sans-serif",
   },
   options: {
     unsafe_disableDevelopmentModeWarnings: true,
@@ -49,7 +54,7 @@ export default function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full overscroll-none antialiased`}
+        className={`${inter.variable} ${sora.variable} ${jetbrainsMono.variable} h-full overscroll-none antialiased`}
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col overscroll-none">
