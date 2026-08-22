@@ -388,7 +388,9 @@ export default function ClaimPage({ slug }: { slug: string }) {
                         </legend>
                         <div className="grid grid-cols-2 gap-2">
                           {codeTypes.map((type) => {
-                            const value = event.codeTypeValues?.[type];
+                            const value =
+                              event.codeTypeValues?.[type] ??
+                              event.creditAmount;
                             return (
                               <Button
                                 key={type}

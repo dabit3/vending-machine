@@ -90,6 +90,7 @@ export const getBySlug = query({
       description: event.description,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
+      creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
       soldOut: availableTypes.size === 0,
       // Preserve the event's stored (creation) order of code types.
