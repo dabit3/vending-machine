@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CalendarPlus, OctagonX, Plus } from "lucide-react";
+import { CalendarPlus, OctagonX, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -49,11 +49,9 @@ interface ManagedEventItem {
 
 function AdminEventRow({
   event,
-  index,
   past,
 }: {
   event: ManagedEventItem;
-  index: number;
   past?: boolean;
 }) {
   return (
@@ -65,9 +63,6 @@ function AdminEventRow({
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
-        <span className="font-mono text-xs text-muted-dim tabular-nums">
-          {String(index + 1).padStart(2, "0")}
-        </span>
         <div className="min-w-0 flex-1">
           <div className="font-heading font-medium tracking-tight">
             {event.name}
@@ -82,10 +77,6 @@ function AdminEventRow({
                 year: "numeric",
               })}
         </span>
-        <ArrowRight
-          className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:text-foreground"
-          aria-hidden
-        />
       </Link>
     </li>
   );
@@ -166,8 +157,8 @@ export default function AdminDashboard() {
             </p>
           ) : (
             <ul className="mt-4 border-t border-border">
-              {current.map((event, index) => (
-                <AdminEventRow key={event._id} event={event} index={index} />
+              {current.map((event) => (
+                <AdminEventRow key={event._id} event={event} />
               ))}
             </ul>
           )}
@@ -182,13 +173,8 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <ul className="mt-4 border-t border-border">
-                {past.map((event, index) => (
-                  <AdminEventRow
-                    key={event._id}
-                    event={event}
-                    index={index}
-                    past
-                  />
+                {past.map((event) => (
+                  <AdminEventRow key={event._id} event={event} past />
                 ))}
               </ul>
             </>
