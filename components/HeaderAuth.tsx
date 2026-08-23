@@ -24,7 +24,11 @@ export default function HeaderAuth() {
   if (!isAuthenticated) {
     return (
       <SignInButton mode="modal">
-        <Button variant="ghost" size="sm" className="text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:bg-transparent dark:hover:bg-transparent"
+        >
           Sign in
           <ArrowRight
             data-icon="inline-end"
@@ -41,7 +45,7 @@ export default function HeaderAuth() {
       <Button
         variant="ghost"
         size="sm"
-        className="text-muted-foreground"
+        className="text-muted-foreground hover:bg-transparent dark:hover:bg-transparent"
         render={<Link href="/my-codes" />}
         nativeButton={false}
       >
@@ -51,7 +55,7 @@ export default function HeaderAuth() {
         <Button
           variant="ghost"
           size="sm"
-          className="text-muted-foreground"
+          className="text-muted-foreground hover:bg-transparent dark:hover:bg-transparent"
           render={<Link href="/admin" />}
           nativeButton={false}
         >
