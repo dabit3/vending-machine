@@ -121,11 +121,7 @@ export default function AdminDashboard() {
     <div>
       <div className="mb-10 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
         <div>
-          <p className="eyebrow flex items-center gap-2 text-muted-foreground">
-            <span className="inline-block size-1.5 rounded-full bg-border-strong" />
-            Control room
-          </p>
-          <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+          <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
             Events
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
