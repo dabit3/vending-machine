@@ -210,16 +210,9 @@ export default function Home() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Active events
-            </h2>
-            {events ? (
-              <span className="font-mono text-xs text-muted-dim tabular-nums">
-                {String(current.length).padStart(2, "0")}
-              </span>
-            ) : null}
-          </div>
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Active events
+          </h2>
 
           {events === undefined ? (
             <div
