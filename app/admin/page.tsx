@@ -73,9 +73,6 @@ function AdminEventRow({
             {event.name}
           </div>
         </div>
-        <span className="hidden font-mono text-xs text-muted-dim sm:inline">
-          /{event.slug}
-        </span>
         <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
           {event.eventDate
             ? formatEventDate(event.eventDate)
