@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Ticket } from "lucide-react";
+import { BadgeCheck, Ticket } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -97,10 +97,6 @@ function EventRow({
             {formatEventDate(event.eventDate)}
           </span>
         ) : null}
-        <ArrowUpRight
-          className="size-4 shrink-0 text-muted-dim transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
-          aria-hidden
-        />
       </Link>
     </li>
   );
@@ -226,7 +222,6 @@ export default function Home() {
                     <Skeleton className="h-5 w-2/3 rounded-sm" />
                     <Skeleton className="h-3 w-1/2 rounded-sm" />
                   </div>
-                  <Skeleton className="size-4 rounded-sm" />
                 </div>
               ))}
             </div>
