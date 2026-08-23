@@ -164,8 +164,7 @@ export default function Home() {
         Claim your credits.
       </h1>
       <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
-        Select your event, enter the email you registered with, and your credit
-        code is dispensed on the spot.
+        Sign in, then select your event to claim your credits.
       </p>
     </div>
   );
