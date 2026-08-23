@@ -28,7 +28,7 @@ import {
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -334,9 +334,22 @@ export default function ClaimPage({
                       <OctagonX />
                       <AlertTitle>
                         {eligibility.reason === "unverified"
-                          ? "Your account has no verified email address. Sign in with the email you registered with."
-                          : `${eligibility.email ?? "This email"} is not on the participant list for this event. Sign in with the email you registered with.`}
+                          ? "No verified email on your account"
+                          : "You're not on the list for this event"}
                       </AlertTitle>
+                      <AlertDescription>
+                        {eligibility.reason === "unverified" ? (
+                          "Sign in with the email you registered with."
+                        ) : (
+                          <>
+                            <span className="font-medium text-foreground">
+                              {eligibility.email ?? "This email"}
+                            </span>{" "}
+                            isn&apos;t on the participant list. Sign in with
+                            the email you registered with.
+                          </>
+                        )}
+                      </AlertDescription>
                     </Alert>
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
