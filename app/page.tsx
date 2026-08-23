@@ -76,9 +76,6 @@ function EventRow({
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
-        <span className="font-mono text-xs text-muted-dim tabular-nums transition-colors group-hover:text-foreground">
-          {String(index + 1).padStart(2, "0")}
-        </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
             {event.name}
@@ -224,7 +221,6 @@ export default function Home() {
                   key={i}
                   className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
                 >
-                  <Skeleton className="h-3 w-5 rounded-sm" />
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton className="h-5 w-2/3 rounded-sm" />
                     <Skeleton className="h-3 w-1/2 rounded-sm" />
