@@ -4,55 +4,55 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Meadow": a warm cream field with mossy greens and
-   earthy neutrals. Ink is a deep moss-brown rather than black, borders lean
-   toward dried grass, and the green brand accent is reserved for the claim
-   flow. Generous radii keep every surface soft and organic. */
+/* Light mode (default) — "Wildflower": a cream field brushed with soft
+   lavender and petal tints. Ink is a deep plum-green rather than black,
+   borders lean toward pressed petals, and the violet brand accent is
+   reserved for the claim flow. Generous radii keep every surface soft. */
 :root {
-  --surface: #f1ecdf;
-  --surface-hover: #eae4d2;
-  --border: #e2dac4;
-  --border-strong: #c9bd9f;
-  --muted: #ece6d6;
-  --muted-dim: #8b8468;
-  --background: #f8f5ec;
-  --foreground: #2e3324;
-  --card: #fdfbf4;
-  --card-foreground: #2e3324;
-  --popover: #fdfbf4;
-  --popover-foreground: #2e3324;
-  --primary: #3f5233;
-  --primary-foreground: #f8f5ec;
-  --secondary: #e6e9d8;
-  --secondary-foreground: #2e3324;
-  --muted-foreground: #5f6550;
-  --accent: #e6e9d8;
-  --accent-foreground: #2e3324;
+  --surface: #f2ecef;
+  --surface-hover: #ece4ea;
+  --border: #e5dbe4;
+  --border-strong: #c9b8c9;
+  --muted: #eee6ed;
+  --muted-dim: #85788b;
+  --background: #faf7f2;
+  --foreground: #2f2c35;
+  --card: #fdfbf7;
+  --card-foreground: #2f2c35;
+  --popover: #fdfbf7;
+  --popover-foreground: #2f2c35;
+  --primary: #4a3d63;
+  --primary-foreground: #faf7f2;
+  --secondary: #ebe3f0;
+  --secondary-foreground: #2f2c35;
+  --muted-foreground: #5e566c;
+  --accent: #ebe3f0;
+  --accent-foreground: #2f2c35;
   --destructive: oklch(0.577 0.19 35);
-  --input: oklch(0.3 0.03 120 / 10%);
-  --brand: #4a7c46;
+  --input: oklch(0.3 0.03 310 / 10%);
+  --brand: #7a5ba6;
   --brand-foreground: #ffffff;
-  --ring: #6b7a55;
-  --selection: #dfe5cc;
-  --selection-foreground: #2e3324;
+  --ring: #8a76a5;
+  --selection: #e8dcf0;
+  --selection-foreground: #2f2c35;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(46 51 36 / 0.05), 0 6px 16px -4px rgb(46 51 36 / 0.06);
-  --chart-1: oklch(0.45 0.08 135);
-  --chart-2: oklch(0.55 0.09 90);
-  --chart-3: oklch(0.62 0.1 55);
-  --chart-4: oklch(0.7 0.07 150);
-  --chart-5: oklch(0.82 0.05 110);
+    0 1px 2px rgb(47 44 53 / 0.05), 0 6px 16px -4px rgb(47 44 53 / 0.06);
+  --chart-1: oklch(0.5 0.11 300);
+  --chart-2: oklch(0.6 0.1 330);
+  --chart-3: oklch(0.55 0.09 135);
+  --chart-4: oklch(0.7 0.08 280);
+  --chart-5: oklch(0.82 0.05 320);
   --radius: 1.1rem;
-  --sidebar: #fdfbf4;
-  --sidebar-foreground: #2e3324;
-  --sidebar-primary: #3f5233;
-  --sidebar-primary-foreground: #f8f5ec;
-  --sidebar-accent: #e6e9d8;
-  --sidebar-accent-foreground: #2e3324;
-  --sidebar-border: #e2dac4;
-  --sidebar-ring: #8b8468;
+  --sidebar: #fdfbf7;
+  --sidebar-foreground: #2f2c35;
+  --sidebar-primary: #4a3d63;
+  --sidebar-primary-foreground: #faf7f2;
+  --sidebar-accent: #ebe3f0;
+  --sidebar-accent-foreground: #2f2c35;
+  --sidebar-border: #e5dbe4;
+  --sidebar-ring: #85788b;
 }
 
 @theme inline {
@@ -200,50 +200,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Forest floor": deep green-cast near-blacks with warm parchment
-   type, like moonlight through a canopy. Contrast stays around ~14:1 so pale
+/* Dark mode — "Dusk meadow": deep violet-cast near-blacks with petal-pale
+   type, like wildflowers at last light. Contrast stays around ~14:1 so pale
    type doesn't halo on OLED. */
 .dark {
-  --surface: #1d2317;
-  --surface-hover: #242b1c;
-  --border: #2b3321;
-  --border-strong: #434e32;
-  --muted: #232a1b;
-  --muted-dim: #8b8b72;
-  --background: #14180f;
-  --foreground: #e9e6d6;
-  --card: #1d2317;
-  --card-foreground: #e9e6d6;
-  --popover: #242b1c;
-  --popover-foreground: #e9e6d6;
-  --primary: #cbd6b2;
-  --primary-foreground: #14180f;
-  --secondary: #313a25;
-  --secondary-foreground: #e9e6d6;
-  --muted-foreground: #aaac94;
-  --accent: #313a25;
-  --accent-foreground: #e9e6d6;
+  --surface: #201c29;
+  --surface-hover: #272232;
+  --border: #2e2839;
+  --border-strong: #4a4160;
+  --muted: #262031;
+  --muted-dim: #8f8598;
+  --background: #17141e;
+  --foreground: #ece7ee;
+  --card: #201c29;
+  --card-foreground: #ece7ee;
+  --popover: #272232;
+  --popover-foreground: #ece7ee;
+  --primary: #d1c5e3;
+  --primary-foreground: #17141e;
+  --secondary: #352d47;
+  --secondary-foreground: #ece7ee;
+  --muted-foreground: #b2a9be;
+  --accent: #352d47;
+  --accent-foreground: #ece7ee;
   --destructive: oklch(0.68 0.16 35);
   --input: oklch(1 0 0 / 15%);
-  --brand: #7fae6d;
-  --brand-foreground: #14200f;
-  --ring: #a5b088;
-  --selection: #38402b;
-  --selection-foreground: #e9e6d6;
+  --brand: #a98ed6;
+  --brand-foreground: #1d1329;
+  --ring: #a396bd;
+  --selection: #3c3450;
+  --selection-foreground: #ece7ee;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.85 0.06 130);
-  --chart-2: oklch(0.62 0.08 110);
-  --chart-3: oklch(0.5 0.07 90);
-  --chart-4: oklch(0.42 0.06 145);
-  --chart-5: oklch(0.32 0.04 120);
-  --sidebar: #1d2317;
-  --sidebar-foreground: #e9e6d6;
-  --sidebar-primary: #cbd6b2;
-  --sidebar-primary-foreground: #14180f;
-  --sidebar-accent: #313a25;
-  --sidebar-accent-foreground: #e9e6d6;
-  --sidebar-border: #2b3321;
-  --sidebar-ring: #8b8b72;
+  --chart-1: oklch(0.85 0.06 300);
+  --chart-2: oklch(0.62 0.09 320);
+  --chart-3: oklch(0.5 0.08 280);
+  --chart-4: oklch(0.42 0.06 340);
+  --chart-5: oklch(0.32 0.04 300);
+  --sidebar: #201c29;
+  --sidebar-foreground: #ece7ee;
+  --sidebar-primary: #d1c5e3;
+  --sidebar-primary-foreground: #17141e;
+  --sidebar-accent: #352d47;
+  --sidebar-accent-foreground: #ece7ee;
+  --sidebar-border: #2e2839;
+  --sidebar-ring: #8f8598;
 }
 
 @layer base {
