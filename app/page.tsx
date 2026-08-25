@@ -1,13 +1,10 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { BadgeCheck, Ticket } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
-import UnicornSceneEmbed from "@/components/UnicornSceneEmbed";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Badge } from "@/components/ui/badge";
@@ -20,30 +17,6 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
-
-// The hero background is a theme-paired Unicorn Studio WebGL scene
-// (experiment). A Unicorn project publishes exactly one authored design and
-// the SDK has no color-scheme awareness, so a light-authored project shows
-// its light design in dark mode too — each theme therefore needs its own
-// project ID here.
-const UNICORN_PROJECTS = {
-  light: "wEz2vCJgsynwCYSb3HgR",
-  dark: "aEdLurlqLEmU1DUjAaUz",
-} as const;
-
-// Bump this whenever a scene is republished in Unicorn Studio. Deployed
-// builds read scene data through Unicorn's CDN, which caches for months and
-// doesn't reliably purge on republish; the update param below is part of the
-// CDN cache key, so bumping the version makes deploys fetch the new design.
-// Dev skips the param (and the CDN): without it the SDK cache-busts every
-// load, so republishes show up on a plain refresh.
-const UNICORN_CACHE_VERSION = 2;
-
-const isProdBuild = process.env.NODE_ENV === "production";
-
-// Stable no-op subscription for the hydration gate below: the snapshot never
-// changes on the client, we only care that the server snapshot is false.
-const emptySubscribe = () => () => {};
 
 interface EventItem {
   _id: string;
@@ -77,7 +50,7 @@ function EventRow({
         )}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight transition-colors group-hover:text-neon-secondary sm:text-2xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -93,7 +66,7 @@ function EventRow({
           ) : null}
         </div>
         {event.eventDate ? (
-          <span className="hidden shrink-0 text-xs text-muted-dim tabular-nums sm:inline">
+          <span className="hidden shrink-0 font-mono text-xs text-muted-dim tabular-nums transition-colors group-hover:text-neon-secondary/80 sm:inline">
             {formatEventDate(event.eventDate)}
           </span>
         ) : null}
@@ -109,23 +82,6 @@ export default function Home() {
   const claimedEventIds = new Set(
     mine?.map((item) => item.event?._id).filter(Boolean) ?? [],
   );
-
-  // The scene choice needs JS (the server doesn't know the theme, while the
-  // hydration render already does), so gate it behind hydration to keep both
-  // trees identical; the copy and scrim flip with pure dark: variants and
-  // render correctly from the first paint. Until hydration the plain
-  // theme-tinted shell stands in for both themes.
-  const { resolvedTheme } = useTheme();
-  const hydrated = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
-  const heroProjectId = hydrated
-    ? resolvedTheme === "light"
-      ? UNICORN_PROJECTS.light
-      : UNICORN_PROJECTS.dark
-    : undefined;
 
   // Dated events that have passed sink into their own dimmed group; undated
   // events are treated as current. Active events order soonest-first, with
@@ -150,15 +106,21 @@ export default function Home() {
   // copy centered in the visible area.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-neon-secondary neon-text motion-reduce:animate-none">
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-white neon-text animate-glitch motion-reduce:animate-none sm:text-7xl">
         Claim your credits.
       </h1>
-      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
+      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-foreground/70 motion-reduce:animate-none">
         Sign in, then select your event to claim your credits.
+      </p>
+      <p
+        className="eyebrow animate-in fade-in fill-mode-both duration-500 delay-300 mt-8 text-neon-primary/70 motion-reduce:animate-none"
+        aria-hidden
+      >
+        SYS//CREDIT.DISPENSER :: ONLINE
       </p>
     </div>
   );
@@ -170,32 +132,24 @@ export default function Home() {
         <section className="-mt-15.25 border-b border-border/65">
           {/* The section pulls up behind the translucent header bar
               (-mt-15.25) so the background runs to the top of the page; the
-              hero is 61px taller to compensate and the scene shows through
-              the bar's frosted fill. The theme's Unicorn Studio scene renders
-              behind the copy and a soft theme-matched scrim; keying the scene
-              by project swaps it cleanly on theme change while the copy stays
-              mounted. The scene's mouse interactivity listens on window, so
-              the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
-            {heroProjectId ? (
-              <div className="absolute inset-0" aria-hidden>
-                {/* Dev fetches fresh scene data on every load; deploys pin
-                    the CDN to UNICORN_CACHE_VERSION — see the constant. */}
-                <UnicornSceneEmbed
-                  key={heroProjectId}
-                  projectId={
-                    isProdBuild
-                      ? `${heroProjectId}?update=${UNICORN_CACHE_VERSION}`
-                      : heroProjectId
-                  }
-                  production={isProdBuild}
-                />
-              </div>
-            ) : null}
-            {/* Soft scrim keeps the headline legible over the scenes; tune
-                or remove once the look settles. */}
+              hero is 61px taller to compensate. The backdrop is a HUD scene:
+              a faint cyber grid fading toward the fold, with two neon blooms
+              in the colorway's hues drifting behind the copy. */}
+          <div className="relative h-[520px] overflow-hidden bg-background sm:h-[486px]">
             <div
-              className="absolute inset-0 bg-white/20 dark:bg-black/20"
+              className="absolute inset-0 bg-cybergrid [mask-image:linear-gradient(to_bottom,black,transparent_94%)]"
+              aria-hidden
+            />
+            <div
+              className="absolute -top-32 -left-24 size-96 rounded-full bg-neon-primary/25 blur-[120px]"
+              aria-hidden
+            />
+            <div
+              className="absolute right-[-10%] -bottom-40 size-[28rem] rounded-full bg-neon-secondary/20 blur-[140px]"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-neon-primary/60 to-transparent"
               aria-hidden
             />
             {heroCopy}
@@ -203,9 +157,7 @@ export default function Home() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Active events
-          </h2>
+          <h2 className="eyebrow text-neon-secondary/80">Active events</h2>
 
           {events === undefined ? (
             <div
@@ -258,7 +210,7 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
+                    <h2 className="eyebrow text-neon-secondary/80">
                       Past events
                     </h2>
                     <span className="font-mono text-xs text-muted-dim tabular-nums">

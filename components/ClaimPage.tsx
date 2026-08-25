@@ -191,7 +191,15 @@ export default function ClaimPage({
       >
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
+          className="pointer-events-none absolute inset-0 bg-cybergrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-1/4 left-1/2 size-80 -translate-x-[80%] rounded-full bg-neon-primary/15 blur-[110px]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-1/4 left-1/2 size-80 -translate-x-[20%] rounded-full bg-neon-secondary/15 blur-[110px]"
         />
         <div className="relative w-full max-w-md">
           {previewMode ? (
@@ -249,11 +257,11 @@ export default function ClaimPage({
               >
             <Card
               inert={showQr || undefined}
-              className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+              className="gradient-frame neon-panel gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
+                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance neon-text">
                     {event.name}
                   </CardTitle>
                   <Button
@@ -579,12 +587,12 @@ function QrPanel({
   return (
     <Card
       inert={hidden || undefined}
-      className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+      className="gradient-frame neon-panel gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
     >
       <CardHeader className="gap-2 pt-(--card-spacing)">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
-            <span className="eyebrow text-muted-foreground">Scan to claim</span>
+            <span className="eyebrow text-neon-secondary">Scan to claim</span>
             <CardTitle className="font-heading text-2xl font-semibold tracking-[-0.02em] text-balance">
               {eventName}
             </CardTitle>
@@ -645,12 +653,12 @@ function Receipt({
 }) {
   return (
     <div
-      className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
+      className="receipt-edge receipt-print neon-panel rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
       role="status"
     >
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center justify-between">
-          <span className="eyebrow text-muted-foreground">
+          <span className="eyebrow text-neon-secondary neon-text">
             Code dispensed
           </span>
           <span className="relative flex size-2">
@@ -683,7 +691,7 @@ function Receipt({
           <div className="text-xs text-muted-dim">
             {codeType ? `Your “${codeType}” code` : "Your credit code"}
           </div>
-          <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
+          <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all text-neon-secondary neon-text select-all sm:text-4xl">
             {code}
           </div>
         </div>
