@@ -57,13 +57,13 @@
   --sidebar-ring: #78716a;
   /* Glass layer: frosted panels float over a soft ambient aurora field.
      Colorways retint the app by swapping only the aurora + glass variables. */
-  --glass-border: rgb(255 255 255 / 0.65);
+  --glass-border: rgb(255 255 255 / 0.7);
   --glass-glow:
-    0 8px 32px rgb(31 38 68 / 0.12),
-    inset 0 1px 0 rgb(255 255 255 / 0.85);
-  --aurora-1: #c7d2fe;
-  --aurora-2: #fbcfe8;
-  --aurora-3: #bae6fd;
+    0 8px 32px rgb(30 58 92 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --aurora-1: #dbeafe;
+  --aurora-2: #e2e8f0;
+  --aurora-3: #cffafe;
 }
 
 @theme inline {
@@ -256,13 +256,13 @@ input:-webkit-autofill:focus {
   --sidebar-accent-foreground: #e8e6e1;
   --sidebar-border: #26262a;
   --sidebar-ring: #7a7772;
-  --glass-border: rgb(255 255 255 / 0.12);
+  --glass-border: rgb(186 230 253 / 0.14);
   --glass-glow:
-    0 8px 32px rgb(0 0 0 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
-  --aurora-1: #2b2e5e;
-  --aurora-2: #4a2350;
-  --aurora-3: #123a4a;
+    0 8px 32px rgb(2 12 27 / 0.5),
+    inset 0 1px 0 rgb(207 250 254 / 0.1);
+  --aurora-1: #1e3a5f;
+  --aurora-2: #164e63;
+  --aurora-3: #24344d;
 }
 
 @layer base {
