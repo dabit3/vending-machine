@@ -4,57 +4,56 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Crayon Box": a warm paper-cream field with wax-crayon
+   primaries. Ink is a deep indigo rather than black — the color a navy crayon
+   leaves on paper. Crayon blue drives interactive elements, crayon red is the
+   brand/claim color, and yellow, mint, and lavender fill the supporting tints.
+   Borders are ink-tinted and shadows are solid offset blocks, like a sticker
+   lifted off the page. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #fbf5e6;
+  --surface-hover: #f7edd6;
+  --border: #e8e0f2;
+  --border-strong: #29256b;
+  --muted: #f6efdf;
+  --muted-dim: #6f6a94;
+  --background: #fffdf5;
+  --foreground: #29256b;
+  --card: #fffdf5;
+  --card-foreground: #29256b;
+  --popover: #fffdf5;
+  --popover-foreground: #29256b;
+  --primary: #29256b;
+  --primary-foreground: #fffdf5;
+  --secondary: #ffe9a8;
+  --secondary-foreground: #514408;
+  --muted-foreground: #565182;
+  --accent: #d7f2e4;
+  --accent-foreground: #14532d;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --input: oklch(0.3 0.1 285 / 12%);
+  --brand: #d7263d;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --ring: #1a5fcf;
+  --selection: #ffe066;
+  --selection-foreground: #29256b;
+  /* Solid offset shadow: a crisp ink block behind cards, like a paper cutout
+     lifted off the page. Dark mode swaps the ink for a glow-less deep plum. */
+  --shadow-card: 4px 4px 0 0 rgb(41 37 107 / 0.18);
+  --chart-1: #1f75fe;
+  --chart-2: #d7263d;
+  --chart-3: #f9a620;
+  --chart-4: #1cac78;
+  --chart-5: #926eae;
+  --radius: 1rem;
+  --sidebar: #fffdf5;
+  --sidebar-foreground: #29256b;
+  --sidebar-primary: #29256b;
+  --sidebar-primary-foreground: #fffdf5;
+  --sidebar-accent: #ffe9a8;
+  --sidebar-accent-foreground: #514408;
+  --sidebar-border: #e8e0f2;
+  --sidebar-ring: #6f6a94;
 }
 
 @theme inline {
@@ -113,8 +112,7 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Crayon-yellow highlighter: selection reads like a marker swipe. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -141,10 +139,20 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Confetti dot grid backdrop for hero surfaces: alternating crayon dots
+   scattered on the paper, Memphis-style. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(rgb(31 117 254 / 0.35) 1.5px, transparent 1.5px),
+    radial-gradient(rgb(215 38 61 / 0.3) 1.5px, transparent 1.5px),
+    radial-gradient(rgb(249 166 32 / 0.35) 1.5px, transparent 1.5px),
+    radial-gradient(rgb(28 172 120 / 0.3) 1.5px, transparent 1.5px);
+  background-size: 56px 56px;
+  background-position:
+    0 0,
+    28px 14px,
+    14px 42px,
+    42px 28px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -184,50 +192,51 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Crayon Box" after dark: crayons on black construction paper.
+   The field is a deep indigo-black, the wax colors brighten a notch so they
+   keep their punch, and the default button flips to crayon yellow with ink
+   text so it still reads as the loudest thing on the page. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #211d4d;
+  --surface-hover: #2a2560;
+  --border: #322c6e;
+  --border-strong: #4d46a0;
+  --muted: #2a2560;
+  --muted-dim: #8d88bd;
+  --background: #161233;
+  --foreground: #f2efff;
+  --card: #211d4d;
+  --card-foreground: #f2efff;
+  --popover: #2a2560;
+  --popover-foreground: #f2efff;
+  --primary: #ffd23f;
+  --primary-foreground: #2b2410;
+  --secondary: #3a3380;
+  --secondary-foreground: #f2efff;
+  --muted-foreground: #b6b1e0;
+  --accent: #234d3c;
+  --accent-foreground: #a7f3d0;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
-  --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --brand: #ff5d73;
+  --brand-foreground: #2e0a12;
+  --ring: #7db3ff;
+  --selection: #f9a620;
+  --selection-foreground: #2b2410;
+  --shadow-card: 4px 4px 0 0 rgb(0 0 0 / 0.45);
+  --chart-1: #6ea8ff;
+  --chart-2: #ff5d73;
+  --chart-3: #ffd23f;
+  --chart-4: #34d399;
+  --chart-5: #c4a7e7;
+  --sidebar: #211d4d;
+  --sidebar-foreground: #f2efff;
+  --sidebar-primary: #ffd23f;
+  --sidebar-primary-foreground: #2b2410;
+  --sidebar-accent: #3a3380;
+  --sidebar-accent-foreground: #f2efff;
+  --sidebar-border: #322c6e;
+  --sidebar-ring: #8d88bd;
 }
 
 @layer base {

@@ -176,7 +176,7 @@ export default function Home() {
               by project swaps it cleanly on theme change while the copy stays
               mounted. The scene's mouse interactivity listens on window, so
               the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#161233] sm:h-[486px]">
             {heroProjectId ? (
               <div className="absolute inset-0" aria-hidden>
                 {/* Dev fetches fresh scene data on every load; deploys pin
