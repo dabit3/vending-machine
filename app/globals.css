@@ -112,7 +112,7 @@ body {
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the gold accents on screen. */
+   the burgundy accents on screen. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
