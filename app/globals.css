@@ -4,55 +4,55 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Meadow": a warm cream field with mossy greens and
-   earthy neutrals. Ink is a deep moss-brown rather than black, borders lean
-   toward dried grass, and the green brand accent is reserved for the claim
-   flow. Generous radii keep every surface soft and organic. */
+/* Light mode (default) — "Terracotta": a warm sand-and-clay cream field with
+   sun-baked earth neutrals. Ink is a deep umber rather than black, borders
+   lean toward raw clay, and the terracotta brand accent is reserved for the
+   claim flow. Generous radii keep every surface soft and organic. */
 :root {
-  --surface: #f1ecdf;
-  --surface-hover: #eae4d2;
-  --border: #e2dac4;
-  --border-strong: #c9bd9f;
-  --muted: #ece6d6;
-  --muted-dim: #8b8468;
-  --background: #f8f5ec;
-  --foreground: #2e3324;
-  --card: #fdfbf4;
-  --card-foreground: #2e3324;
-  --popover: #fdfbf4;
-  --popover-foreground: #2e3324;
-  --primary: #3f5233;
-  --primary-foreground: #f8f5ec;
-  --secondary: #e6e9d8;
-  --secondary-foreground: #2e3324;
-  --muted-foreground: #5f6550;
-  --accent: #e6e9d8;
-  --accent-foreground: #2e3324;
-  --destructive: oklch(0.577 0.19 35);
-  --input: oklch(0.3 0.03 120 / 10%);
-  --brand: #4a7c46;
+  --surface: #f2e8d8;
+  --surface-hover: #ecdfcb;
+  --border: #e6d6bf;
+  --border-strong: #ccb08f;
+  --muted: #eee1cd;
+  --muted-dim: #8f7c62;
+  --background: #f9f2e6;
+  --foreground: #392a20;
+  --card: #fdf8ee;
+  --card-foreground: #392a20;
+  --popover: #fdf8ee;
+  --popover-foreground: #392a20;
+  --primary: #5a3a29;
+  --primary-foreground: #f9f2e6;
+  --secondary: #f0ddc6;
+  --secondary-foreground: #392a20;
+  --muted-foreground: #6b5343;
+  --accent: #f0ddc6;
+  --accent-foreground: #392a20;
+  --destructive: oklch(0.577 0.19 30);
+  --input: oklch(0.3 0.04 55 / 10%);
+  --brand: #b05c3b;
   --brand-foreground: #ffffff;
-  --ring: #6b7a55;
-  --selection: #dfe5cc;
-  --selection-foreground: #2e3324;
+  --ring: #a06a4a;
+  --selection: #f1dcc2;
+  --selection-foreground: #392a20;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(46 51 36 / 0.05), 0 6px 16px -4px rgb(46 51 36 / 0.06);
-  --chart-1: oklch(0.45 0.08 135);
-  --chart-2: oklch(0.55 0.09 90);
-  --chart-3: oklch(0.62 0.1 55);
-  --chart-4: oklch(0.7 0.07 150);
-  --chart-5: oklch(0.82 0.05 110);
+    0 1px 2px rgb(57 42 32 / 0.05), 0 6px 16px -4px rgb(57 42 32 / 0.06);
+  --chart-1: oklch(0.52 0.11 45);
+  --chart-2: oklch(0.6 0.1 65);
+  --chart-3: oklch(0.68 0.09 85);
+  --chart-4: oklch(0.72 0.07 35);
+  --chart-5: oklch(0.82 0.05 70);
   --radius: 1.1rem;
-  --sidebar: #fdfbf4;
-  --sidebar-foreground: #2e3324;
-  --sidebar-primary: #3f5233;
-  --sidebar-primary-foreground: #f8f5ec;
-  --sidebar-accent: #e6e9d8;
-  --sidebar-accent-foreground: #2e3324;
-  --sidebar-border: #e2dac4;
-  --sidebar-ring: #8b8468;
+  --sidebar: #fdf8ee;
+  --sidebar-foreground: #392a20;
+  --sidebar-primary: #5a3a29;
+  --sidebar-primary-foreground: #f9f2e6;
+  --sidebar-accent: #f0ddc6;
+  --sidebar-accent-foreground: #392a20;
+  --sidebar-border: #e6d6bf;
+  --sidebar-ring: #8f7c62;
 }
 
 @theme inline {
@@ -200,50 +200,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Forest floor": deep green-cast near-blacks with warm parchment
-   type, like moonlight through a canopy. Contrast stays around ~14:1 so pale
-   type doesn't halo on OLED. */
+/* Dark mode — "Fired kiln": deep fired-clay brown-blacks with warm parchment
+   type, like embers cooling in an earthen oven. Contrast stays around ~14:1
+   so pale type doesn't halo on OLED. */
 .dark {
-  --surface: #1d2317;
-  --surface-hover: #242b1c;
-  --border: #2b3321;
-  --border-strong: #434e32;
-  --muted: #232a1b;
-  --muted-dim: #8b8b72;
-  --background: #14180f;
-  --foreground: #e9e6d6;
-  --card: #1d2317;
-  --card-foreground: #e9e6d6;
-  --popover: #242b1c;
-  --popover-foreground: #e9e6d6;
-  --primary: #cbd6b2;
-  --primary-foreground: #14180f;
-  --secondary: #313a25;
-  --secondary-foreground: #e9e6d6;
-  --muted-foreground: #aaac94;
-  --accent: #313a25;
-  --accent-foreground: #e9e6d6;
-  --destructive: oklch(0.68 0.16 35);
+  --surface: #241811;
+  --surface-hover: #2c1e15;
+  --border: #34241a;
+  --border-strong: #533b2b;
+  --muted: #2a1c13;
+  --muted-dim: #94816d;
+  --background: #1a120c;
+  --foreground: #eee4d3;
+  --card: #241811;
+  --card-foreground: #eee4d3;
+  --popover: #2c1e15;
+  --popover-foreground: #eee4d3;
+  --primary: #e4c4ab;
+  --primary-foreground: #1a120c;
+  --secondary: #3c2a1e;
+  --secondary-foreground: #eee4d3;
+  --muted-foreground: #b6a28c;
+  --accent: #3c2a1e;
+  --accent-foreground: #eee4d3;
+  --destructive: oklch(0.68 0.16 30);
   --input: oklch(1 0 0 / 15%);
-  --brand: #7fae6d;
-  --brand-foreground: #14200f;
-  --ring: #a5b088;
-  --selection: #38402b;
-  --selection-foreground: #e9e6d6;
+  --brand: #d0794f;
+  --brand-foreground: #24120a;
+  --ring: #b58a68;
+  --selection: #47311f;
+  --selection-foreground: #eee4d3;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.85 0.06 130);
-  --chart-2: oklch(0.62 0.08 110);
-  --chart-3: oklch(0.5 0.07 90);
-  --chart-4: oklch(0.42 0.06 145);
-  --chart-5: oklch(0.32 0.04 120);
-  --sidebar: #1d2317;
-  --sidebar-foreground: #e9e6d6;
-  --sidebar-primary: #cbd6b2;
-  --sidebar-primary-foreground: #14180f;
-  --sidebar-accent: #313a25;
-  --sidebar-accent-foreground: #e9e6d6;
-  --sidebar-border: #2b3321;
-  --sidebar-ring: #8b8b72;
+  --chart-1: oklch(0.82 0.08 55);
+  --chart-2: oklch(0.66 0.1 45);
+  --chart-3: oklch(0.54 0.09 40);
+  --chart-4: oklch(0.44 0.07 50);
+  --chart-5: oklch(0.34 0.05 55);
+  --sidebar: #241811;
+  --sidebar-foreground: #eee4d3;
+  --sidebar-primary: #e4c4ab;
+  --sidebar-primary-foreground: #1a120c;
+  --sidebar-accent: #3c2a1e;
+  --sidebar-accent-foreground: #eee4d3;
+  --sidebar-border: #34241a;
+  --sidebar-ring: #94816d;
 }
 
 @layer base {
