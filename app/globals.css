@@ -4,59 +4,57 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Candy Pop": a cream page field with bubblegum-pink
+   tints and borders, cherry-red ink for the brand and primary actions, and
+   deep cherry text so contrast stays sweet rather than harsh. Surfaces read
+   as pale pink frosting over the cream field. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #ffeef4;
+  --surface-hover: #ffe3ee;
+  --border: #ffd6e5;
+  --border-strong: #f2a9c6;
+  --muted: #ffe9f1;
+  --muted-dim: #a05c74;
+  --background: #fff9f2;
+  --foreground: #47101f;
+  --card: #fffdf8;
+  --card-foreground: #47101f;
+  --popover: #fffdf8;
+  --popover-foreground: #47101f;
+  --primary: #d5164a;
+  --primary-foreground: #fff9f2;
+  --secondary: #ffe9f1;
+  --secondary-foreground: #641530;
+  --muted-foreground: #8a4a60;
+  --accent: #ffe9f1;
+  --accent-foreground: #641530;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #e0115f;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --arcade-accent: #ff2e88;
-  --arcade-accent-2: #ffc700;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
+  --ring: #d5164a;
+  --arcade-accent: #ff5fa2;
+  --arcade-accent-2: #ffedd6;
+  --selection: #ffd1e3;
+  --selection-foreground: #47101f;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+    0 1px 2px rgb(71 16 31 / 0.05), 0 4px 12px -2px rgb(71 16 31 / 0.05);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar: #fffdf8;
+  --sidebar-foreground: #47101f;
+  --sidebar-primary: #d5164a;
+  --sidebar-primary-foreground: #fff9f2;
+  --sidebar-accent: #ffe9f1;
+  --sidebar-accent-foreground: #641530;
+  --sidebar-border: #ffd6e5;
+  --sidebar-ring: #a05c74;
 }
 
 @theme inline {
@@ -249,52 +247,52 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Candy Pop" after dark: deep black-cherry field with warm
+   cream-pink type; bubblegum brightens into neon candy so the accents still
+   pop against the darker shell. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #2a1220;
+  --surface-hover: #331728;
+  --border: #401c2e;
+  --border-strong: #5c2a44;
+  --muted: #351726;
+  --muted-dim: #b07a90;
+  --background: #1c0a12;
+  --foreground: #ffe9f1;
+  --card: #2a1220;
+  --card-foreground: #ffe9f1;
+  --popover: #331728;
+  --popover-foreground: #ffe9f1;
+  --primary: #ff85b8;
+  --primary-foreground: #1c0a12;
+  --secondary: #472034;
+  --secondary-foreground: #ffe9f1;
+  --muted-foreground: #dcaabf;
+  --accent: #472034;
+  --accent-foreground: #ffe9f1;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #ff4f8b;
   --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --arcade-accent: #ff2e88;
-  --arcade-accent-2: #ffc700;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --ring: #ff9cc4;
+  --arcade-accent: #ff5fa2;
+  --arcade-accent-2: #ffe9c7;
+  --selection: #5c2440;
+  --selection-foreground: #ffe9f1;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #2a1220;
+  --sidebar-foreground: #ffe9f1;
+  --sidebar-primary: #ff85b8;
+  --sidebar-primary-foreground: #1c0a12;
+  --sidebar-accent: #472034;
+  --sidebar-accent-foreground: #ffe9f1;
+  --sidebar-border: #401c2e;
+  --sidebar-ring: #b07a90;
 }
 
 @layer base {
