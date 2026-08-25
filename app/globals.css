@@ -4,40 +4,41 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Retro terminal / CRT — green phosphor on near-black glass. Light mode is
-   a "paper terminal": dark phosphor ink on a pale phosphor-tinted field, so
-   the theme toggle still means something. The phosphor hue drives every
-   accent; radius is zeroed so everything reads as character cells. */
+/* Retro terminal / CRT — white phosphor on near-black glass, like a mono
+   VGA terminal. Light mode is a "paper terminal": near-black ink on white
+   paper, so the theme toggle still means something. The neutral phosphor
+   drives every accent; radius is zeroed so everything reads as character
+   cells. */
 :root {
-  --phosphor: #1a7a3c;
-  --phosphor-dim: #4a8a60;
-  --phosphor-bright: #0c5c2a;
-  --surface: #e9f2e9;
-  --surface-hover: #dfecdf;
-  --border: #b9d4bd;
-  --border-strong: #8db898;
-  --muted: #dcebde;
-  --muted-dim: #5c7a64;
-  --background: #f2f7f2;
-  --foreground: #123d22;
-  --card: #eef5ee;
-  --card-foreground: #123d22;
-  --popover: #eef5ee;
-  --popover-foreground: #123d22;
-  --primary: #123d22;
-  --primary-foreground: #f2f7f2;
-  --secondary: #dcebde;
-  --secondary-foreground: #123d22;
-  --muted-foreground: #3c6349;
-  --accent: #dcebde;
-  --accent-foreground: #123d22;
+  --phosphor: #3d3d3d;
+  --phosphor-dim: #7a7a7a;
+  --phosphor-bright: #1a1a1a;
+  --surface: #f0f0f0;
+  --surface-hover: #e6e6e6;
+  --border: #c9c9c9;
+  --border-strong: #a3a3a3;
+  --muted: #e8e8e8;
+  --muted-dim: #6e6e6e;
+  --background: #fafafa;
+  --foreground: #1a1a1a;
+  --card: #f4f4f4;
+  --card-foreground: #1a1a1a;
+  --popover: #f4f4f4;
+  --popover-foreground: #1a1a1a;
+  --primary: #1a1a1a;
+  --primary-foreground: #fafafa;
+  --secondary: #e8e8e8;
+  --secondary-foreground: #1a1a1a;
+  --muted-foreground: #4d4d4d;
+  --accent: #e8e8e8;
+  --accent-foreground: #1a1a1a;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #1a7a3c;
-  --brand-foreground: #f2f7f2;
-  --ring: #2a6b42;
-  --selection: #123d22;
-  --selection-foreground: #d8f5d8;
+  --brand: #3d3d3d;
+  --brand-foreground: #fafafa;
+  --ring: #4d4d4d;
+  --selection: #1a1a1a;
+  --selection-foreground: #f5f5f5;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
@@ -45,14 +46,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0rem;
-  --sidebar: #eef5ee;
-  --sidebar-foreground: #123d22;
-  --sidebar-primary: #123d22;
-  --sidebar-primary-foreground: #f2f7f2;
-  --sidebar-accent: #dcebde;
-  --sidebar-accent-foreground: #123d22;
-  --sidebar-border: #b9d4bd;
-  --sidebar-ring: #5c7a64;
+  --sidebar: #f4f4f4;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #1a1a1a;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #e8e8e8;
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: #c9c9c9;
+  --sidebar-ring: #6e6e6e;
 }
 
 @theme inline {
@@ -273,53 +274,53 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — the real CRT: green phosphor burning on near-black glass. */
+/* Dark mode — the real CRT: white phosphor burning on near-black glass. */
 .dark {
-  --phosphor: #33ff66;
-  --phosphor-dim: #1e9944;
-  --phosphor-bright: #7dffa3;
+  --phosphor: #f2f2f2;
+  --phosphor-dim: #8f8f8f;
+  --phosphor-bright: #ffffff;
   --scanline: rgb(0 0 0 / 0.22);
   --vignette: rgb(0 0 0 / 0.45);
-  --surface: #0a140c;
-  --surface-hover: #0e1c10;
-  --border: #143d1f;
-  --border-strong: #1e5c2e;
-  --muted: #0e1c10;
-  --muted-dim: #2e7a44;
-  --background: #050a06;
-  --foreground: #33ff66;
-  --card: #081109;
-  --card-foreground: #33ff66;
-  --popover: #0a140c;
-  --popover-foreground: #33ff66;
-  --primary: #33ff66;
-  --primary-foreground: #050a06;
-  --secondary: #0e1c10;
-  --secondary-foreground: #7dffa3;
-  --muted-foreground: #2e9950;
-  --accent: #0e1c10;
-  --accent-foreground: #7dffa3;
+  --surface: #101010;
+  --surface-hover: #181818;
+  --border: #2e2e2e;
+  --border-strong: #474747;
+  --muted: #181818;
+  --muted-dim: #6b6b6b;
+  --background: #070707;
+  --foreground: #f2f2f2;
+  --card: #0d0d0d;
+  --card-foreground: #f2f2f2;
+  --popover: #101010;
+  --popover-foreground: #f2f2f2;
+  --primary: #f2f2f2;
+  --primary-foreground: #070707;
+  --secondary: #181818;
+  --secondary-foreground: #ffffff;
+  --muted-foreground: #9c9c9c;
+  --accent: #181818;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
-  --input: oklch(0.7 0.2 150 / 15%);
-  --brand: #33ff66;
-  --brand-foreground: #050a06;
-  --ring: #33ff66;
-  --selection: #33ff66;
-  --selection-foreground: #050a06;
+  --input: oklch(1 0 0 / 15%);
+  --brand: #f2f2f2;
+  --brand-foreground: #070707;
+  --ring: #f2f2f2;
+  --selection: #f2f2f2;
+  --selection-foreground: #070707;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #081109;
-  --sidebar-foreground: #33ff66;
-  --sidebar-primary: #33ff66;
-  --sidebar-primary-foreground: #050a06;
-  --sidebar-accent: #0e1c10;
-  --sidebar-accent-foreground: #7dffa3;
-  --sidebar-border: #143d1f;
-  --sidebar-ring: #2e7a44;
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #f2f2f2;
+  --sidebar-primary-foreground: #070707;
+  --sidebar-accent: #181818;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2e2e2e;
+  --sidebar-ring: #474747;
 }
 
 @layer base {
