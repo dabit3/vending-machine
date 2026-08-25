@@ -4,37 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Swiss / International Minimal: a pure white field
-   on the neutral grey axis, near-black ink, hairline rules, and a single
-   restrained Swiss-red accent reserved for the claim flow. No warm cast,
-   no soft tints — structure comes from the grid, not from color. */
+/* Light mode (default) — Swiss / International Minimal, Warm Cream colorway:
+   a warm paper field on a cream axis, warm near-black ink, hairline rules,
+   and a single restrained burnt-orange accent reserved for the claim flow.
+   Structure still comes from the grid, not from color. */
 :root {
-  --surface: #f5f5f5;
-  --surface-hover: #ededed;
-  --border: #e4e4e4;
-  --border-strong: #c8c8c8;
-  --muted: #f0f0f0;
-  --muted-dim: #767676;
-  --background: #ffffff;
-  --foreground: #111111;
-  --card: #ffffff;
-  --card-foreground: #111111;
-  --popover: #ffffff;
-  --popover-foreground: #111111;
-  --primary: #111111;
-  --primary-foreground: #ffffff;
-  --secondary: #f0f0f0;
-  --secondary-foreground: #111111;
-  --muted-foreground: #555555;
-  --accent: #f0f0f0;
-  --accent-foreground: #111111;
+  --surface: #f3ede1;
+  --surface-hover: #ece5d6;
+  --border: #e5ddcc;
+  --border-strong: #cbc2ad;
+  --muted: #f0e9da;
+  --muted-dim: #7d7668;
+  --background: #faf6ee;
+  --foreground: #201d18;
+  --card: #faf6ee;
+  --card-foreground: #201d18;
+  --popover: #faf6ee;
+  --popover-foreground: #201d18;
+  --primary: #201d18;
+  --primary-foreground: #faf6ee;
+  --secondary: #f0e9da;
+  --secondary-foreground: #201d18;
+  --muted-foreground: #5d574c;
+  --accent: #f0e9da;
+  --accent-foreground: #201d18;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #e30613;
+  --brand: #c2410c;
   --brand-foreground: #ffffff;
-  --ring: #111111;
-  --selection: #e4e4e4;
-  --selection-foreground: #111111;
+  --ring: #201d18;
+  --selection: #e5ddcc;
+  --selection-foreground: #201d18;
   /* No shadows — the flat page and hairline rules carry all the depth. */
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
@@ -43,14 +43,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #111111;
-  --sidebar-primary: #111111;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0f0f0;
-  --sidebar-accent-foreground: #111111;
-  --sidebar-border: #e4e4e4;
-  --sidebar-ring: #767676;
+  --sidebar: #faf6ee;
+  --sidebar-foreground: #201d18;
+  --sidebar-primary: #201d18;
+  --sidebar-primary-foreground: #faf6ee;
+  --sidebar-accent: #f0e9da;
+  --sidebar-accent-foreground: #201d18;
+  --sidebar-border: #e5ddcc;
+  --sidebar-ring: #7d7668;
 }
 
 @theme inline {
@@ -184,49 +184,49 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — the same neutral axis inverted: near-black field, off-white
-   ink, hairline greys, and the identical Swiss-red accent. */
+/* Dark mode — the same cream axis inverted: warm near-black field, warm
+   off-white ink, hairline warm greys, and a brighter burnt-orange accent. */
 .dark {
-  --surface: #161616;
-  --surface-hover: #1d1d1d;
-  --border: #2a2a2a;
-  --border-strong: #404040;
-  --muted: #222222;
-  --muted-dim: #7c7c7c;
-  --background: #0e0e0e;
-  --foreground: #f2f2f2;
-  --card: #161616;
-  --card-foreground: #f2f2f2;
-  --popover: #1d1d1d;
-  --popover-foreground: #f2f2f2;
-  --primary: #f2f2f2;
-  --primary-foreground: #0e0e0e;
-  --secondary: #2a2a2a;
-  --secondary-foreground: #f2f2f2;
-  --muted-foreground: #a6a6a6;
-  --accent: #2a2a2a;
-  --accent-foreground: #f2f2f2;
+  --surface: #1a1712;
+  --surface-hover: #211d17;
+  --border: #2e2921;
+  --border-strong: #453e32;
+  --muted: #262119;
+  --muted-dim: #857c6b;
+  --background: #121009;
+  --foreground: #f2ede2;
+  --card: #1a1712;
+  --card-foreground: #f2ede2;
+  --popover: #211d17;
+  --popover-foreground: #f2ede2;
+  --primary: #f2ede2;
+  --primary-foreground: #121009;
+  --secondary: #2e2921;
+  --secondary-foreground: #f2ede2;
+  --muted-foreground: #aca390;
+  --accent: #2e2921;
+  --accent-foreground: #f2ede2;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #e30613;
+  --brand: #ea580c;
   --brand-foreground: #ffffff;
-  --ring: #c8c8c8;
-  --selection: #333333;
-  --selection-foreground: #f2f2f2;
+  --ring: #cbc2ad;
+  --selection: #383226;
+  --selection-foreground: #f2ede2;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #161616;
-  --sidebar-foreground: #f2f2f2;
-  --sidebar-primary: #f2f2f2;
-  --sidebar-primary-foreground: #0e0e0e;
-  --sidebar-accent: #2a2a2a;
-  --sidebar-accent-foreground: #f2f2f2;
-  --sidebar-border: #2a2a2a;
-  --sidebar-ring: #7c7c7c;
+  --sidebar: #1a1712;
+  --sidebar-foreground: #f2ede2;
+  --sidebar-primary: #f2ede2;
+  --sidebar-primary-foreground: #121009;
+  --sidebar-accent: #2e2921;
+  --sidebar-accent-foreground: #f2ede2;
+  --sidebar-border: #2e2921;
+  --sidebar-ring: #857c6b;
 }
 
 @layer base {
