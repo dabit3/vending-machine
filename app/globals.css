@@ -19,7 +19,7 @@
   --muted-dim: #78716a;
   --background: #ffffff;
   --foreground: #22211e;
-  --card: #ffffff;
+  --card: rgb(255 255 255 / 0.55);
   --card-foreground: #22211e;
   --popover: #ffffff;
   --popover-foreground: #22211e;
@@ -55,6 +55,15 @@
   --sidebar-accent-foreground: #22211e;
   --sidebar-border: #e7e3da;
   --sidebar-ring: #78716a;
+  /* Glass layer: frosted panels float over a soft ambient aurora field.
+     Colorways retint the app by swapping only the aurora + glass variables. */
+  --glass-border: rgb(255 255 255 / 0.65);
+  --glass-glow:
+    0 8px 32px rgb(31 38 68 / 0.12),
+    inset 0 1px 0 rgb(255 255 255 / 0.85);
+  --aurora-1: #c7d2fe;
+  --aurora-2: #fbcfe8;
+  --aurora-3: #bae6fd;
 }
 
 @theme inline {
@@ -100,6 +109,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-glass: var(--glass-border);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -139,6 +149,24 @@ input:-webkit-autofill:focus {
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+/* Frosted glass panel: translucent fill (via bg-card), heavy blur, a hairline
+   highlight border, and a soft ambient glow. */
+@utility glass-panel {
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-glow);
+}
+
+/* Ambient aurora field: three soft radial gradients layered behind the glass
+   panels to give the blur something to refract. */
+@utility bg-aurora {
+  background-image:
+    radial-gradient(40rem 28rem at 12% 8%, var(--aurora-1), transparent 62%),
+    radial-gradient(36rem 26rem at 88% 18%, var(--aurora-2), transparent 60%),
+    radial-gradient(48rem 34rem at 50% 95%, var(--aurora-3), transparent 65%);
 }
 
 /* Faint dot grid backdrop for hero surfaces. */
@@ -196,7 +224,7 @@ input:-webkit-autofill:focus {
   --muted-dim: #7a7772;
   --background: #0c0c0e;
   --foreground: #e8e6e1;
-  --card: #141416;
+  --card: rgb(30 30 36 / 0.5);
   --card-foreground: #e8e6e1;
   --popover: #1a1a1d;
   --popover-foreground: #e8e6e1;
@@ -228,6 +256,13 @@ input:-webkit-autofill:focus {
   --sidebar-accent-foreground: #e8e6e1;
   --sidebar-border: #26262a;
   --sidebar-ring: #7a7772;
+  --glass-border: rgb(255 255 255 / 0.12);
+  --glass-glow:
+    0 8px 32px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+  --aurora-1: #2b2e5e;
+  --aurora-2: #4a2350;
+  --aurora-3: #123a4a;
 }
 
 @layer base {

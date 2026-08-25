@@ -189,6 +189,7 @@ export default function ClaimPage({
         id="main-content"
         className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16"
       >
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-aurora" />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
@@ -249,7 +250,7 @@ export default function ClaimPage({
               >
             <Card
               inert={showQr || undefined}
-              className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+              className="glass-panel gap-0 rounded-2xl py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
@@ -579,7 +580,7 @@ function QrPanel({
   return (
     <Card
       inert={hidden || undefined}
-      className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+      className="glass-panel gap-0 rounded-2xl rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
     >
       <CardHeader className="gap-2 pt-(--card-spacing)">
         <div className="flex items-start justify-between gap-3">
@@ -645,7 +646,7 @@ function Receipt({
 }) {
   return (
     <div
-      className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
+      className="receipt-edge receipt-print glass-panel rounded-t-xl border bg-card pb-10 motion-reduce:animate-none"
       role="status"
     >
       <div className="flex flex-col gap-6 p-6 sm:p-8">

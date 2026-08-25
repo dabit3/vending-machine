@@ -66,7 +66,7 @@ function EventRow({
 }) {
   return (
     <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b border-border motion-reduce:animate-none"
+      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b border-glass last:border-b-0 motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link
@@ -165,6 +165,10 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 -z-10 bg-aurora"
+      />
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <section className="-mt-15.25 border-b border-border/65">
@@ -209,14 +213,14 @@ export default function Home() {
 
           {events === undefined ? (
             <div
-              className="mt-4 border-t border-border"
+              className="glass-panel mt-4 overflow-hidden rounded-2xl border bg-card"
               role="status"
               aria-label="Loading active events"
             >
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
+                  className="flex items-center gap-6 border-b border-glass px-2 py-7 last:border-b-0 sm:gap-10 sm:px-4"
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton className="h-5 w-2/3 rounded-sm" />
@@ -226,7 +230,7 @@ export default function Home() {
               ))}
             </div>
           ) : events.length === 0 ? (
-            <Empty className="mt-6 border border-dashed border-border-strong py-16">
+            <Empty className="glass-panel mt-6 rounded-2xl border bg-card py-16">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Ticket />
@@ -244,7 +248,7 @@ export default function Home() {
                   No active events right now.
                 </p>
               ) : (
-                <ul className="mt-4 border-t border-border">
+                <ul className="glass-panel mt-4 overflow-hidden rounded-2xl border bg-card">
                   {current.map((event, index) => (
                     <EventRow
                       key={event._id}
@@ -265,7 +269,7 @@ export default function Home() {
                       {String(past.length).padStart(2, "0")}
                     </span>
                   </div>
-                  <ul className="mt-4 border-t border-border">
+                  <ul className="glass-panel mt-4 overflow-hidden rounded-2xl border bg-card">
                     {past.map((event, index) => (
                       <EventRow
                         key={event._id}
