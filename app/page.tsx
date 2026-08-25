@@ -122,7 +122,8 @@ export default function Home() {
             </div>
             <div className="grid gap-10 py-14 sm:grid-cols-12 sm:py-20">
               <h1 className="font-heading text-5xl leading-[0.95] font-bold tracking-[-0.04em] text-balance sm:col-span-8 sm:text-7xl">
-                Claim your credits.
+                Claim your credits
+                <span className="text-brand">.</span>
               </h1>
               <p className="self-end text-sm leading-relaxed text-muted-foreground sm:col-span-4">
                 Sign in, then select your event to claim your credits.

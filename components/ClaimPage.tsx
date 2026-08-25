@@ -646,9 +646,7 @@ function Receipt({
     >
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center justify-between">
-          <span className="eyebrow text-muted-foreground">
-            Code dispensed
-          </span>
+          <span className="eyebrow text-brand">Code dispensed</span>
           <span className="relative flex size-2">
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none [animation-duration:2.5s] [animation-iteration-count:3]" />
             <span className="relative inline-flex size-2 rounded-full bg-brand" />

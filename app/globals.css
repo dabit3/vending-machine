@@ -6,8 +6,9 @@
 
 /* Light mode (default) — Swiss / International Minimal: a pure white field
    on the neutral grey axis, near-black ink, hairline rules, and a single
-   restrained Swiss-red accent reserved for the claim flow. No warm cast,
-   no soft tints — structure comes from the grid, not from color. */
+   classic Swiss-red accent (Classic Red) reserved for the claim flow.
+   No warm cast, no soft tints — structure comes from the grid, not from
+   color. */
 :root {
   --surface: #f5f5f5;
   --surface-hover: #ededed;
@@ -32,9 +33,9 @@
   --input: oklch(0 0 0 / 8%);
   --brand: #e30613;
   --brand-foreground: #ffffff;
-  --ring: #111111;
-  --selection: #e4e4e4;
-  --selection-foreground: #111111;
+  --ring: #e30613;
+  --selection: #e30613;
+  --selection-foreground: #ffffff;
   /* No shadows — the flat page and hairline rules carry all the depth. */
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
@@ -113,8 +114,8 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one red accent on screen. */
+/* Classic Red: selection prints in the one accent color — a small, classic
+   Swiss gesture that keeps the rest of the page strictly neutral. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -210,9 +211,9 @@ input:-webkit-autofill:focus {
   --input: oklch(1 0 0 / 15%);
   --brand: #e30613;
   --brand-foreground: #ffffff;
-  --ring: #c8c8c8;
-  --selection: #333333;
-  --selection-foreground: #f2f2f2;
+  --ring: #e30613;
+  --selection: #e30613;
+  --selection-foreground: #ffffff;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
