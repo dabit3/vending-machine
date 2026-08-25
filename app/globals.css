@@ -5,42 +5,42 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Light mode (default) — "Soft Neumorphism": one low-contrast tonal field
-   (a cool porcelain grey) where every surface is the same material as the
+   (a warm powder blush) where every surface is the same material as the
    page. Depth comes from paired shadows — a light source at the top-left
    casts a dark shadow below-right and a highlight above-left — so elements
    read as extruded from or pressed into the field rather than layered on
    top of it. */
 :root {
-  --surface: #e0e5ec;
-  --surface-hover: #d8dee7;
-  --border: #cfd6e0;
-  --border-strong: #b7c0cd;
-  --muted: #d4dae3;
-  --muted-dim: #7d8694;
-  --background: #e0e5ec;
-  --foreground: #33383f;
-  --card: #e0e5ec;
-  --card-foreground: #33383f;
-  --popover: #e4e9f0;
-  --popover-foreground: #33383f;
-  --primary: #3c424b;
-  --primary-foreground: #eef1f6;
-  --secondary: #d4dae3;
-  --secondary-foreground: #33383f;
-  --muted-foreground: #5b626d;
-  --accent: #d4dae3;
-  --accent-foreground: #33383f;
+  --surface: #f2dfe1;
+  --surface-hover: #ecd5d8;
+  --border: #e3cbcf;
+  --border-strong: #d0b0b6;
+  --muted: #ead2d5;
+  --muted-dim: #93777d;
+  --background: #f2dfe1;
+  --foreground: #46333a;
+  --card: #f2dfe1;
+  --card-foreground: #46333a;
+  --popover: #f5e4e6;
+  --popover-foreground: #46333a;
+  --primary: #533c44;
+  --primary-foreground: #f9eef0;
+  --secondary: #ead2d5;
+  --secondary-foreground: #46333a;
+  --muted-foreground: #6f565e;
+  --accent: #ead2d5;
+  --accent-foreground: #46333a;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #c2185b;
   --brand-foreground: #ffffff;
-  --ring: #4d5560;
-  --selection: #c8d0dc;
-  --selection-foreground: #33383f;
+  --ring: #64484f;
+  --selection: #e0c2c7;
+  --selection-foreground: #46333a;
   /* Neumorphic shadow pairs: a dark drop below-right + a light highlight
      above-left reads as extrusion; the inset pair reads as a press. */
-  --neu-light: rgb(255 255 255 / 0.85);
-  --neu-dark: rgb(163 177 198 / 0.65);
+  --neu-light: rgb(255 250 251 / 0.85);
+  --neu-dark: rgb(203 160 168 / 0.65);
   --shadow-neu:
     8px 8px 18px var(--neu-dark), -8px -8px 18px var(--neu-light);
   --shadow-neu-sm:
@@ -56,14 +56,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 1rem;
-  --sidebar: #e0e5ec;
-  --sidebar-foreground: #33383f;
-  --sidebar-primary: #3c424b;
-  --sidebar-primary-foreground: #eef1f6;
-  --sidebar-accent: #d4dae3;
-  --sidebar-accent-foreground: #33383f;
-  --sidebar-border: #cfd6e0;
-  --sidebar-ring: #7d8694;
+  --sidebar: #f2dfe1;
+  --sidebar-foreground: #46333a;
+  --sidebar-primary: #533c44;
+  --sidebar-primary-foreground: #f9eef0;
+  --sidebar-accent: #ead2d5;
+  --sidebar-accent-foreground: #46333a;
+  --sidebar-border: #e3cbcf;
+  --sidebar-ring: #93777d;
 }
 
 @theme inline {
@@ -211,52 +211,52 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — the same tonal field lowered to a soft charcoal-slate. The
+/* Dark mode — the same tonal field lowered to a muted plum-slate. The
    highlight half of each shadow pair dims to a faint sheen so extrusion
    still reads without haloing. */
 .dark {
-  --surface: #2a2e35;
-  --surface-hover: #31353d;
-  --border: #383d46;
-  --border-strong: #4a505b;
-  --muted: #333841;
-  --muted-dim: #868d99;
-  --background: #2a2e35;
-  --foreground: #d9dde3;
-  --card: #2a2e35;
-  --card-foreground: #d9dde3;
-  --popover: #31353d;
-  --popover-foreground: #d9dde3;
-  --primary: #d9dde3;
-  --primary-foreground: #262a30;
-  --secondary: #333841;
-  --secondary-foreground: #d9dde3;
-  --muted-foreground: #a4aab4;
-  --accent: #333841;
-  --accent-foreground: #d9dde3;
+  --surface: #352a2f;
+  --surface-hover: #3d3137;
+  --border: #46383f;
+  --border-strong: #5b4a53;
+  --muted: #413339;
+  --muted-dim: #99868e;
+  --background: #352a2f;
+  --foreground: #e3d9dd;
+  --card: #352a2f;
+  --card-foreground: #e3d9dd;
+  --popover: #3d3137;
+  --popover-foreground: #e3d9dd;
+  --primary: #e3d9dd;
+  --primary-foreground: #30262b;
+  --secondary: #413339;
+  --secondary-foreground: #e3d9dd;
+  --muted-foreground: #b4a4ab;
+  --accent: #413339;
+  --accent-foreground: #e3d9dd;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #e75480;
   --brand-foreground: #ffffff;
-  --ring: #aab1bc;
-  --selection: #3d434d;
-  --selection-foreground: #d9dde3;
-  --neu-light: rgb(255 255 255 / 0.05);
-  --neu-dark: rgb(0 0 0 / 0.45);
+  --ring: #bcaab2;
+  --selection: #4d3d45;
+  --selection-foreground: #e3d9dd;
+  --neu-light: rgb(255 235 242 / 0.05);
+  --neu-dark: rgb(15 5 10 / 0.45);
   --shadow-card: var(--shadow-neu);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #2a2e35;
-  --sidebar-foreground: #d9dde3;
-  --sidebar-primary: #d9dde3;
-  --sidebar-primary-foreground: #262a30;
-  --sidebar-accent: #333841;
-  --sidebar-accent-foreground: #d9dde3;
-  --sidebar-border: #383d46;
-  --sidebar-ring: #868d99;
+  --sidebar: #352a2f;
+  --sidebar-foreground: #e3d9dd;
+  --sidebar-primary: #e3d9dd;
+  --sidebar-primary-foreground: #30262b;
+  --sidebar-accent: #413339;
+  --sidebar-accent-foreground: #e3d9dd;
+  --sidebar-border: #46383f;
+  --sidebar-ring: #99868e;
 }
 
 @layer base {
