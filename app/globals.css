@@ -4,17 +4,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Neo-Brutalist: a stark white field, pure ink-black
-   borders and type, zero radius, and hard offset shadows. Contrast is the
-   whole palette; the brand blue stays as the single loud accent. */
+/* Light mode (default) — Neo-Brutalist, Hot Pink colorway: a shocking-pink
+   paper field, pure ink-black borders and type, zero radius, and hard offset
+   shadows. Hot pink is the dominant fill; black ink stays the structure. */
 :root {
-  --surface: #f4f4f0;
-  --surface-hover: #ecece6;
+  --surface: #ffd6ea;
+  --surface-hover: #ffc4e1;
   --border: #000000;
   --border-strong: #000000;
-  --muted: #efefe9;
-  --muted-dim: #55524c;
-  --background: #ffffff;
+  --muted: #ffddee;
+  --muted-dim: #6b3a52;
+  --background: #ffe9f4;
   --foreground: #000000;
   --card: #ffffff;
   --card-foreground: #000000;
@@ -22,17 +22,17 @@
   --popover-foreground: #000000;
   --primary: #000000;
   --primary-foreground: #ffffff;
-  --secondary: #efefe9;
+  --secondary: #ffddee;
   --secondary-foreground: #000000;
-  --muted-foreground: #44413c;
-  --accent: #efefe9;
+  --muted-foreground: #4c3140;
+  --accent: #ffddee;
   --accent-foreground: #000000;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #ff2d88;
   --brand-foreground: #ffffff;
   --ring: #000000;
-  --selection: #000000;
+  --selection: #ff2d88;
   --selection-foreground: #ffffff;
   /* Hard offset shadow: an opaque block, not a blur — the signature
      neo-brutalist "lifted slab" read. */
@@ -109,8 +109,7 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection joins the colorway: hot pink highlight with white ink. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -182,7 +181,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one hot-pink element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -197,34 +196,35 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — Neo-Brutalist inverted: pure black field, pure white ink
-   borders, same hard offset shadows drawn in white. */
+/* Dark mode — Neo-Brutalist inverted, Hot Pink colorway: near-black field
+   washed with pink, pure white ink borders, same hard offset shadows drawn
+   in white; shocking pink stays the loud accent. */
 .dark {
-  --surface: #121212;
-  --surface-hover: #1b1b1b;
+  --surface: #2a0e1c;
+  --surface-hover: #381526;
   --border: #ffffff;
   --border-strong: #ffffff;
-  --muted: #1b1b1b;
-  --muted-dim: #b3b3b3;
-  --background: #000000;
+  --muted: #381526;
+  --muted-dim: #d9a4bf;
+  --background: #1a0410;
   --foreground: #ffffff;
-  --card: #000000;
+  --card: #1a0410;
   --card-foreground: #ffffff;
-  --popover: #000000;
+  --popover: #1a0410;
   --popover-foreground: #ffffff;
   --primary: #ffffff;
   --primary-foreground: #000000;
-  --secondary: #1b1b1b;
+  --secondary: #381526;
   --secondary-foreground: #ffffff;
-  --muted-foreground: #cfcfcf;
-  --accent: #1b1b1b;
+  --muted-foreground: #ecd0de;
+  --accent: #381526;
   --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #ff3d97;
   --brand-foreground: #ffffff;
   --ring: #ffffff;
-  --selection: #ffffff;
+  --selection: #ff3d97;
   --selection-foreground: #000000;
   --shadow-card: 8px 8px 0 0 var(--border-strong);
   --chart-1: oklch(0.87 0 0);
