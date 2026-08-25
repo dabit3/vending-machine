@@ -4,16 +4,16 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Neo-Brutalist: a stark white field, pure ink-black
-   borders and type, zero radius, and hard offset shadows. Contrast is the
-   whole palette; the brand blue stays as the single loud accent. */
+/* Light mode (default) — Neo-Brutalist Monochrome: a stark white field, pure
+   ink-black borders and type, zero radius, and hard offset shadows. Contrast
+   is the whole palette — no chromatic accent; "brand" is solid ink. */
 :root {
-  --surface: #f4f4f0;
-  --surface-hover: #ecece6;
+  --surface: #f4f4f4;
+  --surface-hover: #ececec;
   --border: #000000;
   --border-strong: #000000;
-  --muted: #efefe9;
-  --muted-dim: #55524c;
+  --muted: #efefef;
+  --muted-dim: #555555;
   --background: #ffffff;
   --foreground: #000000;
   --card: #ffffff;
@@ -22,14 +22,14 @@
   --popover-foreground: #000000;
   --primary: #000000;
   --primary-foreground: #ffffff;
-  --secondary: #efefe9;
+  --secondary: #efefef;
   --secondary-foreground: #000000;
-  --muted-foreground: #44413c;
-  --accent: #efefe9;
+  --muted-foreground: #444444;
+  --accent: #efefef;
   --accent-foreground: #000000;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #000000;
   --brand-foreground: #ffffff;
   --ring: #000000;
   --selection: #000000;
@@ -44,13 +44,13 @@
   --chart-5: oklch(0.87 0 0);
   --radius: 0rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #222222;
+  --sidebar-primary: #222222;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f0f0f0;
+  --sidebar-accent-foreground: #222222;
+  --sidebar-border: #e4e4e4;
+  --sidebar-ring: #757575;
 }
 
 @theme inline {
@@ -109,8 +109,7 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection stays plain inverted ink — incidental, never an accent. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -182,7 +181,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the single brand-ink element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -221,8 +220,8 @@ input:-webkit-autofill:focus {
   --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
+  --brand: #ffffff;
+  --brand-foreground: #000000;
   --ring: #ffffff;
   --selection: #ffffff;
   --selection-foreground: #000000;
@@ -232,14 +231,14 @@ input:-webkit-autofill:focus {
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #141414;
+  --sidebar-foreground: #e7e7e7;
+  --sidebar-primary: #e7e7e7;
+  --sidebar-primary-foreground: #0c0c0c;
+  --sidebar-accent: #2b2b2b;
+  --sidebar-accent-foreground: #e7e7e7;
+  --sidebar-border: #262626;
+  --sidebar-ring: #787878;
 }
 
 @layer base {
