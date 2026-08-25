@@ -21,9 +21,9 @@ import { cn } from "@/lib/utils";
 // ASCII masthead for the hero — rendered in a <pre> so the terminal owns
 // the top of the page. Hidden from screen readers; the h1 carries meaning.
 const ASCII_MASTHEAD = String.raw`
- █▀▀ █▀▀█ █▀▀ █▀▀█ █▀▀█ █▀▀█ ▀█▀ ▀█▀ █▀▀█
- █   █▄▄▀ █▀▀ █  █ █  █ █▄▄█  █   █  █  █
- ▀▀▀ ▀ ▀▀ ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀  ▀  ▀  ▀▀▀ ▀▀▀▀`;
+ █   █ █▀▀▀ █▀▀▄ █▀▀▄
+ █   █ █▀▀  █  █ █  █
+  ▀▀▀  ▀▀▀▀ ▀  ▀ ▀▀▀ `;
 
 interface EventItem {
   _id: string;
