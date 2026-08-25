@@ -253,7 +253,7 @@ export default function ClaimPage({
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
+                  <CardTitle className="phosphor-glow font-heading text-3xl font-semibold tracking-tight text-balance uppercase">
                     {event.name}
                   </CardTitle>
                   <Button
@@ -480,10 +480,10 @@ export default function ClaimPage({
                       {submitting ? (
                         <>
                           <Spinner data-icon="inline-start" />
-                          Checking the list...
+                          CHECKING THE LIST...
                         </>
                       ) : (
-                        "Dispense my code"
+                        "[ DISPENSE MY CODE ]"
                       )}
                     </Button>
                     {event.claimInstructions ? (
@@ -651,6 +651,7 @@ function Receipt({
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center justify-between">
           <span className="eyebrow text-muted-foreground">
+            <span aria-hidden className="text-phosphor-dim">&gt; </span>
             Code dispensed
           </span>
           <span className="relative flex size-2">
@@ -683,7 +684,7 @@ function Receipt({
           <div className="text-xs text-muted-dim">
             {codeType ? `Your “${codeType}” code` : "Your credit code"}
           </div>
-          <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
+          <div className="phosphor-glow mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
             {code}
           </div>
         </div>

@@ -1,13 +1,10 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { BadgeCheck, Ticket } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
-import UnicornSceneEmbed from "@/components/UnicornSceneEmbed";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Badge } from "@/components/ui/badge";
@@ -21,29 +18,12 @@ import {
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
 
-// The hero background is a theme-paired Unicorn Studio WebGL scene
-// (experiment). A Unicorn project publishes exactly one authored design and
-// the SDK has no color-scheme awareness, so a light-authored project shows
-// its light design in dark mode too — each theme therefore needs its own
-// project ID here.
-const UNICORN_PROJECTS = {
-  light: "wEz2vCJgsynwCYSb3HgR",
-  dark: "aEdLurlqLEmU1DUjAaUz",
-} as const;
-
-// Bump this whenever a scene is republished in Unicorn Studio. Deployed
-// builds read scene data through Unicorn's CDN, which caches for months and
-// doesn't reliably purge on republish; the update param below is part of the
-// CDN cache key, so bumping the version makes deploys fetch the new design.
-// Dev skips the param (and the CDN): without it the SDK cache-busts every
-// load, so republishes show up on a plain refresh.
-const UNICORN_CACHE_VERSION = 2;
-
-const isProdBuild = process.env.NODE_ENV === "production";
-
-// Stable no-op subscription for the hydration gate below: the snapshot never
-// changes on the client, we only care that the server snapshot is false.
-const emptySubscribe = () => () => {};
+// ASCII masthead for the hero — rendered in a <pre> so the terminal owns
+// the top of the page. Hidden from screen readers; the h1 carries meaning.
+const ASCII_MASTHEAD = String.raw`
+ █▀▀ █▀▀█ █▀▀ █▀▀█ █▀▀█ █▀▀█ ▀█▀ ▀█▀ █▀▀█
+ █   █▄▄▀ █▀▀ █  █ █  █ █▄▄█  █   █  █  █
+ ▀▀▀ ▀ ▀▀ ▀▀▀ ▀▀▀▀ ▀▀▀▀ ▀  ▀  ▀  ▀▀▀ ▀▀▀▀`;
 
 interface EventItem {
   _id: string;
@@ -78,6 +58,12 @@ function EventRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+            <span
+              aria-hidden
+              className="text-phosphor-dim opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            >
+              &gt;
+            </span>
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -110,23 +96,6 @@ export default function Home() {
     mine?.map((item) => item.event?._id).filter(Boolean) ?? [],
   );
 
-  // The scene choice needs JS (the server doesn't know the theme, while the
-  // hydration render already does), so gate it behind hydration to keep both
-  // trees identical; the copy and scrim flip with pure dark: variants and
-  // render correctly from the first paint. Until hydration the plain
-  // theme-tinted shell stands in for both themes.
-  const { resolvedTheme } = useTheme();
-  const hydrated = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
-  const heroProjectId = hydrated
-    ? resolvedTheme === "light"
-      ? UNICORN_PROJECTS.light
-      : UNICORN_PROJECTS.dark
-    : undefined;
-
   // Dated events that have passed sink into their own dimmed group; undated
   // events are treated as current. Active events order soonest-first, with
   // undated ones following in their arrival (newest created) order; past
@@ -145,20 +114,31 @@ export default function Home() {
     events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? []
   ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
-  // Shared hero copy: crisp DOM stacked above the theme's scene. pt-15.25
-  // offsets the translucent header bar the hero slides under, keeping the
-  // copy centered in the visible area.
+  // Terminal boot-screen hero: ASCII masthead, a shell prompt line, and the
+  // headline typed out behind a blinking block cursor. pt-15.25 offsets the
+  // translucent header bar the hero slides under.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
-        {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
-        distribution
+      <pre
+        aria-hidden
+        className="crt-flicker phosphor-glow-soft hidden select-none text-[9px] leading-[1.15] text-phosphor-dim motion-reduce:animate-none sm:block sm:text-[11px]"
+      >
+        {ASCII_MASTHEAD}
+      </pre>
+      <p className="eyebrow animate-in fade-in fill-mode-both duration-500 mt-6 text-muted-foreground motion-reduce:animate-none">
+        <span aria-hidden className="text-phosphor-dim">$ </span>
+        ./vend --{process.env.NEXT_PUBLIC_IS_DEVIN ? "devin " : ""}event-credit-distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+      <h1 className="animate-in fade-in fill-mode-both duration-500 delay-100 terminal-cursor phosphor-glow mt-6 max-w-2xl font-heading text-4xl leading-[1.05] font-semibold tracking-tight text-balance text-foreground uppercase motion-reduce:animate-none sm:text-6xl">
         Claim your credits.
       </h1>
-      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
+      <p className="animate-in fade-in fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-muted-foreground motion-reduce:animate-none">
+        <span aria-hidden className="text-phosphor-dim">&gt; </span>
         Sign in, then select your event to claim your credits.
+      </p>
+      <p className="animate-in fade-in fill-mode-both duration-500 delay-300 mt-2 text-xs text-muted-dim motion-reduce:animate-none">
+        <span aria-hidden className="text-phosphor-dim">&gt; </span>
+        READY.
       </p>
     </div>
   );
@@ -170,41 +150,21 @@ export default function Home() {
         <section className="-mt-15.25 border-b border-border/65">
           {/* The section pulls up behind the translucent header bar
               (-mt-15.25) so the background runs to the top of the page; the
-              hero is 61px taller to compensate and the scene shows through
-              the bar's frosted fill. The theme's Unicorn Studio scene renders
-              behind the copy and a soft theme-matched scrim; keying the scene
-              by project swaps it cleanly on theme change while the copy stays
-              mounted. The scene's mouse interactivity listens on window, so
-              the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
-            {heroProjectId ? (
-              <div className="absolute inset-0" aria-hidden>
-                {/* Dev fetches fresh scene data on every load; deploys pin
-                    the CDN to UNICORN_CACHE_VERSION — see the constant. */}
-                <UnicornSceneEmbed
-                  key={heroProjectId}
-                  projectId={
-                    isProdBuild
-                      ? `${heroProjectId}?update=${UNICORN_CACHE_VERSION}`
-                      : heroProjectId
-                  }
-                  production={isProdBuild}
-                />
-              </div>
-            ) : null}
-            {/* Soft scrim keeps the headline legible over the scenes; tune
-                or remove once the look settles. */}
+              hero is 61px taller to compensate. A faint dot grid stands in
+              for CRT phosphor texture behind the boot copy. */}
+          <div className="relative h-[520px] overflow-hidden bg-background sm:h-[486px]">
             <div
-              className="absolute inset-0 bg-white/20 dark:bg-black/20"
               aria-hidden
+              className="absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
             />
             {heroCopy}
           </div>
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Active events
+          <h2 className="eyebrow text-muted-foreground">
+            <span aria-hidden className="text-phosphor-dim">$ </span>ls
+            ./active-events
           </h2>
 
           {events === undefined ? (
@@ -258,8 +218,9 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
-                      Past events
+                    <h2 className="eyebrow text-muted-foreground">
+                      <span aria-hidden className="text-phosphor-dim">$ </span>
+                      ls ./past-events
                     </h2>
                     <span className="font-mono text-xs text-muted-dim tabular-nums">
                       {String(past.length).padStart(2, "0")}

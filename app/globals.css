@@ -4,57 +4,55 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Retro terminal / CRT — green phosphor on near-black glass. Light mode is
+   a "paper terminal": dark phosphor ink on a pale phosphor-tinted field, so
+   the theme toggle still means something. The phosphor hue drives every
+   accent; radius is zeroed so everything reads as character cells. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --phosphor: #1a7a3c;
+  --phosphor-dim: #4a8a60;
+  --phosphor-bright: #0c5c2a;
+  --surface: #e9f2e9;
+  --surface-hover: #dfecdf;
+  --border: #b9d4bd;
+  --border-strong: #8db898;
+  --muted: #dcebde;
+  --muted-dim: #5c7a64;
+  --background: #f2f7f2;
+  --foreground: #123d22;
+  --card: #eef5ee;
+  --card-foreground: #123d22;
+  --popover: #eef5ee;
+  --popover-foreground: #123d22;
+  --primary: #123d22;
+  --primary-foreground: #f2f7f2;
+  --secondary: #dcebde;
+  --secondary-foreground: #123d22;
+  --muted-foreground: #3c6349;
+  --accent: #dcebde;
+  --accent-foreground: #123d22;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --brand: #1a7a3c;
+  --brand-foreground: #f2f7f2;
+  --ring: #2a6b42;
+  --selection: #123d22;
+  --selection-foreground: #d8f5d8;
+  --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --radius: 0rem;
+  --sidebar: #eef5ee;
+  --sidebar-foreground: #123d22;
+  --sidebar-primary: #123d22;
+  --sidebar-primary-foreground: #f2f7f2;
+  --sidebar-accent: #dcebde;
+  --sidebar-accent-foreground: #123d22;
+  --sidebar-border: #b9d4bd;
+  --sidebar-ring: #5c7a64;
 }
 
 @theme inline {
@@ -66,11 +64,13 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
+  /* Everything is monospace — the terminal has exactly one typeface. */
+  --font-sans: var(--font-geist-mono);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-geist-mono);
+  --color-phosphor: var(--phosphor);
+  --color-phosphor-dim: var(--phosphor-dim);
+  --color-phosphor-bright: var(--phosphor-bright);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -110,7 +110,38 @@
 }
 
 body {
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-mono), monospace;
+}
+
+/* CRT scanlines: a fixed full-viewport overlay of faint horizontal lines,
+   plus a soft vignette that pools at the glass corners. Sits above content
+   but never intercepts input. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    var(--scanline, rgb(0 0 0 / 0.06)) 2px,
+    var(--scanline, rgb(0 0 0 / 0.06)) 3px
+  );
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 120% 120% at 50% 50%,
+    transparent 60%,
+    var(--vignette, rgb(0 0 0 / 0.12)) 100%
+  );
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
@@ -145,6 +176,64 @@ input:-webkit-autofill:focus {
 @utility bg-dotgrid {
   background-image: radial-gradient(var(--border) 1px, transparent 1px);
   background-size: 28px 28px;
+}
+
+/* Phosphor glow: the soft halo a lit CRT pixel bleeds into the glass. */
+@utility phosphor-glow {
+  text-shadow:
+    0 0 6px color-mix(in srgb, var(--phosphor) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--phosphor) 25%, transparent);
+}
+
+@utility phosphor-glow-soft {
+  text-shadow: 0 0 8px color-mix(in srgb, var(--phosphor) 30%, transparent);
+}
+
+/* Blinking block cursor, as an ::after so it rides the end of a line. */
+@utility terminal-cursor {
+  &::after {
+    content: "█";
+    margin-left: 0.15em;
+    animation: cursor-blink 1.1s steps(1) infinite;
+  }
+}
+
+@keyframes cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* CRT power-on flicker for hero copy. */
+@utility crt-flicker {
+  animation: crt-flicker 2.4s ease-in-out 1;
+}
+
+@keyframes crt-flicker {
+  0% {
+    opacity: 0;
+  }
+  4% {
+    opacity: 0.7;
+  }
+  8% {
+    opacity: 0.2;
+  }
+  12% {
+    opacity: 1;
+  }
+  16% {
+    opacity: 0.6;
+  }
+  20%,
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -184,50 +273,53 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — the real CRT: green phosphor burning on near-black glass. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --phosphor: #33ff66;
+  --phosphor-dim: #1e9944;
+  --phosphor-bright: #7dffa3;
+  --scanline: rgb(0 0 0 / 0.22);
+  --vignette: rgb(0 0 0 / 0.45);
+  --surface: #0a140c;
+  --surface-hover: #0e1c10;
+  --border: #143d1f;
+  --border-strong: #1e5c2e;
+  --muted: #0e1c10;
+  --muted-dim: #2e7a44;
+  --background: #050a06;
+  --foreground: #33ff66;
+  --card: #081109;
+  --card-foreground: #33ff66;
+  --popover: #0a140c;
+  --popover-foreground: #33ff66;
+  --primary: #33ff66;
+  --primary-foreground: #050a06;
+  --secondary: #0e1c10;
+  --secondary-foreground: #7dffa3;
+  --muted-foreground: #2e9950;
+  --accent: #0e1c10;
+  --accent-foreground: #7dffa3;
   --destructive: oklch(0.704 0.191 22.216);
-  --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --input: oklch(0.7 0.2 150 / 15%);
+  --brand: #33ff66;
+  --brand-foreground: #050a06;
+  --ring: #33ff66;
+  --selection: #33ff66;
+  --selection-foreground: #050a06;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #081109;
+  --sidebar-foreground: #33ff66;
+  --sidebar-primary: #33ff66;
+  --sidebar-primary-foreground: #050a06;
+  --sidebar-accent: #0e1c10;
+  --sidebar-accent-foreground: #7dffa3;
+  --sidebar-border: #143d1f;
+  --sidebar-ring: #2e7a44;
 }
 
 @layer base {
