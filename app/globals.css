@@ -4,57 +4,55 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Playful Memphis / Neon Zing": a sun-bleached cream
+   page with deep violet ink, thick friendly borders, and hard offset shadows
+   instead of soft blur. The zing comes from a high-energy magenta brand plus
+   electric cyan / lime / lemon tints in the supporting surfaces. Text stays
+   on the ink axis so contrast holds; neon lives in fills and edges. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
+  --surface: #fdf8ec;
+  --surface-hover: #faf1da;
+  --border: #e4dcf5;
+  --border-strong: #241b4d;
+  --muted: #f3eefe;
+  --muted-dim: #6f6597;
+  --background: #fffdf5;
+  --foreground: #241b4d;
   --card: #ffffff;
-  --card-foreground: #22211e;
+  --card-foreground: #241b4d;
   --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --popover-foreground: #241b4d;
+  --primary: #241b4d;
+  --primary-foreground: #fffdf5;
+  --secondary: #fef3c0;
+  --secondary-foreground: #241b4d;
+  --muted-foreground: #554a80;
+  --accent: #d7fbef;
+  --accent-foreground: #241b4d;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --input: oklch(0.25 0.1 290 / 12%);
+  --brand: #c2077f;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
+  --ring: #c2077f;
+  --selection: #fff045;
+  --selection-foreground: #241b4d;
+  /* Hard offset "sticker" shadow: a flat ink block instead of blur — cards
+     read as playful cut-outs pinned slightly off the page. */
+  --shadow-card: 4px 4px 0 0 rgb(36 27 77 / 0.14);
+  --chart-1: #c2077f;
+  --chart-2: #0e9594;
+  --chart-3: #f5a623;
+  --chart-4: #6247e3;
+  --chart-5: #64ba1e;
+  --radius: 1rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #241b4d;
+  --sidebar-primary: #241b4d;
+  --sidebar-primary-foreground: #fffdf5;
+  --sidebar-accent: #f3eefe;
+  --sidebar-accent-foreground: #241b4d;
+  --sidebar-border: #e4dcf5;
+  --sidebar-ring: #c2077f;
 }
 
 @theme inline {
@@ -100,28 +98,30 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* Mixed radii: small controls stay crisp and near-square while big
+     surfaces balloon — the deliberately uneven scale is part of the play. */
+  --radius-sm: calc(var(--radius) * 0.3);
+  --radius-md: calc(var(--radius) * 0.55);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
 }
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Highlighter lemon: selection gets to join the party without stealing
+   contrast from the ink. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
 }
 
-/* Chrome paints autofilled fields yellow, which clashes with the paper
-   palette. The background is set via an internal style that can't be
+/* Chrome paints autofilled fields its own yellow, which fights the theme's
+   lemon tints. The background is set via an internal style that can't be
    overridden directly, but it *can* be transitioned — delaying it
    indefinitely keeps the field transparent while the ink stays themed. */
 input:-webkit-autofill,
@@ -141,10 +141,21 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Confetti grid backdrop for hero surfaces: three offset dot lattices in
+   magenta, teal, and amber so the field reads as scattered confetti. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(rgb(194 7 127 / 0.22) 1.5px, transparent 1.5px),
+    radial-gradient(rgb(14 149 148 / 0.2) 1.5px, transparent 1.5px),
+    radial-gradient(rgb(245 166 35 / 0.22) 1.5px, transparent 1.5px);
+  background-size:
+    42px 42px,
+    42px 42px,
+    42px 42px;
+  background-position:
+    0 0,
+    14px 21px,
+    28px 7px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -184,50 +195,51 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — Memphis after dark: deep indigo instead of grey-black so the
+   neons still zing, borders stay visible and friendly, and the hard offset
+   shadow flips to a pure-black block. Brand magenta brightens a step to hold
+   contrast against the darker field. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #201a3f;
+  --surface-hover: #2a2350;
+  --border: #3a3168;
+  --border-strong: #6b5fd0;
+  --muted: #2a2350;
+  --muted-dim: #8d84c0;
+  --background: #16112e;
+  --foreground: #f1edfc;
+  --card: #201a3f;
+  --card-foreground: #f1edfc;
+  --popover: #2a2350;
+  --popover-foreground: #f1edfc;
+  --primary: #f1edfc;
+  --primary-foreground: #16112e;
+  --secondary: #352c60;
+  --secondary-foreground: #f1edfc;
+  --muted-foreground: #bcb3e6;
+  --accent: #352c60;
+  --accent-foreground: #f1edfc;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
-  --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --brand: #ff4fbf;
+  --brand-foreground: #2a0620;
+  --ring: #ff4fbf;
+  --selection: #514094;
+  --selection-foreground: #f1edfc;
+  --shadow-card: 4px 4px 0 0 rgb(0 0 0 / 0.45);
+  --chart-1: #ff4fbf;
+  --chart-2: #3ee6e0;
+  --chart-3: #ffc53d;
+  --chart-4: #9d8bff;
+  --chart-5: #9ae649;
+  --sidebar: #201a3f;
+  --sidebar-foreground: #f1edfc;
+  --sidebar-primary: #f1edfc;
+  --sidebar-primary-foreground: #16112e;
+  --sidebar-accent: #352c60;
+  --sidebar-accent-foreground: #f1edfc;
+  --sidebar-border: #3a3168;
+  --sidebar-ring: #ff4fbf;
 }
 
 @layer base {
