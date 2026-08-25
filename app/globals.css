@@ -6,40 +6,40 @@
 
 /* Cyberpunk Neon — a dark HUD field with neon accents. The colorway is
    defined by the three --neon-* hues below; everything else derives from
-   them. Default theme (no .dark class) is "night city": deep indigo-black
-   field, cool blue-tinted neutrals. */
+   them. Default theme (no .dark class) is "ember city": deep ember-black
+   field, warm red-tinted neutrals. */
 :root {
-  /* Colorway: magenta / cyan / ultraviolet. Swap these three to re-skin. */
-  --neon-primary: #ff2ecb;
-  --neon-secondary: #00e5ff;
-  --neon-tertiary: #9d4dff;
+  /* Colorway: blood orange / amber / crimson. Swap these three to re-skin. */
+  --neon-primary: #ff3c00;
+  --neon-secondary: #ffb300;
+  --neon-tertiary: #dc143c;
 
-  --surface: #10101c;
-  --surface-hover: #161628;
-  --border: #20203a;
-  --border-strong: #34345c;
-  --muted: #16162a;
-  --muted-dim: #6b7a99;
-  --background: #0a0a14;
-  --foreground: #e8f0ff;
-  --card: #10101c;
-  --card-foreground: #e8f0ff;
-  --popover: #141424;
-  --popover-foreground: #e8f0ff;
-  --primary: #e8f0ff;
-  --primary-foreground: #0a0a14;
-  --secondary: #1c1c34;
-  --secondary-foreground: #e8f0ff;
-  --muted-foreground: #9aa8c7;
-  --accent: #1c1c34;
-  --accent-foreground: #e8f0ff;
+  --surface: #1c1010;
+  --surface-hover: #281616;
+  --border: #3a2020;
+  --border-strong: #5c3434;
+  --muted: #2a1616;
+  --muted-dim: #997a6b;
+  --background: #140a0a;
+  --foreground: #fff0e8;
+  --card: #1c1010;
+  --card-foreground: #fff0e8;
+  --popover: #241414;
+  --popover-foreground: #fff0e8;
+  --primary: #fff0e8;
+  --primary-foreground: #140a0a;
+  --secondary: #341c1c;
+  --secondary-foreground: #fff0e8;
+  --muted-foreground: #c7a89a;
+  --accent: #341c1c;
+  --accent-foreground: #fff0e8;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 12%);
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #2a1a3e;
-  --selection-foreground: #e8f0ff;
+  --selection: #3e1e1a;
+  --selection-foreground: #fff0e8;
   /* Cards read as glowing panels rather than shadowed paper. */
   --shadow-card:
     0 0 20px -8px color-mix(in srgb, var(--neon-primary) 35%, transparent),
@@ -50,14 +50,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #10101c;
-  --sidebar-foreground: #e8f0ff;
-  --sidebar-primary: #e8f0ff;
-  --sidebar-primary-foreground: #0a0a14;
-  --sidebar-accent: #1c1c34;
-  --sidebar-accent-foreground: #e8f0ff;
-  --sidebar-border: #20203a;
-  --sidebar-ring: #6b7a99;
+  --sidebar: #1c1010;
+  --sidebar-foreground: #fff0e8;
+  --sidebar-primary: #fff0e8;
+  --sidebar-primary-foreground: #140a0a;
+  --sidebar-accent: #341c1c;
+  --sidebar-accent-foreground: #fff0e8;
+  --sidebar-border: #3a2020;
+  --sidebar-ring: #997a6b;
 }
 
 @theme inline {
@@ -290,32 +290,32 @@ input:-webkit-autofill:focus {
    black field for OLED. The neon hues stay identical; only the neutrals
    sink. */
 .dark {
-  --surface: #0b0b15;
-  --surface-hover: #121220;
-  --border: #1a1a30;
-  --border-strong: #2c2c50;
-  --muted: #111120;
-  --muted-dim: #5e6c8c;
-  --background: #050509;
-  --foreground: #e8f0ff;
-  --card: #0b0b15;
-  --card-foreground: #e8f0ff;
-  --popover: #10101e;
-  --popover-foreground: #e8f0ff;
-  --primary: #e8f0ff;
-  --primary-foreground: #050509;
-  --secondary: #17172b;
-  --secondary-foreground: #e8f0ff;
-  --muted-foreground: #93a2c2;
-  --accent: #17172b;
-  --accent-foreground: #e8f0ff;
+  --surface: #150b0b;
+  --surface-hover: #201212;
+  --border: #301a1a;
+  --border-strong: #502c2c;
+  --muted: #201111;
+  --muted-dim: #8c6c5e;
+  --background: #090505;
+  --foreground: #fff0e8;
+  --card: #150b0b;
+  --card-foreground: #fff0e8;
+  --popover: #1e1010;
+  --popover-foreground: #fff0e8;
+  --primary: #fff0e8;
+  --primary-foreground: #090505;
+  --secondary: #2b1717;
+  --secondary-foreground: #fff0e8;
+  --muted-foreground: #c2a293;
+  --accent: #2b1717;
+  --accent-foreground: #fff0e8;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #241536;
-  --selection-foreground: #e8f0ff;
+  --selection: #361a15;
+  --selection-foreground: #fff0e8;
   --shadow-card:
     0 0 24px -8px color-mix(in srgb, var(--neon-primary) 40%, transparent),
     0 0 48px -16px color-mix(in srgb, var(--neon-secondary) 30%, transparent);
@@ -324,14 +324,14 @@ input:-webkit-autofill:focus {
   --chart-3: var(--neon-tertiary);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #0b0b15;
-  --sidebar-foreground: #e8f0ff;
-  --sidebar-primary: #e8f0ff;
-  --sidebar-primary-foreground: #050509;
-  --sidebar-accent: #17172b;
-  --sidebar-accent-foreground: #e8f0ff;
-  --sidebar-border: #1a1a30;
-  --sidebar-ring: #5e6c8c;
+  --sidebar: #150b0b;
+  --sidebar-foreground: #fff0e8;
+  --sidebar-primary: #fff0e8;
+  --sidebar-primary-foreground: #090505;
+  --sidebar-accent: #2b1717;
+  --sidebar-accent-foreground: #fff0e8;
+  --sidebar-border: #301a1a;
+  --sidebar-ring: #8c6c5e;
 }
 
 @layer base {
