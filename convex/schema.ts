@@ -23,6 +23,9 @@ export default defineSchema({
     eventDate: v.optional(v.string()),
     // Optional post-claim redemption instructions shown to attendees.
     claimInstructions: v.optional(v.string()),
+    // Hidden events are excluded from the public home page listing but
+    // remain reachable via their claim URL.
+    hidden: v.optional(v.boolean()),
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),
