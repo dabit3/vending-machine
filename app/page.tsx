@@ -150,7 +150,7 @@ export default function Home() {
   // copy centered in the visible area.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 w-fit border-2 border-black bg-white px-2.5 py-1.5 text-black shadow-[3px_3px_0_0_#000] dark:border-white dark:bg-black dark:text-white dark:shadow-[3px_3px_0_0_#fff] motion-reduce:animate-none">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 w-fit border-2 border-black bg-brand px-2.5 py-1.5 text-black shadow-[3px_3px_0_0_#000] dark:border-black dark:shadow-[3px_3px_0_0_#000] motion-reduce:animate-none">
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
