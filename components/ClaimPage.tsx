@@ -252,8 +252,14 @@ export default function ClaimPage({
               className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
+                <div className="rule-masthead flex items-baseline justify-between gap-3 pt-2.5 pb-1">
+                  <span className="eyebrow text-muted-foreground">
+                    The claim desk
+                  </span>
+                  <span className="eyebrow text-muted-dim">/{slug}</span>
+                </div>
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
+                  <CardTitle className="font-heading text-4xl font-semibold tracking-tight text-balance">
                     {event.name}
                   </CardTitle>
                   <Button
@@ -268,7 +274,7 @@ export default function ClaimPage({
                   </Button>
                 </div>
                 {event.description ? (
-                  <CardDescription className="text-sm leading-relaxed">
+                  <CardDescription className="font-serif text-[15px] leading-relaxed">
                     {event.description}
                   </CardDescription>
                 ) : null}
@@ -393,7 +399,7 @@ export default function ClaimPage({
                             Redemption instructions for {event.name}
                           </DialogDescription>
                         </DialogHeader>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="pull-quote pl-4 text-[15px] leading-relaxed whitespace-pre-wrap">
                           {event.claimInstructions}
                         </p>
                         <Button
@@ -557,7 +563,7 @@ function RedeemInstructionsDialog({
             Redemption instructions for {eventName}
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="pull-quote pl-4 text-[15px] leading-relaxed whitespace-pre-wrap">
           {instructions}
         </p>
       </DialogContent>
@@ -660,11 +666,11 @@ function Receipt({
         </div>
 
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight text-balance">
             {eventName}
           </h1>
           {creditAmount ? (
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 font-serif text-sm italic text-muted-foreground">
               {formatValue(creditAmount)}
             </p>
           ) : null}

@@ -68,9 +68,10 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  /* Editorial print: headlines set in a serif display face, with a text
+     serif for decks and pull quotes. */
+  --font-heading: var(--font-playfair);
+  --font-serif: var(--font-source-serif);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -139,6 +140,25 @@ input:-webkit-autofill:focus {
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+/* Editorial double rule: the stacked hairline pair that opens a section,
+   as on a broadsheet front page. */
+@utility rule-double {
+  border-top: 3px double var(--foreground);
+}
+
+/* Heavy masthead rule paired with a hairline below. */
+@utility rule-masthead {
+  border-top: 2px solid var(--foreground);
+  box-shadow: 0 3px 0 -2px var(--foreground);
+}
+
+/* Pull quote: text serif italic with a stout left rule. */
+@utility pull-quote {
+  font-family: var(--font-serif), Georgia, serif;
+  font-style: italic;
+  border-left: 3px solid var(--foreground);
 }
 
 /* Faint dot grid backdrop for hero surfaces. */
