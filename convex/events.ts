@@ -26,14 +26,16 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     const events = await ctx.db.query("events").order("desc").collect();
-    return events.map((event) => ({
-      _id: event._id,
-      _creationTime: event._creationTime,
-      name: event.name,
-      slug: event.slug,
-      description: event.description,
-      eventDate: event.eventDate,
-    }));
+    return events
+      .filter((event) => !event.hidden)
+      .map((event) => ({
+        _id: event._id,
+        _creationTime: event._creationTime,
+        name: event.name,
+        slug: event.slug,
+        description: event.description,
+        eventDate: event.eventDate,
+      }));
   },
 });
 
@@ -119,6 +121,7 @@ export const get = query({
       codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
+      hidden: event.hidden,
     };
   },
 });
@@ -151,6 +154,7 @@ export const listManaged = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
+      hidden: event.hidden,
     }));
   },
 });
@@ -195,6 +199,7 @@ export const update = mutation({
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
@@ -213,6 +218,7 @@ export const update = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
+      hidden: args.hidden || undefined,
     });
     return { slug };
   },

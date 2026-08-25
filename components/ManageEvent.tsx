@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardAction,
@@ -1423,6 +1424,7 @@ function EventDetailsForm({
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
+  const [hidden, setHidden] = useState(event.hidden ?? false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -1436,6 +1438,7 @@ function EventDetailsForm({
         description: description || undefined,
         eventDate: eventDate || undefined,
         claimInstructions: claimInstructions || undefined,
+        hidden: hidden || undefined,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1519,6 +1522,16 @@ function EventDetailsForm({
                 Optional — when set, attendees see a &ldquo;How to
                 redeem&rdquo; button after claiming their code.
               </FieldDescription>
+            </Field>
+            <Field orientation="horizontal" className="sm:col-span-2">
+              <Checkbox
+                id="detail-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="detail-hidden" className="font-normal">
+                Hide from home page
+              </FieldLabel>
             </Field>
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">

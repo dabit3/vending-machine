@@ -11,6 +11,7 @@ import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
 import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
 import { Alert, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,6 +46,7 @@ interface ManagedEventItem {
   name: string;
   slug: string;
   eventDate?: string;
+  hidden?: boolean;
 }
 
 function AdminEventRow({
@@ -64,8 +66,9 @@ function AdminEventRow({
         )}
       >
         <div className="min-w-0 flex-1">
-          <div className="font-heading font-medium tracking-tight">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading font-medium tracking-tight">
             {event.name}
+            {event.hidden ? <Badge variant="outline">Hidden</Badge> : null}
           </div>
         </div>
         <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
