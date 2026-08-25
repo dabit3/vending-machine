@@ -4,10 +4,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Swiss / International Minimal: a pure white field
-   on the neutral grey axis, near-black ink, hairline rules, and a single
-   restrained Swiss-red accent reserved for the claim flow. No warm cast,
-   no soft tints — structure comes from the grid, not from color. */
+/* Light mode (default) — Swiss / International Minimal, Charcoal colorway:
+   a pure white field on the neutral grey axis, near-black ink, hairline
+   rules, and a near-black charcoal accent reserved for the claim flow.
+   Entirely monochrome — hierarchy comes purely from value contrast. */
 :root {
   --surface: #f5f5f5;
   --surface-hover: #ededed;
@@ -30,10 +30,10 @@
   --accent-foreground: #111111;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #e30613;
+  --brand: #1c1c1c;
   --brand-foreground: #ffffff;
   --ring: #111111;
-  --selection: #e4e4e4;
+  --selection: #d6d6d6;
   --selection-foreground: #111111;
   /* No shadows — the flat page and hairline rules carry all the depth. */
   --shadow-card: 0 0 rgb(0 0 0 / 0);
@@ -114,7 +114,7 @@ body {
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one red accent on screen. */
+   the one charcoal accent on screen. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -169,7 +169,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one brand accent in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -185,7 +185,8 @@ input:-webkit-autofill:focus {
 }
 
 /* Dark mode — the same neutral axis inverted: near-black field, off-white
-   ink, hairline greys, and the identical Swiss-red accent. */
+   ink, hairline greys; the charcoal accent flips to a light grey so it
+   reads against the dark field. */
 .dark {
   --surface: #161616;
   --surface-hover: #1d1d1d;
@@ -208,10 +209,10 @@ input:-webkit-autofill:focus {
   --accent-foreground: #f2f2f2;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #e30613;
-  --brand-foreground: #ffffff;
+  --brand: #e8e8e8;
+  --brand-foreground: #111111;
   --ring: #c8c8c8;
-  --selection: #333333;
+  --selection: #3d3d3d;
   --selection-foreground: #f2f2f2;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
