@@ -249,11 +249,13 @@ export default function ClaimPage({
               >
             <Card
               inert={showQr || undefined}
-              className="gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+              className="pixel-frame gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
+              {/* Cabinet marquee across the top of the "machine". */}
+              <div className="bg-marquee-stripes h-2 shrink-0" aria-hidden />
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
+                  <CardTitle className="font-heading text-lg leading-relaxed text-balance sm:text-xl">
                     {event.name}
                   </CardTitle>
                   <Button
@@ -311,7 +313,11 @@ export default function ClaimPage({
                       only dispensed to verified addresses.
                     </p>
                     <SignInButton mode="modal">
-                      <Button variant="brand" size="lg" className="w-full">
+                      <Button
+                        variant="brand"
+                        size="lg"
+                        className="arcade-bounce w-full"
+                      >
                         <LogIn data-icon="inline-start" />
                         Sign in to claim
                       </Button>
@@ -472,7 +478,7 @@ export default function ClaimPage({
                       variant="brand"
                       size="lg"
                       disabled={submitting || (mustChoose && !selectedType)}
-                      className="w-full"
+                      className="arcade-bounce w-full"
                       onClick={handleClaim}
                       aria-busy={submitting}
                       aria-live="polite"
@@ -483,7 +489,7 @@ export default function ClaimPage({
                           Checking the list...
                         </>
                       ) : (
-                        "Dispense my code"
+                        "\u25b6 Dispense my code"
                       )}
                     </Button>
                     {event.claimInstructions ? (
@@ -579,13 +585,14 @@ function QrPanel({
   return (
     <Card
       inert={hidden || undefined}
-      className="gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+      className="pixel-frame gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
     >
+      <div className="bg-marquee-stripes h-2 shrink-0" aria-hidden />
       <CardHeader className="gap-2 pt-(--card-spacing)">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <span className="eyebrow text-muted-foreground">Scan to claim</span>
-            <CardTitle className="font-heading text-2xl font-semibold tracking-[-0.02em] text-balance">
+            <CardTitle className="font-heading text-base leading-relaxed text-balance sm:text-lg">
               {eventName}
             </CardTitle>
           </div>
@@ -645,9 +652,10 @@ function Receipt({
 }) {
   return (
     <div
-      className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
+      className="receipt-edge receipt-print border-2 border-foreground bg-surface pb-10 motion-reduce:animate-none"
       role="status"
     >
+      <div className="bg-marquee-stripes h-2" aria-hidden />
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center justify-between">
           <span className="eyebrow text-muted-foreground">
@@ -660,7 +668,7 @@ function Receipt({
         </div>
 
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
+          <h1 className="font-heading text-lg leading-relaxed text-balance sm:text-xl">
             {eventName}
           </h1>
           {creditAmount ? (
@@ -689,7 +697,12 @@ function Receipt({
         </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-[450ms] flex flex-col gap-2 motion-reduce:animate-none">
-          <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
+          <Button
+            variant="brand"
+            size="lg"
+            className="arcade-bounce"
+            onClick={() => onCopy(code)}
+          >
             {copied ? (
               <>
                 <Check

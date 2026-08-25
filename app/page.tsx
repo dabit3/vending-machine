@@ -76,8 +76,14 @@ function EventRow({
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
+        <span
+          aria-hidden
+          className="shrink-0 font-heading text-xs text-muted-dim transition-transform duration-200 ease-out group-hover:translate-x-1 group-hover:text-brand"
+        >
+          ▶
+        </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-base leading-relaxed sm:text-lg">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -154,11 +160,18 @@ export default function Home() {
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-2xl leading-snug text-balance text-black dark:text-white motion-reduce:animate-none sm:text-4xl sm:leading-snug">
         Claim your credits.
+        <span
+          aria-hidden
+          className="animate-arcade-blink ml-2 inline-block h-[0.8em] w-[0.5em] translate-y-[0.08em] bg-brand align-baseline motion-reduce:animate-none"
+        />
       </h1>
       <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
         Sign in, then select your event to claim your credits.
+      </p>
+      <p className="eyebrow animate-arcade-blink animate-in fade-in fill-mode-both duration-500 delay-300 mt-8 text-black/50 dark:text-white/50 motion-reduce:animate-none">
+        ● Insert coin — press start
       </p>
     </div>
   );
@@ -167,7 +180,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <section className="-mt-15.25 border-b border-border/65">
+        <section className="-mt-15.25 border-b-4 border-double border-border-strong">
           {/* The section pulls up behind the translucent header bar
               (-mt-15.25) so the background runs to the top of the page; the
               hero is 61px taller to compensate and the scene shows through
@@ -198,13 +211,17 @@ export default function Home() {
               className="absolute inset-0 bg-white/20 dark:bg-black/20"
               aria-hidden
             />
+            {/* CRT scanlines make the hero read as the cabinet's screen. */}
+            <div className="bg-scanlines absolute inset-0" aria-hidden />
             {heroCopy}
           </div>
+          {/* Cabinet marquee stripe under the "screen". */}
+          <div className="bg-marquee-stripes h-2" aria-hidden />
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Active events
+          <h2 className="font-heading text-xs text-muted-foreground uppercase">
+            ★ Active events
           </h2>
 
           {events === undefined ? (
@@ -258,8 +275,8 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
-                      Past events
+                    <h2 className="font-heading text-xs text-muted-foreground uppercase">
+                      ■ Past events
                     </h2>
                     <span className="font-mono text-xs text-muted-dim tabular-nums">
                       {String(past.length).padStart(2, "0")}

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -14,6 +14,14 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+// 8-bit display face for the arcade direction: headings only — body copy
+// stays on Geist for legibility.
+const pressStart = Press_Start_2P({
+  variable: "--font-arcade",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -49,7 +57,7 @@ export default function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full overscroll-none antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${pressStart.variable} h-full overscroll-none antialiased`}
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col overscroll-none">
