@@ -249,7 +249,7 @@ export default function ClaimPage({
               >
             <Card
               inert={showQr || undefined}
-              className="pixel-frame gap-0 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+              className="pixel-frame gap-0 rounded-none py-0 shadow-[4px_4px_0_0_var(--foreground)] backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
             >
               {/* Cabinet marquee across the top of the "machine". */}
               <div className="bg-marquee-stripes h-2 shrink-0" aria-hidden />
@@ -585,7 +585,7 @@ function QrPanel({
   return (
     <Card
       inert={hidden || undefined}
-      className="pixel-frame gap-0 rotate-y-180 py-0 backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
+      className="pixel-frame gap-0 rotate-y-180 rounded-none py-0 shadow-[4px_4px_0_0_var(--foreground)] backface-hidden [grid-area:1/1] [--card-spacing:--spacing(6)] sm:[--card-spacing:--spacing(8)]"
     >
       <div className="bg-marquee-stripes h-2 shrink-0" aria-hidden />
       <CardHeader className="gap-2 pt-(--card-spacing)">
