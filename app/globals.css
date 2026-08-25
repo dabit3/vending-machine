@@ -4,40 +4,40 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Retro terminal / CRT — green phosphor on near-black glass. Light mode is
+/* Retro terminal / CRT — cyan phosphor on near-black glass. Light mode is
    a "paper terminal": dark phosphor ink on a pale phosphor-tinted field, so
    the theme toggle still means something. The phosphor hue drives every
    accent; radius is zeroed so everything reads as character cells. */
 :root {
-  --phosphor: #1a7a3c;
-  --phosphor-dim: #4a8a60;
-  --phosphor-bright: #0c5c2a;
-  --surface: #e9f2e9;
-  --surface-hover: #dfecdf;
-  --border: #b9d4bd;
-  --border-strong: #8db898;
-  --muted: #dcebde;
-  --muted-dim: #5c7a64;
-  --background: #f2f7f2;
-  --foreground: #123d22;
-  --card: #eef5ee;
-  --card-foreground: #123d22;
-  --popover: #eef5ee;
-  --popover-foreground: #123d22;
-  --primary: #123d22;
-  --primary-foreground: #f2f7f2;
-  --secondary: #dcebde;
-  --secondary-foreground: #123d22;
-  --muted-foreground: #3c6349;
-  --accent: #dcebde;
-  --accent-foreground: #123d22;
+  --phosphor: #0f7a8a;
+  --phosphor-dim: #4a8a94;
+  --phosphor-bright: #0a5c6b;
+  --surface: #e9f0f2;
+  --surface-hover: #dfeaee;
+  --border: #b9cfd6;
+  --border-strong: #8db2bd;
+  --muted: #dce7eb;
+  --muted-dim: #5c757e;
+  --background: #f2f6f7;
+  --foreground: #123a44;
+  --card: #eef4f5;
+  --card-foreground: #123a44;
+  --popover: #eef4f5;
+  --popover-foreground: #123a44;
+  --primary: #123a44;
+  --primary-foreground: #f2f6f7;
+  --secondary: #dce7eb;
+  --secondary-foreground: #123a44;
+  --muted-foreground: #3c5d66;
+  --accent: #dce7eb;
+  --accent-foreground: #123a44;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #1a7a3c;
-  --brand-foreground: #f2f7f2;
-  --ring: #2a6b42;
-  --selection: #123d22;
-  --selection-foreground: #d8f5d8;
+  --brand: #0f7a8a;
+  --brand-foreground: #f2f6f7;
+  --ring: #2a606b;
+  --selection: #123a44;
+  --selection-foreground: #d8f1f5;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
@@ -45,14 +45,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0rem;
-  --sidebar: #eef5ee;
-  --sidebar-foreground: #123d22;
-  --sidebar-primary: #123d22;
-  --sidebar-primary-foreground: #f2f7f2;
-  --sidebar-accent: #dcebde;
-  --sidebar-accent-foreground: #123d22;
-  --sidebar-border: #b9d4bd;
-  --sidebar-ring: #5c7a64;
+  --sidebar: #eef4f5;
+  --sidebar-foreground: #123a44;
+  --sidebar-primary: #123a44;
+  --sidebar-primary-foreground: #f2f6f7;
+  --sidebar-accent: #dce7eb;
+  --sidebar-accent-foreground: #123a44;
+  --sidebar-border: #b9cfd6;
+  --sidebar-ring: #5c757e;
 }
 
 @theme inline {
@@ -273,53 +273,53 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — the real CRT: green phosphor burning on near-black glass. */
+/* Dark mode — the real CRT: cyan phosphor burning on near-black glass. */
 .dark {
-  --phosphor: #33ff66;
-  --phosphor-dim: #1e9944;
-  --phosphor-bright: #7dffa3;
+  --phosphor: #33e0ff;
+  --phosphor-dim: #1e8aa3;
+  --phosphor-bright: #7deeff;
   --scanline: rgb(0 0 0 / 0.22);
   --vignette: rgb(0 0 0 / 0.45);
-  --surface: #0a140c;
-  --surface-hover: #0e1c10;
-  --border: #143d1f;
-  --border-strong: #1e5c2e;
-  --muted: #0e1c10;
-  --muted-dim: #2e7a44;
-  --background: #050a06;
-  --foreground: #33ff66;
-  --card: #081109;
-  --card-foreground: #33ff66;
-  --popover: #0a140c;
-  --popover-foreground: #33ff66;
-  --primary: #33ff66;
-  --primary-foreground: #050a06;
-  --secondary: #0e1c10;
-  --secondary-foreground: #7dffa3;
-  --muted-foreground: #2e9950;
-  --accent: #0e1c10;
-  --accent-foreground: #7dffa3;
+  --surface: #0a1216;
+  --surface-hover: #0e1a20;
+  --border: #143540;
+  --border-strong: #1e505e;
+  --muted: #0e1a20;
+  --muted-dim: #2e6b7e;
+  --background: #05090c;
+  --foreground: #33e0ff;
+  --card: #081014;
+  --card-foreground: #33e0ff;
+  --popover: #0a1216;
+  --popover-foreground: #33e0ff;
+  --primary: #33e0ff;
+  --primary-foreground: #05090c;
+  --secondary: #0e1a20;
+  --secondary-foreground: #7deeff;
+  --muted-foreground: #2e8ba0;
+  --accent: #0e1a20;
+  --accent-foreground: #7deeff;
   --destructive: oklch(0.704 0.191 22.216);
-  --input: oklch(0.7 0.2 150 / 15%);
-  --brand: #33ff66;
-  --brand-foreground: #050a06;
-  --ring: #33ff66;
-  --selection: #33ff66;
-  --selection-foreground: #050a06;
+  --input: oklch(0.7 0.15 220 / 15%);
+  --brand: #33e0ff;
+  --brand-foreground: #05090c;
+  --ring: #33e0ff;
+  --selection: #33e0ff;
+  --selection-foreground: #05090c;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #081109;
-  --sidebar-foreground: #33ff66;
-  --sidebar-primary: #33ff66;
-  --sidebar-primary-foreground: #050a06;
-  --sidebar-accent: #0e1c10;
-  --sidebar-accent-foreground: #7dffa3;
-  --sidebar-border: #143d1f;
-  --sidebar-ring: #2e7a44;
+  --sidebar: #081014;
+  --sidebar-foreground: #33e0ff;
+  --sidebar-primary: #33e0ff;
+  --sidebar-primary-foreground: #05090c;
+  --sidebar-accent: #0e1a20;
+  --sidebar-accent-foreground: #7deeff;
+  --sidebar-border: #143540;
+  --sidebar-ring: #2e6b7e;
 }
 
 @layer base {
