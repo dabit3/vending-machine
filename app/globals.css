@@ -4,57 +4,56 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Sorbet": Playful Memphis on a cream scoop. Deep
+   blueberry ink on a peach-cream field, raspberry as the hero flavor, with
+   mint, mango, and lemon as supporting confetti. Shadows are hard offset
+   slabs rather than blurs, and borders lean warm and candy-toned. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #fdefe2;
+  --surface-hover: #fbe6d2;
+  --border: #f3dcc8;
+  --border-strong: #3d2352;
+  --muted: #fcebdd;
+  --muted-dim: #8a6f7e;
+  --background: #fff6ec;
+  --foreground: #33203b;
+  --card: #fffbf5;
+  --card-foreground: #33203b;
+  --popover: #fffbf5;
+  --popover-foreground: #33203b;
+  --primary: #3d2352;
+  --primary-foreground: #fff6ec;
+  --secondary: #ffe0eb;
+  --secondary-foreground: #33203b;
+  --muted-foreground: #63505c;
+  --accent: #d6f5e3;
+  --accent-foreground: #1d3b2e;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --input: oklch(0.3 0.08 320 / 12%);
+  --brand: #d6336c;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --ring: #d6336c;
+  --selection: #ffe8a3;
+  --selection-foreground: #33203b;
+  /* Memphis slab shadow: a hard offset block, no blur — cards sit on the
+     page like paper cutouts. */
+  --shadow-card: 4px 4px 0 0 rgb(61 35 82 / 0.16);
+  --dot-1: #f8b9d0;
+  --dot-2: #a8e6c9;
+  --chart-1: #d6336c;
+  --chart-2: #f08c00;
+  --chart-3: #0ca678;
+  --chart-4: #6741d9;
+  --chart-5: #f7c948;
+  --radius: 1rem;
+  --sidebar: #fffbf5;
+  --sidebar-foreground: #33203b;
+  --sidebar-primary: #3d2352;
+  --sidebar-primary-foreground: #fff6ec;
+  --sidebar-accent: #ffe0eb;
+  --sidebar-accent-foreground: #33203b;
+  --sidebar-border: #f3dcc8;
+  --sidebar-ring: #d6336c;
 }
 
 @theme inline {
@@ -68,9 +67,8 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  /* Headings get a rounded display face for the friendly Memphis voice. */
+  --font-heading: var(--font-baloo);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -100,21 +98,22 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  /* Mixed radii on purpose: small controls stay squarish while big surfaces
+     balloon — the deliberate radius clash is part of the Memphis grammar. */
+  --radius-sm: calc(var(--radius) * 0.4);
+  --radius-md: calc(var(--radius) * 0.7);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 2.5);
+  --radius-4xl: calc(var(--radius) * 3);
 }
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Lemon-sorbet selection: incidental, but on-flavor. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -141,10 +140,18 @@ input:-webkit-autofill:focus {
   text-transform: uppercase;
 }
 
-/* Faint dot grid backdrop for hero surfaces. */
+/* Confetti dot grid backdrop for hero surfaces: two offset lattices of
+   raspberry and mint dots read as sprinkles rather than graph paper. */
 @utility bg-dotgrid {
-  background-image: radial-gradient(var(--border) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(var(--dot-1) 1.5px, transparent 1.5px),
+    radial-gradient(var(--dot-2) 1.5px, transparent 1.5px);
+  background-size:
+    36px 36px,
+    36px 36px;
+  background-position:
+    0 0,
+    18px 18px;
 }
 
 /* Receipt edge: scalloped bottom, like a stub torn off a perforated roll. */
@@ -169,7 +176,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one raspberry element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -184,50 +191,52 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Sorbet" after dark: a blueberry-night field where the scoop
+   flavors glow brighter. Raspberry lightens to stay readable, mint and lemon
+   pop as accents, and the slab shadow turns to solid night. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #261634;
+  --surface-hover: #2e1c3e;
+  --border: #3a2749;
+  --border-strong: #ffa8c5;
+  --muted: #2e1e3e;
+  --muted-dim: #a58cb0;
+  --background: #1b1023;
+  --foreground: #f6ebf3;
+  --card: #261634;
+  --card-foreground: #f6ebf3;
+  --popover: #2e1c3e;
+  --popover-foreground: #f6ebf3;
+  --primary: #ffa8c5;
+  --primary-foreground: #3b0a1f;
+  --secondary: #432b56;
+  --secondary-foreground: #f6ebf3;
+  --muted-foreground: #c9b6cf;
+  --accent: #234639;
+  --accent-foreground: #baf3d9;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
-  --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --brand: #ff8fb3;
+  --brand-foreground: #3b0a1f;
+  --ring: #ff8fb3;
+  --selection: #5a4028;
+  --selection-foreground: #ffe8a3;
+  --shadow-card: 4px 4px 0 0 rgb(0 0 0 / 0.45);
+  --dot-1: #57324c;
+  --dot-2: #2c4a3e;
+  --chart-1: #ff8fb3;
+  --chart-2: #ffb057;
+  --chart-3: #63e6be;
+  --chart-4: #b197fc;
+  --chart-5: #ffe066;
+  --sidebar: #261634;
+  --sidebar-foreground: #f6ebf3;
+  --sidebar-primary: #ffa8c5;
+  --sidebar-primary-foreground: #3b0a1f;
+  --sidebar-accent: #432b56;
+  --sidebar-accent-foreground: #f6ebf3;
+  --sidebar-border: #3a2749;
+  --sidebar-ring: #ff8fb3;
 }
 
 @layer base {
