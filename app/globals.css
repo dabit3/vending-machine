@@ -4,53 +4,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Neo-Brutalist: a stark white field, pure ink-black
-   borders and type, zero radius, and hard offset shadows. Contrast is the
-   whole palette; the brand blue stays as the single loud accent. */
+/* Light mode (default) — Neo-Brutalist, Electric Blue: a cold blue-white
+   field washed with cobalt tints, pure ink-black borders and type, zero
+   radius, and hard offset shadows. Electric blue is the dominant accent —
+   fills, badges, and selection all run on the #2200ff current. */
 :root {
-  --surface: #f4f4f0;
-  --surface-hover: #ecece6;
+  --surface: #e6ebff;
+  --surface-hover: #d8e0ff;
   --border: #000000;
   --border-strong: #000000;
-  --muted: #efefe9;
-  --muted-dim: #55524c;
-  --background: #ffffff;
+  --muted: #e6ebff;
+  --muted-dim: #3d3f75;
+  --background: #f0f3ff;
   --foreground: #000000;
   --card: #ffffff;
   --card-foreground: #000000;
   --popover: #ffffff;
   --popover-foreground: #000000;
-  --primary: #000000;
+  --primary: #2200ff;
   --primary-foreground: #ffffff;
-  --secondary: #efefe9;
+  --secondary: #dde4ff;
   --secondary-foreground: #000000;
-  --muted-foreground: #44413c;
-  --accent: #efefe9;
+  --muted-foreground: #33366b;
+  --accent: #dde4ff;
   --accent-foreground: #000000;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
+  --input: oklch(0.2 0.15 265 / 12%);
   --brand: #2200ff;
   --brand-foreground: #ffffff;
-  --ring: #000000;
-  --selection: #000000;
+  --ring: #2200ff;
+  --selection: #2200ff;
   --selection-foreground: #ffffff;
   /* Hard offset shadow: an opaque block, not a blur — the signature
      neo-brutalist "lifted slab" read. */
   --shadow-card: 8px 8px 0 0 var(--border-strong);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
+  --chart-1: oklch(0.35 0.24 265);
+  --chart-2: oklch(0.45 0.26 265);
+  --chart-3: oklch(0.55 0.24 265);
+  --chart-4: oklch(0.68 0.18 265);
+  --chart-5: oklch(0.82 0.1 265);
   --radius: 0rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #1a1c3a;
+  --sidebar-primary: #2200ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6ebff;
+  --sidebar-accent-foreground: #1a1c3a;
+  --sidebar-border: #c9d2ff;
+  --sidebar-ring: #2200ff;
 }
 
 @theme inline {
@@ -109,8 +110,8 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection runs on the brand current: highlighting text lights it up in
+   electric blue. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -197,49 +198,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — Neo-Brutalist inverted: pure black field, pure white ink
-   borders, same hard offset shadows drawn in white. */
+/* Dark mode — Neo-Brutalist inverted, Electric Blue: a near-black indigo
+   field, pure white ink borders, same hard offset shadows drawn in white,
+   with deep cobalt surface fills keeping the blue current running. */
 .dark {
-  --surface: #121212;
-  --surface-hover: #1b1b1b;
+  --surface: #0b1033;
+  --surface-hover: #121947;
   --border: #ffffff;
   --border-strong: #ffffff;
-  --muted: #1b1b1b;
-  --muted-dim: #b3b3b3;
-  --background: #000000;
+  --muted: #0b1033;
+  --muted-dim: #a9b2e8;
+  --background: #020314;
   --foreground: #ffffff;
-  --card: #000000;
+  --card: #020314;
   --card-foreground: #ffffff;
-  --popover: #000000;
+  --popover: #020314;
   --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
-  --secondary: #1b1b1b;
+  --primary: #4d5eff;
+  --primary-foreground: #ffffff;
+  --secondary: #121947;
   --secondary-foreground: #ffffff;
-  --muted-foreground: #cfcfcf;
-  --accent: #1b1b1b;
+  --muted-foreground: #c7cdf2;
+  --accent: #121947;
   --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
-  --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --input: oklch(0.75 0.12 265 / 20%);
+  --brand: #4d5eff;
   --brand-foreground: #ffffff;
-  --ring: #ffffff;
-  --selection: #ffffff;
-  --selection-foreground: #000000;
+  --ring: #4d5eff;
+  --selection: #4d5eff;
+  --selection-foreground: #ffffff;
   --shadow-card: 8px 8px 0 0 var(--border-strong);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --chart-1: oklch(0.82 0.1 265);
+  --chart-2: oklch(0.68 0.18 265);
+  --chart-3: oklch(0.55 0.24 265);
+  --chart-4: oklch(0.45 0.26 265);
+  --chart-5: oklch(0.35 0.24 265);
+  --sidebar: #070a26;
+  --sidebar-foreground: #e3e7ff;
+  --sidebar-primary: #4d5eff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #121947;
+  --sidebar-accent-foreground: #e3e7ff;
+  --sidebar-border: #232c66;
+  --sidebar-ring: #4d5eff;
 }
 
 @layer base {
