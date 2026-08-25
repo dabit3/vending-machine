@@ -26,10 +26,10 @@ export const metadata: Metadata = {
 // page background automatically.
 const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] = {
   variables: {
-    colorPrimary: "#2200ff",
-    colorPrimaryForeground: "#ffffff",
-    borderRadius: "0.625rem",
-    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    colorPrimary: "#1d1d19",
+    colorPrimaryForeground: "#faf8f2",
+    borderRadius: "0.125rem",
+    fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
   },
   options: {
     unsafe_disableDevelopmentModeWarnings: true,

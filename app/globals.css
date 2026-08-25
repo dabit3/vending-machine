@@ -4,57 +4,56 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Paper-White Terminal", printout side: the page
+   reads as tractor-feed paper fresh out of a daisy-wheel printer. Warm
+   paper-white field, dry carbon-ink text, hard 1px rules instead of soft
+   greys, and a blocky offset shadow that reads as a stacked printout rather
+   than floating depth. The accent is inverse-video ink — no chroma anywhere,
+   the whole colorway lives on the paper/ink axis. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
-  --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --surface: #f3f1e9;
+  --surface-hover: #ebe9df;
+  --border: #d9d6c9;
+  --border-strong: #b4b1a1;
+  --muted: #eeece2;
+  --muted-dim: #6e6c60;
+  --background: #faf8f2;
+  --foreground: #1d1d19;
+  --card: #faf8f2;
+  --card-foreground: #1d1d19;
+  --popover: #faf8f2;
+  --popover-foreground: #1d1d19;
+  --primary: #1d1d19;
+  --primary-foreground: #faf8f2;
+  --secondary: #eeece2;
+  --secondary-foreground: #1d1d19;
+  --muted-foreground: #504e45;
+  --accent: #eeece2;
+  --accent-foreground: #1d1d19;
+  --destructive: oklch(0.5 0.19 27.325);
+  --input: oklch(0 0 0 / 12%);
+  --brand: #1d1d19;
+  --brand-foreground: #faf8f2;
+  --ring: #1d1d19;
+  --selection: #1d1d19;
+  --selection-foreground: #faf8f2;
+  /* Blocky offset shadow: a hard second edge, like a stacked printout.
+     Dark mode swaps it for a faint phosphor bloom off the tube. */
+  --shadow-card: 3px 3px 0 0 rgb(29 29 25 / 0.14);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --radius: 0.125rem;
+  --sidebar: #faf8f2;
+  --sidebar-foreground: #1d1d19;
+  --sidebar-primary: #1d1d19;
+  --sidebar-primary-foreground: #faf8f2;
+  --sidebar-accent: #eeece2;
+  --sidebar-accent-foreground: #1d1d19;
+  --sidebar-border: #d9d6c9;
+  --sidebar-ring: #6e6c60;
 }
 
 @theme inline {
@@ -66,11 +65,12 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
+  /* Terminal type: the mono face carries everything — body, headings, UI.
+     Hierarchy comes from size, weight, and inverse video, like a real
+     character-cell display. */
+  --font-sans: var(--font-geist-mono);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  --font-heading: var(--font-geist-mono);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -110,11 +110,45 @@
 }
 
 body {
-  font-family: var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Scanline texture: a fixed overlay of faint horizontal lines across the
+   whole viewport — barely-there on paper, a touch stronger on the tube.
+   Pointer-events off so it never intercepts input. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(29 29 25 / 0.035) 0px,
+    rgb(29 29 25 / 0.035) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.dark body::after {
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0.22) 0px,
+    rgb(0 0 0 / 0.22) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Phosphor glow: on the dark tube, text blooms faintly the way white
+   phosphor does. Kept subtle so long-form text stays crisp. */
+.dark body {
+  text-shadow: 0 0 6px rgb(242 241 233 / 0.22);
+}
+
+/* Inverse video: selection flips ink and paper, like a terminal cursor
+   sweeping over a line. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -132,13 +166,19 @@ input:-webkit-autofill:focus {
   transition: background-color 9999999s ease-in-out 0s;
 }
 
-/* Micro-label: the recurring uppercase mono eyebrow used across the app. */
+/* Micro-label: the recurring uppercase mono eyebrow used across the app.
+   Prefixed with a prompt glyph for ASCII flavor. */
 @utility eyebrow {
   font-family: var(--font-mono), monospace;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+
+  &::before {
+    content: "> ";
+    opacity: 0.6;
+  }
 }
 
 /* Faint dot grid backdrop for hero surfaces. */
@@ -184,50 +224,53 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Paper-White Terminal", tube side: a powered-down-room CRT
+   running white phosphor. Near-black glass with a faint warm cast, glowing
+   paper-white text (the bloom comes from the body text-shadow above), and
+   the inverse-video accent flips to bright-on-dark. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #121311;
+  --surface-hover: #191a17;
+  --border: #2a2b26;
+  --border-strong: #45463e;
+  --muted: #1c1d1a;
+  --muted-dim: #8c8a7d;
+  --background: #0a0b09;
+  --foreground: #f2f1e9;
+  --card: #121311;
+  --card-foreground: #f2f1e9;
+  --popover: #121311;
+  --popover-foreground: #f2f1e9;
+  --primary: #f2f1e9;
+  --primary-foreground: #0a0b09;
+  --secondary: #24251f;
+  --secondary-foreground: #f2f1e9;
+  --muted-foreground: #b5b3a6;
+  --accent: #24251f;
+  --accent-foreground: #f2f1e9;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
-  --shadow-card: 0 0 rgb(0 0 0 / 0);
+  --brand: #f2f1e9;
+  --brand-foreground: #0a0b09;
+  --ring: #d9d7ca;
+  --selection: #f2f1e9;
+  --selection-foreground: #0a0b09;
+  /* Phosphor bloom instead of depth: a hairline edge plus a faint halo. */
+  --shadow-card:
+    0 0 0 1px rgb(242 241 233 / 0.08), 0 0 24px 0 rgb(242 241 233 / 0.05);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #121311;
+  --sidebar-foreground: #f2f1e9;
+  --sidebar-primary: #f2f1e9;
+  --sidebar-primary-foreground: #0a0b09;
+  --sidebar-accent: #24251f;
+  --sidebar-accent-foreground: #f2f1e9;
+  --sidebar-border: #2a2b26;
+  --sidebar-ring: #8c8a7d;
 }
 
 @layer base {
