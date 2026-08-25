@@ -4,37 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode — "Ivory Salon": the luxury palette's daylight companion. A
-   warm ivory field with champagne-gold accents, hairline parchment borders,
-   and deep espresso ink. Gold is the single accent, reserved for the claim
-   flow and fine metallic details. */
+/* Light mode — "Blush Salon": the luxury palette's daylight companion. A
+   pale blush-cream field with deep burgundy accents, hairline rose-parchment
+   borders, and dark wine-tinged ink. Burgundy is the single accent, reserved
+   for the claim flow and fine details. */
 :root {
-  --surface: #f5f1e8;
-  --surface-hover: #efe9dc;
-  --border: #e7dfcd;
-  --border-strong: #d2c5a8;
-  --muted: #f1ebdd;
-  --muted-dim: #8a7f6a;
-  --background: #faf7f0;
-  --foreground: #1e1a12;
-  --card: #fdfbf6;
-  --card-foreground: #1e1a12;
-  --popover: #fdfbf6;
-  --popover-foreground: #1e1a12;
-  --primary: #1e1a12;
-  --primary-foreground: #f8f4ea;
-  --secondary: #f1ebdd;
-  --secondary-foreground: #1e1a12;
-  --muted-foreground: #5c5442;
-  --accent: #f1ebdd;
-  --accent-foreground: #1e1a12;
+  --surface: #f7eeec;
+  --surface-hover: #f2e5e2;
+  --border: #ecdad6;
+  --border-strong: #d9bab4;
+  --muted: #f4e7e4;
+  --muted-dim: #8f7370;
+  --background: #fbf5f3;
+  --foreground: #241417;
+  --card: #fdf8f7;
+  --card-foreground: #241417;
+  --popover: #fdf8f7;
+  --popover-foreground: #241417;
+  --primary: #241417;
+  --primary-foreground: #f9efed;
+  --secondary: #f4e7e4;
+  --secondary-foreground: #241417;
+  --muted-foreground: #63474c;
+  --accent: #f4e7e4;
+  --accent-foreground: #241417;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #9a7b2f;
-  --brand-foreground: #fdfbf6;
-  --ring: #9a7b2f;
-  --selection: #ecdfc0;
-  --selection-foreground: #1e1a12;
+  --brand: #8c2f3f;
+  --brand-foreground: #fdf8f7;
+  --ring: #8c2f3f;
+  --selection: #f0d3d6;
+  --selection-foreground: #241417;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
@@ -45,14 +45,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #fdfbf6;
-  --sidebar-foreground: #1e1a12;
-  --sidebar-primary: #1e1a12;
-  --sidebar-primary-foreground: #f8f4ea;
-  --sidebar-accent: #f1ebdd;
-  --sidebar-accent-foreground: #1e1a12;
-  --sidebar-border: #e7dfcd;
-  --sidebar-ring: #8a7f6a;
+  --sidebar: #fdf8f7;
+  --sidebar-foreground: #241417;
+  --sidebar-primary: #241417;
+  --sidebar-primary-foreground: #f9efed;
+  --sidebar-accent: #f4e7e4;
+  --sidebar-accent-foreground: #241417;
+  --sidebar-border: #ecdad6;
+  --sidebar-ring: #8f7370;
 }
 
 @theme inline {
@@ -182,51 +182,51 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Luxury Dark": rich near-black surfaces with a warm cast,
-   champagne-gold as the single metallic accent, and fine gold-tinted
-   hairline borders. Text is warm parchment rather than white so nothing
+/* Dark mode — "Luxury Dark": rich near-black surfaces with a faint wine
+   cast, deep burgundy as the single accent, and fine wine-tinted hairline
+   borders. Text is warm blush parchment rather than white so nothing
    glares against the black lacquer field. */
 .dark {
-  --surface: #131109;
-  --surface-hover: #191610;
-  --border: #29241a;
-  --border-strong: #453b28;
-  --muted: #1e1a12;
-  --muted-dim: #8a8172;
-  --background: #0b0a07;
-  --foreground: #ece6d8;
-  --card: #12100b;
-  --card-foreground: #ece6d8;
-  --popover: #17140e;
-  --popover-foreground: #ece6d8;
-  --primary: #e6ddc8;
-  --primary-foreground: #0b0a07;
-  --secondary: #241f15;
-  --secondary-foreground: #ece6d8;
-  --muted-foreground: #b0a793;
-  --accent: #241f15;
-  --accent-foreground: #ece6d8;
+  --surface: #150f11;
+  --surface-hover: #1b1315;
+  --border: #2b1e21;
+  --border-strong: #472f34;
+  --muted: #201517;
+  --muted-dim: #8d777b;
+  --background: #0c0708;
+  --foreground: #ede0e2;
+  --card: #140e10;
+  --card-foreground: #ede0e2;
+  --popover: #181114;
+  --popover-foreground: #ede0e2;
+  --primary: #e8d4d8;
+  --primary-foreground: #0c0708;
+  --secondary: #26191c;
+  --secondary-foreground: #ede0e2;
+  --muted-foreground: #b49aa0;
+  --accent: #26191c;
+  --accent-foreground: #ede0e2;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #c3a35e;
-  --brand-foreground: #16120b;
-  --ring: #c3a35e;
-  --selection: #38301f;
-  --selection-foreground: #ece6d8;
+  --brand: #a54455;
+  --brand-foreground: #f7edef;
+  --ring: #a54455;
+  --selection: #3b2328;
+  --selection-foreground: #ede0e2;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #12100b;
-  --sidebar-foreground: #ece6d8;
-  --sidebar-primary: #e6ddc8;
-  --sidebar-primary-foreground: #0b0a07;
-  --sidebar-accent: #241f15;
-  --sidebar-accent-foreground: #ece6d8;
-  --sidebar-border: #29241a;
-  --sidebar-ring: #8a8172;
+  --sidebar: #140e10;
+  --sidebar-foreground: #ede0e2;
+  --sidebar-primary: #e8d4d8;
+  --sidebar-primary-foreground: #0c0708;
+  --sidebar-accent: #26191c;
+  --sidebar-accent-foreground: #ede0e2;
+  --sidebar-border: #2b1e21;
+  --sidebar-ring: #8d777b;
 }
 
 @layer base {
