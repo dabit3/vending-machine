@@ -9,36 +9,36 @@
    them. Default theme (no .dark class) is "night city": deep indigo-black
    field, cool blue-tinted neutrals. */
 :root {
-  /* Colorway: magenta / cyan / ultraviolet. Swap these three to re-skin. */
-  --neon-primary: #ff2ecb;
-  --neon-secondary: #00e5ff;
-  --neon-tertiary: #9d4dff;
+  /* Colorway: ice blue / frost / steel. Swap these three to re-skin. */
+  --neon-primary: #00b3ff;
+  --neon-secondary: #d6f4ff;
+  --neon-tertiary: #4d7fb8;
 
-  --surface: #10101c;
-  --surface-hover: #161628;
-  --border: #20203a;
-  --border-strong: #34345c;
-  --muted: #16162a;
+  --surface: #0d1420;
+  --surface-hover: #121b2c;
+  --border: #1a2740;
+  --border-strong: #2b4266;
+  --muted: #121c2e;
   --muted-dim: #6b7a99;
-  --background: #0a0a14;
+  --background: #070d16;
   --foreground: #e8f0ff;
-  --card: #10101c;
+  --card: #0d1420;
   --card-foreground: #e8f0ff;
-  --popover: #141424;
+  --popover: #101828;
   --popover-foreground: #e8f0ff;
   --primary: #e8f0ff;
-  --primary-foreground: #0a0a14;
-  --secondary: #1c1c34;
+  --primary-foreground: #070d16;
+  --secondary: #16223a;
   --secondary-foreground: #e8f0ff;
   --muted-foreground: #9aa8c7;
-  --accent: #1c1c34;
+  --accent: #16223a;
   --accent-foreground: #e8f0ff;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 12%);
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #2a1a3e;
+  --selection: #16304a;
   --selection-foreground: #e8f0ff;
   /* Cards read as glowing panels rather than shadowed paper. */
   --shadow-card:
@@ -50,13 +50,13 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #10101c;
+  --sidebar: #0d1420;
   --sidebar-foreground: #e8f0ff;
   --sidebar-primary: #e8f0ff;
-  --sidebar-primary-foreground: #0a0a14;
-  --sidebar-accent: #1c1c34;
+  --sidebar-primary-foreground: #070d16;
+  --sidebar-accent: #16223a;
   --sidebar-accent-foreground: #e8f0ff;
-  --sidebar-border: #20203a;
+  --sidebar-border: #1a2740;
   --sidebar-ring: #6b7a99;
 }
 
@@ -290,31 +290,31 @@ input:-webkit-autofill:focus {
    black field for OLED. The neon hues stay identical; only the neutrals
    sink. */
 .dark {
-  --surface: #0b0b15;
-  --surface-hover: #121220;
-  --border: #1a1a30;
-  --border-strong: #2c2c50;
-  --muted: #111120;
+  --surface: #090e17;
+  --surface-hover: #0e1624;
+  --border: #152136;
+  --border-strong: #24395a;
+  --muted: #0d1522;
   --muted-dim: #5e6c8c;
-  --background: #050509;
+  --background: #04070c;
   --foreground: #e8f0ff;
-  --card: #0b0b15;
+  --card: #090e17;
   --card-foreground: #e8f0ff;
-  --popover: #10101e;
+  --popover: #0c1420;
   --popover-foreground: #e8f0ff;
   --primary: #e8f0ff;
-  --primary-foreground: #050509;
-  --secondary: #17172b;
+  --primary-foreground: #04070c;
+  --secondary: #121d30;
   --secondary-foreground: #e8f0ff;
   --muted-foreground: #93a2c2;
-  --accent: #17172b;
+  --accent: #121d30;
   --accent-foreground: #e8f0ff;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #241536;
+  --selection: #12283e;
   --selection-foreground: #e8f0ff;
   --shadow-card:
     0 0 24px -8px color-mix(in srgb, var(--neon-primary) 40%, transparent),
@@ -324,13 +324,13 @@ input:-webkit-autofill:focus {
   --chart-3: var(--neon-tertiary);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #0b0b15;
+  --sidebar: #090e17;
   --sidebar-foreground: #e8f0ff;
   --sidebar-primary: #e8f0ff;
-  --sidebar-primary-foreground: #050509;
-  --sidebar-accent: #17172b;
+  --sidebar-primary-foreground: #04070c;
+  --sidebar-accent: #121d30;
   --sidebar-accent-foreground: #e8f0ff;
-  --sidebar-border: #1a1a30;
+  --sidebar-border: #152136;
   --sidebar-ring: #5e6c8c;
 }
 
