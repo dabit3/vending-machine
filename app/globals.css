@@ -59,11 +59,11 @@
      Colorways retint the app by swapping only the aurora + glass variables. */
   --glass-border: rgb(255 255 255 / 0.65);
   --glass-glow:
-    0 8px 32px rgb(31 38 68 / 0.12),
+    0 8px 32px rgb(13 60 84 / 0.14),
     inset 0 1px 0 rgb(255 255 255 / 0.85);
-  --aurora-1: #c7d2fe;
-  --aurora-2: #fbcfe8;
-  --aurora-3: #bae6fd;
+  --aurora-1: #bfdbfe;
+  --aurora-2: #a5f3fc;
+  --aurora-3: #99f6e4;
 }
 
 @theme inline {
@@ -256,13 +256,13 @@ input:-webkit-autofill:focus {
   --sidebar-accent-foreground: #e8e6e1;
   --sidebar-border: #26262a;
   --sidebar-ring: #7a7772;
-  --glass-border: rgb(255 255 255 / 0.12);
+  --glass-border: rgb(148 233 255 / 0.14);
   --glass-glow:
-    0 8px 32px rgb(0 0 0 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
-  --aurora-1: #2b2e5e;
-  --aurora-2: #4a2350;
-  --aurora-3: #123a4a;
+    0 8px 32px rgb(2 12 32 / 0.5),
+    inset 0 1px 0 rgb(148 233 255 / 0.1);
+  --aurora-1: #16265e;
+  --aurora-2: #123a4a;
+  --aurora-3: #0d4a44;
 }
 
 @layer base {
