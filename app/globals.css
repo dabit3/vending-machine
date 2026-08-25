@@ -4,36 +4,36 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — Neo-Brutalist: a stark white field, pure ink-black
-   borders and type, zero radius, and hard offset shadows. Contrast is the
-   whole palette; the brand blue stays as the single loud accent. */
+/* Light mode (default) — Neo-Brutalist, Acid Yellow colorway: an acid-yellow
+   field, pure ink-black borders and type, zero radius, and hard offset
+   shadows. The yellow IS the palette; black ink does the structure. */
 :root {
-  --surface: #f4f4f0;
-  --surface-hover: #ecece6;
+  --surface: #f1ff66;
+  --surface-hover: #e9fa3d;
   --border: #000000;
   --border-strong: #000000;
-  --muted: #efefe9;
-  --muted-dim: #55524c;
-  --background: #ffffff;
+  --muted: #f4ff8c;
+  --muted-dim: #4a4a00;
+  --background: #e8ff00;
   --foreground: #000000;
   --card: #ffffff;
   --card-foreground: #000000;
   --popover: #ffffff;
   --popover-foreground: #000000;
   --primary: #000000;
-  --primary-foreground: #ffffff;
-  --secondary: #efefe9;
+  --primary-foreground: #e8ff00;
+  --secondary: #f4ff8c;
   --secondary-foreground: #000000;
-  --muted-foreground: #44413c;
-  --accent: #efefe9;
+  --muted-foreground: #3d3d00;
+  --accent: #f4ff8c;
   --accent-foreground: #000000;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
+  --brand: #e8ff00;
+  --brand-foreground: #000000;
   --ring: #000000;
   --selection: #000000;
-  --selection-foreground: #ffffff;
+  --selection-foreground: #e8ff00;
   /* Hard offset shadow: an opaque block, not a blur — the signature
      neo-brutalist "lifted slab" read. */
   --shadow-card: 8px 8px 0 0 var(--border-strong);
@@ -44,13 +44,13 @@
   --chart-5: oklch(0.87 0 0);
   --radius: 0rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #e8ff00;
+  --sidebar-accent: #f4ff8c;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #d9e85e;
+  --sidebar-ring: #4a4a00;
 }
 
 @theme inline {
@@ -109,8 +109,8 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+/* Selection flips the acid pairing: black-on-yellow becomes
+   yellow-on-black (and vice versa in dark). */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -182,7 +182,7 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Brand pulse: a slow breath reserved for the one brand-blue element in view. */
+/* Brand pulse: a slow breath reserved for the one acid-yellow brand element in view. */
 @utility animate-brand-pulse {
   animation: brand-pulse 3.2s ease-in-out infinite;
 }
@@ -197,34 +197,35 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — Neo-Brutalist inverted: pure black field, pure white ink
-   borders, same hard offset shadows drawn in white. */
+/* Dark mode — Neo-Brutalist inverted, Acid Yellow colorway: pure black
+   field, acid-yellow ink borders and accents, same hard offset shadows
+   drawn in yellow. */
 .dark {
-  --surface: #121212;
-  --surface-hover: #1b1b1b;
-  --border: #ffffff;
-  --border-strong: #ffffff;
-  --muted: #1b1b1b;
-  --muted-dim: #b3b3b3;
+  --surface: #131400;
+  --surface-hover: #1d1f00;
+  --border: #e8ff00;
+  --border-strong: #e8ff00;
+  --muted: #1d1f00;
+  --muted-dim: #b8c460;
   --background: #000000;
-  --foreground: #ffffff;
+  --foreground: #f4ff8c;
   --card: #000000;
-  --card-foreground: #ffffff;
+  --card-foreground: #f4ff8c;
   --popover: #000000;
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
+  --popover-foreground: #f4ff8c;
+  --primary: #e8ff00;
   --primary-foreground: #000000;
-  --secondary: #1b1b1b;
-  --secondary-foreground: #ffffff;
-  --muted-foreground: #cfcfcf;
-  --accent: #1b1b1b;
-  --accent-foreground: #ffffff;
+  --secondary: #1d1f00;
+  --secondary-foreground: #f4ff8c;
+  --muted-foreground: #d5e05e;
+  --accent: #1d1f00;
+  --accent-foreground: #f4ff8c;
   --destructive: oklch(0.704 0.191 22.216);
-  --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #ffffff;
-  --selection: #ffffff;
+  --input: oklch(0.92 0.22 115 / 15%);
+  --brand: #e8ff00;
+  --brand-foreground: #000000;
+  --ring: #e8ff00;
+  --selection: #e8ff00;
   --selection-foreground: #000000;
   --shadow-card: 8px 8px 0 0 var(--border-strong);
   --chart-1: oklch(0.87 0 0);
@@ -232,14 +233,14 @@ input:-webkit-autofill:focus {
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #131400;
+  --sidebar-foreground: #f4ff8c;
+  --sidebar-primary: #e8ff00;
+  --sidebar-primary-foreground: #000000;
+  --sidebar-accent: #1d1f00;
+  --sidebar-accent-foreground: #f4ff8c;
+  --sidebar-border: #2a2d00;
+  --sidebar-ring: #b8c460;
 }
 
 @layer base {
