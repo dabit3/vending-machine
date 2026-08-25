@@ -9,18 +9,19 @@
    them. Default theme (no .dark class) is "night city": deep indigo-black
    field, cool blue-tinted neutrals. */
 :root {
-  /* Colorway: magenta / cyan / ultraviolet. Swap these three to re-skin. */
-  --neon-primary: #ff2ecb;
-  --neon-secondary: #00e5ff;
-  --neon-tertiary: #9d4dff;
+  /* Colorway: hot magenta / electric cyan / deep pink-violet. Swap these
+     three to re-skin. */
+  --neon-primary: #ff1493;
+  --neon-secondary: #00f0ff;
+  --neon-tertiary: #c026d3;
 
-  --surface: #10101c;
-  --surface-hover: #161628;
-  --border: #20203a;
-  --border-strong: #34345c;
-  --muted: #16162a;
-  --muted-dim: #6b7a99;
-  --background: #0a0a14;
+  --surface: #150f1c;
+  --surface-hover: #1d1428;
+  --border: #2b1c3a;
+  --border-strong: #472c5c;
+  --muted: #1c142a;
+  --muted-dim: #8a6f99;
+  --background: #0e0a14;
   --foreground: #e8f0ff;
   --card: #10101c;
   --card-foreground: #e8f0ff;
@@ -38,7 +39,7 @@
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #2a1a3e;
+  --selection: #3a163e;
   --selection-foreground: #e8f0ff;
   /* Cards read as glowing panels rather than shadowed paper. */
   --shadow-card:
@@ -290,13 +291,13 @@ input:-webkit-autofill:focus {
    black field for OLED. The neon hues stay identical; only the neutrals
    sink. */
 .dark {
-  --surface: #0b0b15;
-  --surface-hover: #121220;
-  --border: #1a1a30;
-  --border-strong: #2c2c50;
-  --muted: #111120;
-  --muted-dim: #5e6c8c;
-  --background: #050509;
+  --surface: #100b15;
+  --surface-hover: #171020;
+  --border: #241530;
+  --border-strong: #3e2450;
+  --muted: #171020;
+  --muted-dim: #7c628c;
+  --background: #070509;
   --foreground: #e8f0ff;
   --card: #0b0b15;
   --card-foreground: #e8f0ff;
@@ -314,7 +315,7 @@ input:-webkit-autofill:focus {
   --brand: var(--neon-primary);
   --brand-foreground: #ffffff;
   --ring: var(--neon-secondary);
-  --selection: #241536;
+  --selection: #321236;
   --selection-foreground: #e8f0ff;
   --shadow-card:
     0 0 24px -8px color-mix(in srgb, var(--neon-primary) 40%, transparent),
