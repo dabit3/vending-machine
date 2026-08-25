@@ -4,57 +4,53 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — Swiss / International Minimal: a pure white field
+   on the neutral grey axis, near-black ink, hairline rules, and a single
+   restrained Swiss-red accent reserved for the claim flow. No warm cast,
+   no soft tints — structure comes from the grid, not from color. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
+  --surface: #f5f5f5;
+  --surface-hover: #ededed;
+  --border: #e4e4e4;
+  --border-strong: #c8c8c8;
+  --muted: #f0f0f0;
+  --muted-dim: #767676;
   --background: #ffffff;
-  --foreground: #22211e;
+  --foreground: #111111;
   --card: #ffffff;
-  --card-foreground: #22211e;
+  --card-foreground: #111111;
   --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --popover-foreground: #111111;
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #111111;
+  --muted-foreground: #555555;
+  --accent: #f0f0f0;
+  --accent-foreground: #111111;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --brand: #e30613;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
-  --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+  --ring: #111111;
+  --selection: #e4e4e4;
+  --selection-foreground: #111111;
+  /* No shadows — the flat page and hairline rules carry all the depth. */
+  --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
-  --radius: 0.625rem;
+  --radius: 0rem;
   --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #111111;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f0f0f0;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: #e4e4e4;
+  --sidebar-ring: #767676;
 }
 
 @theme inline {
@@ -66,11 +62,15 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-dim: var(--muted-dim);
-  --font-sans: var(--font-geist-sans);
+  /* Helvetica-first stack: the grotesque IS the identity. Geist stands in
+     where Helvetica isn't installed — it stays on the same neutral axis. */
+  --font-sans:
+    "Helvetica Neue", Helvetica, Arial, var(--font-geist-sans), sans-serif;
   --font-mono: var(--font-geist-mono);
   /* Headings share the body face — hierarchy comes from weight, size, and
      tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  --font-heading:
+    "Helvetica Neue", Helvetica, Arial, var(--font-geist-sans), sans-serif;
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -114,13 +114,13 @@ body {
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+   the one red accent on screen. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
 }
 
-/* Chrome paints autofilled fields yellow, which clashes with the paper
+/* Chrome paints autofilled fields yellow, which clashes with the neutral
    palette. The background is set via an internal style that can't be
    overridden directly, but it *can* be transitioned — delaying it
    indefinitely keeps the field transparent while the ink stays themed. */
@@ -184,50 +184,49 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — the same neutral axis inverted: near-black field, off-white
+   ink, hairline greys, and the identical Swiss-red accent. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #161616;
+  --surface-hover: #1d1d1d;
+  --border: #2a2a2a;
+  --border-strong: #404040;
+  --muted: #222222;
+  --muted-dim: #7c7c7c;
+  --background: #0e0e0e;
+  --foreground: #f2f2f2;
+  --card: #161616;
+  --card-foreground: #f2f2f2;
+  --popover: #1d1d1d;
+  --popover-foreground: #f2f2f2;
+  --primary: #f2f2f2;
+  --primary-foreground: #0e0e0e;
+  --secondary: #2a2a2a;
+  --secondary-foreground: #f2f2f2;
+  --muted-foreground: #a6a6a6;
+  --accent: #2a2a2a;
+  --accent-foreground: #f2f2f2;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #e30613;
   --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --ring: #c8c8c8;
+  --selection: #333333;
+  --selection-foreground: #f2f2f2;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #161616;
+  --sidebar-foreground: #f2f2f2;
+  --sidebar-primary: #f2f2f2;
+  --sidebar-primary-foreground: #0e0e0e;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: #2a2a2a;
+  --sidebar-ring: #7c7c7c;
 }
 
 @layer base {

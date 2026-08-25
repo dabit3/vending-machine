@@ -189,10 +189,6 @@ export default function ClaimPage({
         id="main-content"
         className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16"
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_60%_60%_at_50%_45%,black,transparent)]"
-        />
         <div className="relative w-full max-w-md">
           {previewMode ? (
             <Alert className="mb-4">
