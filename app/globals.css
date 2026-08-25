@@ -4,57 +4,55 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Navy Broadsheet": cool white newsprint page with
+   deep navy as the ink. Headlines, rules, and accents print in navy
+   (#0f2247–#1a3a6b), tints and borders lean cool blue-grey rather than warm,
+   and the brand/claim button carries the navy rather than a separate blue. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #f4f6f9;
+  --surface-hover: #edf1f6;
+  --border: #dee5ee;
+  --border-strong: #c0ccdc;
+  --muted: #eaeff5;
+  --muted-dim: #64748b;
+  --background: #fbfcfe;
+  --foreground: #0f2247;
+  --card: #fbfcfe;
+  --card-foreground: #0f2247;
+  --popover: #fbfcfe;
+  --popover-foreground: #0f2247;
+  --primary: #0f2247;
+  --primary-foreground: #f5f8fc;
+  --secondary: #eaeff5;
+  --secondary-foreground: #0f2247;
+  --muted-foreground: #44567a;
+  --accent: #eaeff5;
+  --accent-foreground: #0f2247;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
+  --input: oklch(0.25 0.05 260 / 10%);
+  --brand: #1a3a6b;
   --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
+  --ring: #33507f;
+  --selection: #d8e2ef;
+  --selection-foreground: #0f2247;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
+    0 1px 2px rgb(15 34 71 / 0.05), 0 4px 12px -2px rgb(15 34 71 / 0.05);
+  --chart-1: oklch(0.28 0.06 260);
+  --chart-2: oklch(0.44 0.08 260);
+  --chart-3: oklch(0.56 0.07 260);
+  --chart-4: oklch(0.71 0.05 260);
+  --chart-5: oklch(0.87 0.02 260);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar: #fbfcfe;
+  --sidebar-foreground: #0f2247;
+  --sidebar-primary: #0f2247;
+  --sidebar-primary-foreground: #f5f8fc;
+  --sidebar-accent: #eaeff5;
+  --sidebar-accent-foreground: #0f2247;
+  --sidebar-border: #dee5ee;
+  --sidebar-ring: #64748b;
 }
 
 @theme inline {
@@ -204,50 +202,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Navy Broadsheet" after dark: a deep navy page with off-white
+   type and lighter navy surfaces, so the broadsheet reads as ink-on-navy
+   rather than grey-on-black. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #10203a;
+  --surface-hover: #152845;
+  --border: #1e3253;
+  --border-strong: #2e4568;
+  --muted: #142440;
+  --muted-dim: #7a8aa5;
+  --background: #0a1526;
+  --foreground: #e7ecf4;
+  --card: #10203a;
+  --card-foreground: #e7ecf4;
+  --popover: #152845;
+  --popover-foreground: #e7ecf4;
+  --primary: #e7ecf4;
+  --primary-foreground: #0a1526;
+  --secondary: #1c3050;
+  --secondary-foreground: #e7ecf4;
+  --muted-foreground: #a7b4c9;
+  --accent: #1c3050;
+  --accent-foreground: #e7ecf4;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
+  --brand: #3a66ad;
   --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --ring: #b9c6da;
+  --selection: #24395e;
+  --selection-foreground: #e7ecf4;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --chart-1: oklch(0.87 0.02 260);
+  --chart-2: oklch(0.56 0.07 260);
+  --chart-3: oklch(0.44 0.08 260);
+  --chart-4: oklch(0.37 0.07 260);
+  --chart-5: oklch(0.28 0.06 260);
+  --sidebar: #10203a;
+  --sidebar-foreground: #e7ecf4;
+  --sidebar-primary: #e7ecf4;
+  --sidebar-primary-foreground: #0a1526;
+  --sidebar-accent: #1c3050;
+  --sidebar-accent-foreground: #e7ecf4;
+  --sidebar-border: #1e3253;
+  --sidebar-ring: #7a8aa5;
 }
 
 @layer base {
