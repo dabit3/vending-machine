@@ -13,7 +13,7 @@ function GitHubMark({ className }: { className?: string }) {
 
 export default function SiteFooter() {
   return (
-    <footer className="border-t border-border">
+    <footer className="border-t-2 border-border">
       <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <a
           href="https://github.com/dabit3/vending-machine"

@@ -66,7 +66,7 @@ function EventRow({
 }) {
   return (
     <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b border-border motion-reduce:animate-none"
+      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b-2 border-border motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link
@@ -77,7 +77,7 @@ function EventRow({
         )}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-bold tracking-tight uppercase sm:text-2xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -150,14 +150,14 @@ export default function Home() {
   // copy centered in the visible area.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 w-fit border-2 border-black bg-white px-2.5 py-1.5 text-black shadow-[3px_3px_0_0_#000] dark:border-white dark:bg-black dark:text-white dark:shadow-[3px_3px_0_0_#fff] motion-reduce:animate-none">
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.92] font-black tracking-[-0.02em] uppercase text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
         Claim your credits.
       </h1>
-      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
+      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm font-medium leading-relaxed text-black/80 dark:text-white/80 motion-reduce:animate-none">
         Sign in, then select your event to claim your credits.
       </p>
     </div>
@@ -167,7 +167,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <section className="-mt-15.25 border-b border-border/65">
+        <section className="-mt-15.25 border-b-4 border-border">
           {/* The section pulls up behind the translucent header bar
               (-mt-15.25) so the background runs to the top of the page; the
               hero is 61px taller to compensate and the scene shows through
@@ -203,20 +203,20 @@ export default function Home() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="text-sm font-bold tracking-wide uppercase">
             Active events
           </h2>
 
           {events === undefined ? (
             <div
-              className="mt-4 border-t border-border"
+              className="mt-4 border-t-2 border-border"
               role="status"
               aria-label="Loading active events"
             >
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
+                  className="flex items-center gap-6 border-b-2 border-border px-2 py-7 sm:gap-10 sm:px-4"
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton className="h-5 w-2/3 rounded-sm" />
@@ -226,7 +226,7 @@ export default function Home() {
               ))}
             </div>
           ) : events.length === 0 ? (
-            <Empty className="mt-6 border border-dashed border-border-strong py-16">
+            <Empty className="mt-6 border-2 border-dashed border-border-strong py-16">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Ticket />
@@ -244,7 +244,7 @@ export default function Home() {
                   No active events right now.
                 </p>
               ) : (
-                <ul className="mt-4 border-t border-border">
+                <ul className="mt-4 border-t-2 border-border">
                   {current.map((event, index) => (
                     <EventRow
                       key={event._id}
@@ -258,14 +258,14 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
+                    <h2 className="text-sm font-bold tracking-wide uppercase">
                       Past events
                     </h2>
                     <span className="font-mono text-xs text-muted-dim tabular-nums">
                       {String(past.length).padStart(2, "0")}
                     </span>
                   </div>
-                  <ul className="mt-4 border-t border-border">
+                  <ul className="mt-4 border-t-2 border-border">
                     {past.map((event, index) => (
                       <EventRow
                         key={event._id}
