@@ -4,57 +4,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode (default) — "Oxblood": cream paper with warm parchment tints,
+   ink shaded toward umber, and a deep oxblood/burgundy as the single accent
+   for rules, pull-quote bars, links, and the claim button. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #f4eee1;
+  --surface-hover: #eee6d5;
+  --border: #e7dcc7;
+  --border-strong: #cfc0a5;
+  --muted: #f0e8d7;
+  --muted-dim: #86786a;
+  --background: #faf5ea;
+  --foreground: #291b16;
+  --card: #faf5ea;
+  --card-foreground: #291b16;
+  --popover: #fdf9f0;
+  --popover-foreground: #291b16;
+  --primary: #5e1a1a;
+  --primary-foreground: #f6ead6;
+  --secondary: #f0e8d7;
+  --secondary-foreground: #291b16;
+  --muted-foreground: #6b5b4f;
+  --accent: #f0e8d7;
+  --accent-foreground: #5e1a1a;
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
+  --input: oklch(0.2 0.03 40 / 8%);
+  --brand: #6b1d1d;
+  --brand-foreground: #f6ead6;
+  --ring: #7a2020;
+  --selection: #ecd8ca;
+  --selection-foreground: #291b16;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
+    0 1px 2px rgb(41 27 22 / 0.04), 0 4px 12px -2px rgb(41 27 22 / 0.04);
   --chart-1: oklch(0.269 0 0);
   --chart-2: oklch(0.439 0 0);
   --chart-3: oklch(0.556 0 0);
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar: #faf5ea;
+  --sidebar-foreground: #291b16;
+  --sidebar-primary: #5e1a1a;
+  --sidebar-primary-foreground: #f6ead6;
+  --sidebar-accent: #f0e8d7;
+  --sidebar-accent-foreground: #291b16;
+  --sidebar-border: #e7dcc7;
+  --sidebar-ring: #86786a;
 }
 
 @theme inline {
@@ -145,20 +142,20 @@ input:-webkit-autofill:focus {
 /* Editorial double rule: the stacked hairline pair that opens a section,
    as on a broadsheet front page. */
 @utility rule-double {
-  border-top: 3px double var(--foreground);
+  border-top: 3px double var(--brand);
 }
 
 /* Heavy masthead rule paired with a hairline below. */
 @utility rule-masthead {
-  border-top: 2px solid var(--foreground);
-  box-shadow: 0 3px 0 -2px var(--foreground);
+  border-top: 2px solid var(--brand);
+  box-shadow: 0 3px 0 -2px var(--brand);
 }
 
 /* Pull quote: text serif italic with a stout left rule. */
 @utility pull-quote {
   font-family: var(--font-serif), Georgia, serif;
   font-style: italic;
-  border-left: 3px solid var(--foreground);
+  border-left: 3px solid var(--brand);
 }
 
 /* Faint dot grid backdrop for hero surfaces. */
@@ -204,50 +201,50 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Oxblood" after dark: a near-black warm ground with parchment
+   text, oxblood lifted a step so the rules and the claim button keep their
+   burgundy read against the dark field. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #191211;
+  --surface-hover: #201816;
+  --border: #2d221f;
+  --border-strong: #453531;
+  --muted: #251c19;
+  --muted-dim: #8a7d72;
+  --background: #100b0a;
+  --foreground: #ece2d0;
+  --card: #191211;
+  --card-foreground: #ece2d0;
+  --popover: #201816;
+  --popover-foreground: #ece2d0;
+  --primary: #ece2d0;
+  --primary-foreground: #100b0a;
+  --secondary: #322723;
+  --secondary-foreground: #ece2d0;
+  --muted-foreground: #b3a695;
+  --accent: #322723;
+  --accent-foreground: #ece2d0;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #8a2626;
+  --brand-foreground: #f3e8d5;
+  --ring: #a35050;
+  --selection: #4a2420;
+  --selection-foreground: #ece2d0;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #191211;
+  --sidebar-foreground: #ece2d0;
+  --sidebar-primary: #8a2626;
+  --sidebar-primary-foreground: #f3e8d5;
+  --sidebar-accent: #322723;
+  --sidebar-accent-foreground: #ece2d0;
+  --sidebar-border: #2d221f;
+  --sidebar-ring: #8a7d72;
 }
 
 @layer base {

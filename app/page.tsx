@@ -57,7 +57,7 @@ function EventRow({
           {String(index + 1).padStart(2, "0")}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-heading text-2xl font-medium tracking-tight text-balance sm:text-3xl">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-heading text-2xl font-medium tracking-tight text-balance transition-colors group-hover:text-brand sm:text-3xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1 align-middle">
