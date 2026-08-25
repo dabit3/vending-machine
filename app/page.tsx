@@ -66,13 +66,13 @@ function EventRow({
 }) {
   return (
     <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b border-border motion-reduce:animate-none"
+      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link
         href={`/${event.slug}`}
         className={cn(
-          "group flex items-center gap-6 px-2 py-7 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-4",
+          "group neu-raised flex items-center gap-6 rounded-3xl bg-card px-6 py-7 transition-all hover:neu-inset focus-visible:neu-inset focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-8",
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
@@ -167,7 +167,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
       <main id="main-content" className="flex-1">
-        <section className="-mt-15.25 border-b border-border/65">
+        <section className="-mt-15.25">
           {/* The section pulls up behind the translucent header bar
               (-mt-15.25) so the background runs to the top of the page; the
               hero is 61px taller to compensate and the scene shows through
@@ -176,7 +176,7 @@ export default function Home() {
               by project swaps it cleanly on theme change while the copy stays
               mounted. The scene's mouse interactivity listens on window, so
               the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+          <div className="relative h-[520px] overflow-hidden bg-background sm:h-[486px]">
             {heroProjectId ? (
               <div className="absolute inset-0" aria-hidden>
                 {/* Dev fetches fresh scene data on every load; deploys pin
@@ -209,14 +209,14 @@ export default function Home() {
 
           {events === undefined ? (
             <div
-              className="mt-4 border-t border-border"
+              className="mt-6 flex flex-col gap-5"
               role="status"
               aria-label="Loading active events"
             >
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
+                  className="neu-inset flex items-center gap-6 rounded-3xl px-6 py-7 sm:gap-10 sm:px-8"
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-2">
                     <Skeleton className="h-5 w-2/3 rounded-sm" />
@@ -226,7 +226,7 @@ export default function Home() {
               ))}
             </div>
           ) : events.length === 0 ? (
-            <Empty className="mt-6 border border-dashed border-border-strong py-16">
+            <Empty className="neu-inset mt-6 rounded-3xl py-16">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Ticket />
@@ -244,7 +244,7 @@ export default function Home() {
                   No active events right now.
                 </p>
               ) : (
-                <ul className="mt-4 border-t border-border">
+                <ul className="mt-6 flex flex-col gap-5">
                   {current.map((event, index) => (
                     <EventRow
                       key={event._id}
@@ -265,7 +265,7 @@ export default function Home() {
                       {String(past.length).padStart(2, "0")}
                     </span>
                   </div>
-                  <ul className="mt-4 border-t border-border">
+                  <ul className="mt-6 flex flex-col gap-5">
                     {past.map((event, index) => (
                       <EventRow
                         key={event._id}

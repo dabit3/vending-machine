@@ -602,7 +602,7 @@ function QrPanel({
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col items-center justify-center gap-5 py-(--card-spacing)">
-        <div className="rounded-lg border border-border bg-background p-4 text-foreground">
+        <div className="neu-inset rounded-2xl bg-background p-4 text-foreground">
           {url ? (
             <QRCodeSVG
               value={url}
@@ -645,7 +645,7 @@ function Receipt({
 }) {
   return (
     <div
-      className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
+      className="receipt-edge receipt-print neu-raised rounded-t-3xl bg-surface pb-10 motion-reduce:animate-none"
       role="status"
     >
       <div className="flex flex-col gap-6 p-6 sm:p-8">
@@ -679,7 +679,7 @@ function Receipt({
           </Badge>
         ) : null}
 
-        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 py-2 motion-reduce:animate-none">
+        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 neu-inset rounded-2xl px-5 py-4 motion-reduce:animate-none">
           <div className="text-xs text-muted-dim">
             {codeType ? `Your “${codeType}” code` : "Your credit code"}
           </div>
