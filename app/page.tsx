@@ -77,7 +77,7 @@ function EventRow({
         )}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-2xl font-medium tracking-tight sm:text-3xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -150,11 +150,11 @@ export default function Home() {
   // copy centered in the visible area.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-brand motion-reduce:animate-none">
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-7xl">
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-6xl leading-[0.98] font-medium tracking-[-0.01em] text-balance text-black dark:text-white motion-reduce:animate-none sm:text-8xl">
         Claim your credits.
       </h1>
       <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
@@ -176,7 +176,7 @@ export default function Home() {
               by project swaps it cleanly on theme change while the copy stays
               mounted. The scene's mouse interactivity listens on window, so
               the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#0b0a07] sm:h-[486px]">
             {heroProjectId ? (
               <div className="absolute inset-0" aria-hidden>
                 {/* Dev fetches fresh scene data on every load; deploys pin
@@ -203,9 +203,7 @@ export default function Home() {
         </section>
 
         <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Active events
-          </h2>
+          <h2 className="eyebrow text-brand">Active events</h2>
 
           {events === undefined ? (
             <div
@@ -258,9 +256,7 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
-                      Past events
-                    </h2>
+                    <h2 className="eyebrow text-muted-dim">Past events</h2>
                     <span className="font-mono text-xs text-muted-dim tabular-nums">
                       {String(past.length).padStart(2, "0")}
                     </span>

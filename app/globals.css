@@ -4,39 +4,37 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* Light mode — "Ivory Salon": the luxury palette's daylight companion. A
+   warm ivory field with champagne-gold accents, hairline parchment borders,
+   and deep espresso ink. Gold is the single accent, reserved for the claim
+   flow and fine metallic details. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
+  --surface: #f5f1e8;
+  --surface-hover: #efe9dc;
+  --border: #e7dfcd;
+  --border-strong: #d2c5a8;
+  --muted: #f1ebdd;
+  --muted-dim: #8a7f6a;
+  --background: #faf7f0;
+  --foreground: #1e1a12;
+  --card: #fdfbf6;
+  --card-foreground: #1e1a12;
+  --popover: #fdfbf6;
+  --popover-foreground: #1e1a12;
+  --primary: #1e1a12;
+  --primary-foreground: #f8f4ea;
+  --secondary: #f1ebdd;
+  --secondary-foreground: #1e1a12;
+  --muted-foreground: #5c5442;
+  --accent: #f1ebdd;
+  --accent-foreground: #1e1a12;
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
+  --brand: #9a7b2f;
+  --brand-foreground: #fdfbf6;
+  --ring: #9a7b2f;
+  --selection: #ecdfc0;
+  --selection-foreground: #1e1a12;
   /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
      mode zeroes it out and relies on surface contrast instead. */
   --shadow-card:
@@ -47,14 +45,14 @@
   --chart-4: oklch(0.708 0 0);
   --chart-5: oklch(0.87 0 0);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar: #fdfbf6;
+  --sidebar-foreground: #1e1a12;
+  --sidebar-primary: #1e1a12;
+  --sidebar-primary-foreground: #f8f4ea;
+  --sidebar-accent: #f1ebdd;
+  --sidebar-accent-foreground: #1e1a12;
+  --sidebar-border: #e7dfcd;
+  --sidebar-ring: #8a7f6a;
 }
 
 @theme inline {
@@ -68,9 +66,9 @@
   --color-muted-dim: var(--muted-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  /* Headings share the body face — hierarchy comes from weight, size, and
-     tracking rather than a second display family. */
-  --font-heading: var(--font-geist-sans);
+  /* Headings switch to the luxury serif — the display face carries the
+     premium register while body copy stays on the grotesque. */
+  --font-heading: var(--font-luxury-serif);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -114,7 +112,7 @@ body {
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with
-   the one blue thing on screen. */
+   the gold accents on screen. */
 ::selection {
   background: var(--selection);
   color: var(--selection-foreground);
@@ -184,50 +182,51 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — "Luxury Dark": rich near-black surfaces with a warm cast,
+   champagne-gold as the single metallic accent, and fine gold-tinted
+   hairline borders. Text is warm parchment rather than white so nothing
+   glares against the black lacquer field. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #131109;
+  --surface-hover: #191610;
+  --border: #29241a;
+  --border-strong: #453b28;
+  --muted: #1e1a12;
+  --muted-dim: #8a8172;
+  --background: #0b0a07;
+  --foreground: #ece6d8;
+  --card: #12100b;
+  --card-foreground: #ece6d8;
+  --popover: #17140e;
+  --popover-foreground: #ece6d8;
+  --primary: #e6ddc8;
+  --primary-foreground: #0b0a07;
+  --secondary: #241f15;
+  --secondary-foreground: #ece6d8;
+  --muted-foreground: #b0a793;
+  --accent: #241f15;
+  --accent-foreground: #ece6d8;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
+  --brand: #c3a35e;
+  --brand-foreground: #16120b;
+  --ring: #c3a35e;
+  --selection: #38301f;
+  --selection-foreground: #ece6d8;
   --shadow-card: 0 0 rgb(0 0 0 / 0);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --sidebar: #12100b;
+  --sidebar-foreground: #ece6d8;
+  --sidebar-primary: #e6ddc8;
+  --sidebar-primary-foreground: #0b0a07;
+  --sidebar-accent: #241f15;
+  --sidebar-accent-foreground: #ece6d8;
+  --sidebar-border: #29241a;
+  --sidebar-ring: #8a8172;
 }
 
 @layer base {
