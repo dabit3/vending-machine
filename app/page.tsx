@@ -156,21 +156,21 @@ export default function Home() {
   // copy centered in the visible area.
   const heroCopy = (
     <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-black/60 dark:text-white/60 motion-reduce:animate-none">
+      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-white/60 motion-reduce:animate-none">
         {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
         distribution
       </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-2xl leading-snug text-balance text-black dark:text-white motion-reduce:animate-none sm:text-4xl sm:leading-snug">
+      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-2xl leading-snug text-balance text-white motion-reduce:animate-none sm:text-4xl sm:leading-snug">
         Claim your credits.
         <span
           aria-hidden
           className="animate-arcade-blink ml-2 inline-block h-[0.8em] w-[0.5em] translate-y-[0.08em] bg-brand align-baseline motion-reduce:animate-none"
         />
       </h1>
-      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-black/70 dark:text-white/70 motion-reduce:animate-none">
+      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-white/70 motion-reduce:animate-none">
         Sign in, then select your event to claim your credits.
       </p>
-      <p className="eyebrow animate-arcade-blink animate-in fade-in fill-mode-both duration-500 delay-300 mt-8 text-black/50 dark:text-white/50 motion-reduce:animate-none">
+      <p className="eyebrow animate-arcade-blink animate-in fade-in fill-mode-both duration-500 delay-300 mt-8 text-white/50 motion-reduce:animate-none">
         ● Insert coin — press start
       </p>
     </div>
@@ -189,7 +189,7 @@ export default function Home() {
               by project swaps it cleanly on theme change while the copy stays
               mounted. The scene's mouse interactivity listens on window, so
               the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#131313] sm:h-[486px]">
+          <div className="relative h-[520px] overflow-hidden bg-background dark:bg-[#0a0a10] sm:h-[486px]">
             {heroProjectId ? (
               <div className="absolute inset-0" aria-hidden>
                 {/* Dev fetches fresh scene data on every load; deploys pin
@@ -208,7 +208,7 @@ export default function Home() {
             {/* Soft scrim keeps the headline legible over the scenes; tune
                 or remove once the look settles. */}
             <div
-              className="absolute inset-0 bg-white/20 dark:bg-black/20"
+              className="absolute inset-0 bg-black/20"
               aria-hidden
             />
             {/* CRT scanlines make the hero read as the cabinet's screen. */}

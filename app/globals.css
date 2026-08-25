@@ -4,59 +4,57 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Light mode (default) — "Paper": a white page field with warm off-neutrals
-   in the tints and borders rather than the pure grey axis, and ink (#22211E)
-   instead of near-black so text stays short of a harsh 19:1. Surface is a
-   neutral grey one step off white — hovers and the receipt stub read as a
-   quiet press of the field rather than a cream block. The blue accent is
-   reserved for the claim flow only. */
+/* "Neon Arcade" — a dark cabinet in both modes: near-black field lit by
+   electric neon (hot pink, cyan, lime). Light mode is the cabinet under
+   house lights — a slightly lifted charcoal — while dark mode is lights-off.
+   Neon carries the glow; body text stays a cool off-white for contrast. */
 :root {
-  --surface: #f6f6f6;
-  --surface-hover: #f0f0f0;
-  --border: #eae7df;
-  --border-strong: #d5cfc2;
-  --muted: #f1efe8;
-  --muted-dim: #78716a;
-  --background: #ffffff;
-  --foreground: #22211e;
-  --card: #ffffff;
-  --card-foreground: #22211e;
-  --popover: #ffffff;
-  --popover-foreground: #22211e;
-  --primary: #22211e;
-  --primary-foreground: #faf9f5;
-  --secondary: #f1efe8;
-  --secondary-foreground: #22211e;
-  --muted-foreground: #57534a;
-  --accent: #f1efe8;
-  --accent-foreground: #22211e;
-  --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0 0 0 / 8%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #44403a;
+  --surface: #17171f;
+  --surface-hover: #1e1e29;
+  --border: #2a2a3a;
+  --border-strong: #45455c;
+  --muted: #20202c;
+  --muted-dim: #8b8ba3;
+  --background: #101018;
+  --foreground: #eef0f7;
+  --card: #17171f;
+  --card-foreground: #eef0f7;
+  --popover: #1e1e29;
+  --popover-foreground: #eef0f7;
+  --primary: #eef0f7;
+  --primary-foreground: #101018;
+  --secondary: #262635;
+  --secondary-foreground: #eef0f7;
+  --muted-foreground: #b4b6c8;
+  --accent: #262635;
+  --accent-foreground: #eef0f7;
+  --destructive: oklch(0.704 0.191 22.216);
+  --input: oklch(1 0 0 / 12%);
+  --brand: #ff2e88;
+  --brand-foreground: #0b0b12;
+  --ring: #22d3ee;
   --arcade-accent: #ff2e88;
-  --arcade-accent-2: #ffc700;
-  --selection: #e6e1d5;
-  --selection-foreground: #22211e;
-  /* Soft two-layer card shadow: invisible as "shadow", read as depth. Dark
-     mode zeroes it out and relies on surface contrast instead. */
+  --arcade-accent-2: #22d3ee;
+  --selection: #a3ff12;
+  --selection-foreground: #0b0b12;
+  /* Neon underlight instead of a paper drop shadow: a faint pink halo so
+     cards read as lit signage against the cabinet black. */
   --shadow-card:
-    0 1px 2px rgb(34 33 30 / 0.04), 0 4px 12px -2px rgb(34 33 30 / 0.04);
-  --chart-1: oklch(0.269 0 0);
-  --chart-2: oklch(0.439 0 0);
-  --chart-3: oklch(0.556 0 0);
-  --chart-4: oklch(0.708 0 0);
-  --chart-5: oklch(0.87 0 0);
+    0 0 0 1px rgb(255 46 136 / 0.08), 0 0 18px -4px rgb(255 46 136 / 0.25);
+  --chart-1: #ff2e88;
+  --chart-2: #22d3ee;
+  --chart-3: #a3ff12;
+  --chart-4: #c084fc;
+  --chart-5: #facc15;
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #22211e;
-  --sidebar-primary: #22211e;
-  --sidebar-primary-foreground: #faf9f5;
-  --sidebar-accent: #f1efe8;
-  --sidebar-accent-foreground: #22211e;
-  --sidebar-border: #e7e3da;
-  --sidebar-ring: #78716a;
+  --sidebar: #17171f;
+  --sidebar-foreground: #eef0f7;
+  --sidebar-primary: #eef0f7;
+  --sidebar-primary-foreground: #101018;
+  --sidebar-accent: #262635;
+  --sidebar-accent-foreground: #eef0f7;
+  --sidebar-border: #2a2a3a;
+  --sidebar-ring: #8b8ba3;
 }
 
 @theme inline {
@@ -123,12 +121,13 @@ body {
 }
 
 /* CRT scanlines overlay for cabinet "screen" surfaces. Purely decorative,
-   kept faint so text contrast is unaffected. */
+   kept faint so text contrast is unaffected. Light lines: the field is
+   near-black in both modes, so dark lines would vanish. */
 @utility bg-scanlines {
   background-image: repeating-linear-gradient(
     0deg,
-    rgb(0 0 0 / 0.05) 0px,
-    rgb(0 0 0 / 0.05) 1px,
+    rgb(255 255 255 / 0.04) 0px,
+    rgb(255 255 255 / 0.04) 1px,
     transparent 1px,
     transparent 3px
   );
@@ -249,52 +248,52 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Dark mode — "Paper" after dark: the near-black picks up a faint cool cast
-   while the text stays warm off-white, and contrast drops from 18:1 to ~16:1
-   to stop white type haloing on OLED. */
+/* Dark mode — lights off: the cabinet drops to true near-black so the neon
+   reads hotter; borders keep a violet cast so edges never go dead grey. */
 .dark {
-  --surface: #141416;
-  --surface-hover: #1a1a1d;
-  --border: #26262a;
-  --border-strong: #3a3a40;
-  --muted: #212125;
-  --muted-dim: #7a7772;
-  --background: #0c0c0e;
-  --foreground: #e8e6e1;
-  --card: #141416;
-  --card-foreground: #e8e6e1;
-  --popover: #1a1a1d;
-  --popover-foreground: #e8e6e1;
-  --primary: #e8e6e1;
-  --primary-foreground: #0c0c0e;
-  --secondary: #2b2b30;
-  --secondary-foreground: #e8e6e1;
-  --muted-foreground: #a8a5a0;
-  --accent: #2b2b30;
-  --accent-foreground: #e8e6e1;
+  --surface: #12121a;
+  --surface-hover: #191924;
+  --border: #262636;
+  --border-strong: #3f3f56;
+  --muted: #1b1b26;
+  --muted-dim: #83839b;
+  --background: #0a0a10;
+  --foreground: #f1f2f9;
+  --card: #12121a;
+  --card-foreground: #f1f2f9;
+  --popover: #191924;
+  --popover-foreground: #f1f2f9;
+  --primary: #f1f2f9;
+  --primary-foreground: #0a0a10;
+  --secondary: #232332;
+  --secondary-foreground: #f1f2f9;
+  --muted-foreground: #b8bacb;
+  --accent: #232332;
+  --accent-foreground: #f1f2f9;
   --destructive: oklch(0.704 0.191 22.216);
   --input: oklch(1 0 0 / 15%);
-  --brand: #2200ff;
-  --brand-foreground: #ffffff;
-  --ring: #c4c1bb;
+  --brand: #ff2e88;
+  --brand-foreground: #0b0b12;
+  --ring: #22d3ee;
   --arcade-accent: #ff2e88;
-  --arcade-accent-2: #ffc700;
-  --selection: #33333a;
-  --selection-foreground: #e8e6e1;
-  --shadow-card: 0 0 rgb(0 0 0 / 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #141416;
-  --sidebar-foreground: #e8e6e1;
-  --sidebar-primary: #e8e6e1;
-  --sidebar-primary-foreground: #0c0c0e;
-  --sidebar-accent: #2b2b30;
-  --sidebar-accent-foreground: #e8e6e1;
-  --sidebar-border: #26262a;
-  --sidebar-ring: #7a7772;
+  --arcade-accent-2: #22d3ee;
+  --selection: #a3ff12;
+  --selection-foreground: #0b0b12;
+  --shadow-card:
+    0 0 0 1px rgb(255 46 136 / 0.1), 0 0 22px -4px rgb(255 46 136 / 0.35);
+  --chart-1: #ff2e88;
+  --chart-2: #22d3ee;
+  --chart-3: #a3ff12;
+  --chart-4: #c084fc;
+  --chart-5: #facc15;
+  --sidebar: #12121a;
+  --sidebar-foreground: #f1f2f9;
+  --sidebar-primary: #f1f2f9;
+  --sidebar-primary-foreground: #0a0a10;
+  --sidebar-accent: #232332;
+  --sidebar-accent-foreground: #f1f2f9;
+  --sidebar-border: #262636;
+  --sidebar-ring: #83839b;
 }
 
 @layer base {
