@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -198,6 +199,7 @@ function NewEventDialog() {
   const [description, setDescription] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [claimInstructions, setClaimInstructions] = useState("");
+  const [hidden, setHidden] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -212,6 +214,7 @@ function NewEventDialog() {
         description: description || undefined,
         eventDate: eventDate || undefined,
         claimInstructions: claimInstructions || undefined,
+        hidden: hidden || undefined,
       });
       toast.success(`Event "${name}" created`);
       router.push(`/admin/events/${id}`);
@@ -299,6 +302,16 @@ function NewEventDialog() {
               <FieldDescription>
                 Optional — shown to attendees after they claim a code.
               </FieldDescription>
+            </Field>
+            <Field orientation="horizontal">
+              <Checkbox
+                id="event-hidden"
+                checked={hidden}
+                onCheckedChange={(checked) => setHidden(checked === true)}
+              />
+              <FieldLabel htmlFor="event-hidden" className="font-normal">
+                Hide from home page
+              </FieldLabel>
             </Field>
           </FieldGroup>
           {error ? (

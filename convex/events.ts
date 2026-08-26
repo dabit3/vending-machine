@@ -166,6 +166,7 @@ export const create = mutation({
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -186,6 +187,7 @@ export const create = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
+      hidden: args.hidden || undefined,
     });
     return { id, slug };
   },
