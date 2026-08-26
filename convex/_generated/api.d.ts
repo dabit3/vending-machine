@@ -18,6 +18,7 @@ import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
 import type * as notifications from "../notifications.js";
+import type * as swarm from "../swarm.js";
 import type * as waitlist from "../waitlist.js";
 
 import type {
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   eventAdmins: typeof eventAdmins;
   events: typeof events;
   notifications: typeof notifications;
+  swarm: typeof swarm;
   waitlist: typeof waitlist;
 }>;
 
