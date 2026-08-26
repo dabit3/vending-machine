@@ -98,6 +98,32 @@ export default defineSchema({
     .index("by_event_email", ["eventId", "email"])
     .index("by_email", ["email"]),
 
+  // Live status board for swarm demo sessions. Each agent upserts its own
+  // row keyed by its Devin session id; parentSessionId links the tree.
+  swarmAgents: defineTable({
+    sessionId: v.string(),
+    name: v.string(),
+    level: v.number(),
+    parentSessionId: v.optional(v.string()),
+    role: v.string(),
+    status: v.string(),
+    task: v.optional(v.string()),
+    detail: v.optional(v.string()),
+    eventsStocked: v.optional(v.number()),
+    pagesQAd: v.optional(v.number()),
+    updatedAt: v.number(),
+  }).index("by_session", ["sessionId"]),
+
+  // Events created by swarm agents (always hidden), so QA agents can
+  // discover slugs to verify without an admin identity.
+  swarmEvents: defineTable({
+    sessionId: v.string(),
+    eventId: v.id("events"),
+    slug: v.string(),
+    name: v.string(),
+    codeCount: v.number(),
+  }).index("by_slug", ["slug"]),
+
   auditLogs: defineTable({
     eventId: v.id("events"),
     action: v.string(),
