@@ -3,7 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
-import { blockValue } from "./blockValues";
+import { blockKey, blockValue } from "./blockValues";
 
 // Drop the type from the event's denormalized list when its last code is
 // removed.
@@ -23,7 +23,7 @@ export async function dropTypeIfEmpty(
     const typeKey = codeType ?? "";
     if (event?.codeTypes?.includes(typeKey)) {
       const values = { ...(event.codeTypeValues ?? {}) };
-      delete values[typeKey];
+      delete values[blockKey(typeKey)];
       await ctx.db.patch(eventId, {
         codeTypes: event.codeTypes.filter((t) => t !== typeKey),
         codeTypeValues: values,
@@ -101,7 +101,7 @@ export const add = mutation({
         await ctx.db.patch(args.eventId, {
           codeTypeValues: {
             ...(event?.codeTypeValues ?? {}),
-            [codeType ?? ""]: value,
+            [blockKey(codeType)]: value,
           },
         });
       }
@@ -121,7 +121,7 @@ export const setTypeValue = mutation({
     await requireEventAdmin(ctx, args.eventId);
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
-    const key = args.codeType?.trim() || "";
+    const key = blockKey(args.codeType?.trim() || "");
     const value = args.value?.trim();
     const values = { ...(event.codeTypeValues ?? {}) };
     if (value) {
@@ -166,11 +166,12 @@ export const renameType = mutation({
     );
     // Carry the block's value over to its new name.
     const values = { ...(event?.codeTypeValues ?? {}) };
-    const fromKey = from ?? "";
-    if (targets.length > 0 && fromKey in values && !(to in values)) {
-      values[to] = values[fromKey];
+    const fromKey = blockKey(from);
+    const toKey = blockKey(to);
+    if (targets.length > 0 && fromKey in values && !(toKey in values)) {
+      values[toKey] = values[fromKey];
     }
-    delete values[fromKey];
+    if (fromKey !== toKey) delete values[fromKey];
     await ctx.db.patch(args.eventId, { codeTypes, codeTypeValues: values });
     return { renamed: targets.length };
   },
@@ -214,7 +215,7 @@ export const removeType = mutation({
       removed++;
     }
     const values = { ...(event.codeTypeValues ?? {}) };
-    if (kept === 0) delete values[typeKey];
+    if (kept === 0) delete values[blockKey(typeKey)];
     await ctx.db.patch(args.eventId, {
       codeTypes: event.codeTypes.filter((t) => t !== typeKey),
       codeTypeValues: values,
