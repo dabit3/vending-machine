@@ -141,8 +141,14 @@ export default function Home() {
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
     ...active.filter((e) => !e.eventDate),
   ];
+  // Past events drop off the page entirely once they are more than 30 days
+  // old; they stay reachable via their claim URL.
   const past = (
-    events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? []
+    events?.filter((e) => {
+      if (!e.eventDate) return false;
+      const days = daysUntilEvent(e.eventDate);
+      return days < 0 && days >= -30;
+    }) ?? []
   ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
   // Shared hero copy: crisp DOM stacked above the theme's scene. pt-15.25
