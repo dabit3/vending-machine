@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
+import { decodeBlockValues } from "./blockValues";
 
 function slugify(name: string): string {
   return name
@@ -93,7 +94,7 @@ export const getBySlug = query({
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       creditAmount: event.creditAmount,
-      codeTypeValues: event.codeTypeValues,
+      codeTypeValues: decodeBlockValues(event.codeTypeValues),
       soldOut: availableTypes.size === 0,
       // Preserve the event's stored (creation) order of code types.
       codeTypes: [
@@ -118,7 +119,7 @@ export const get = query({
       description: event.description,
       creditAmount: event.creditAmount,
       codeTypes: event.codeTypes,
-      codeTypeValues: event.codeTypeValues,
+      codeTypeValues: decodeBlockValues(event.codeTypeValues),
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       hidden: event.hidden,
