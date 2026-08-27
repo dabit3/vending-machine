@@ -12,6 +12,7 @@ import {
   LogIn,
   OctagonX,
   QrCode,
+  ShieldCheck,
   SearchX,
   Undo2,
 } from "lucide-react";
@@ -202,6 +203,19 @@ export default function ClaimPage({
               <AlertTitle>
                 Admin preview — you&apos;re seeing this as an eligible
                 attendee. No code is dispensed.
+              </AlertTitle>
+            </Alert>
+          ) : event?.viewerIsAdmin ? (
+            <Alert className="mb-4">
+              <ShieldCheck />
+              <AlertTitle className="flex items-center justify-between gap-3">
+                <span>You&apos;re an admin for this event</span>
+                <Link
+                  href={`/admin/events/${event._id}`}
+                  className="shrink-0 font-medium underline underline-offset-4 hover:text-foreground"
+                >
+                  Manage
+                </Link>
               </AlertTitle>
             </Alert>
           ) : null}
