@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
 import { useCountUp } from "@/lib/use-count-up";
@@ -971,7 +972,7 @@ function CodeBlocks({
             key={type || "__unnamed"}
             type={type}
             count={count}
-            value={values?.[type]}
+            value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
             canDelete={canDelete}

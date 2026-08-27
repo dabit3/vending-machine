@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
+import { blockKey } from "@/convex/blockValues";
 import {
   daysUntilEvent,
   eventCountdownLabel,
@@ -150,7 +151,8 @@ export default function ClaimPage({
         code: "PREVIEW-CODE",
         codeType: type,
         alreadyClaimed: false,
-        creditAmount: event.codeTypeValues?.[type ?? ""] ?? event.creditAmount,
+        creditAmount:
+          event.codeTypeValues?.[blockKey(type)] ?? event.creditAmount,
       });
       return;
     }
@@ -441,7 +443,7 @@ export default function ClaimPage({
                         <div className="grid grid-cols-2 gap-2">
                           {codeTypes.map((type) => {
                             const value =
-                              event.codeTypeValues?.[type] ??
+                              event.codeTypeValues?.[blockKey(type)] ??
                               event.creditAmount;
                             return (
                               <Button
