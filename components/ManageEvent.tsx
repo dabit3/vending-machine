@@ -502,7 +502,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         <StatCard
           label="Eligible emails"
           value={emails?.length}
-          sub={emails ? `${unclaimedEmailCount} yet to claim` : undefined}
+          sub={
+            emails && codes ? `${unclaimedEmailCount} yet to claim` : undefined
+          }
         />
         <StatCard
           label="Codes in pool"
@@ -663,7 +665,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardTitle>
             <CardDescription>
               Only these addresses can claim a code.
-              {emails ? ` ${unclaimedEmailCount} yet to claim.` : ""}
+              {emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {emails && emails.length > 0 ? (
