@@ -154,6 +154,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
   const codeCount = codes?.length ?? 0;
   const claimedDisplay = useCountUp(claimedCount);
+  const unclaimedEmailCount =
+    emails?.filter((e) => !claimedCodesByEmail.has(e.email)).length ?? 0;
+  const unclaimedCodeCount = codeCount - claimedCount;
+  const pendingEmailCount = countItems(emailInput);
+  const pendingCodeCount = countItems(codeInput);
 
   // Mirrors the real layout below (header → stat grid → details → two-up →
   // admins) so nothing reorganises itself when the queries land.
@@ -494,8 +499,16 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       </div>
 
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <StatCard label="Eligible emails" value={emails?.length} />
-        <StatCard label="Codes in pool" value={codes?.length} />
+        <StatCard
+          label="Eligible emails"
+          value={emails?.length}
+          sub={emails ? `${unclaimedEmailCount} yet to claim` : undefined}
+        />
+        <StatCard
+          label="Codes in pool"
+          value={codes?.length}
+          sub={codes ? `${unclaimedCodeCount} still available` : undefined}
+        />
         <div className="flex flex-col gap-3 py-5 sm:px-8 sm:last:pr-0">
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-medium text-muted-foreground">
@@ -646,9 +659,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <CardTitle className="flex items-center gap-2">
               <Inbox className="size-4 text-muted-dim" aria-hidden />
               Eligible emails
+              {emails ? <Badge variant="secondary">{emails.length}</Badge> : null}
             </CardTitle>
             <CardDescription>
               Only these addresses can claim a code.
+              {emails ? ` ${unclaimedEmailCount} yet to claim.` : ""}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {emails && emails.length > 0 ? (
@@ -668,24 +683,30 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 onChange={(e) => setEmailInput(e.target.value)}
                 rows={4}
                 placeholder={"one@example.com\ntwo@example.com"}
-                className="resize-y text-sm"
+                className="max-h-48 resize-y overflow-y-auto text-sm"
               />
-              <Button
-                type="submit"
-                variant="secondary"
-                className="self-start"
-                disabled={emailBusy || !emailInput.trim()}
-                aria-busy={emailBusy}
-              >
-                {emailBusy ? (
-                  <>
-                    <Spinner data-icon="inline-start" />
-                    Adding...
-                  </>
-                ) : (
-                  "Add emails"
-                )}
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={emailBusy || !emailInput.trim()}
+                  aria-busy={emailBusy}
+                >
+                  {emailBusy ? (
+                    <>
+                      <Spinner data-icon="inline-start" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add emails"
+                  )}
+                </Button>
+                {pendingEmailCount > 0 ? (
+                  <span className="text-xs text-muted-dim tabular-nums">
+                    {pendingEmailCount} email{pendingEmailCount === 1 ? "" : "s"} pasted
+                  </span>
+                ) : null}
+              </div>
             </form>
             <RowList
               fill
@@ -760,9 +781,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <CardTitle className="flex items-center gap-2">
               <Ticket className="size-4 text-muted-dim" aria-hidden />
               Codes
+              {codes ? <Badge variant="secondary">{codeCount}</Badge> : null}
             </CardTitle>
             <CardDescription>
               Each email is assigned one unclaimed code.
+              {codes ? ` ${unclaimedCodeCount} still available.` : ""}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {codes && codes.length > 0 ? (
@@ -896,24 +919,30 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 onChange={(e) => setCodeInput(e.target.value)}
                 rows={4}
                 placeholder={"CODE-001\nCODE-002"}
-                className="resize-y font-mono text-sm"
+                className="max-h-48 resize-y overflow-y-auto font-mono text-sm"
               />
-              <Button
-                type="submit"
-                variant="secondary"
-                className="self-start"
-                disabled={codeBusy || !codeInput.trim() || !codeFormReady}
-                aria-busy={codeBusy}
-              >
-                {codeBusy ? (
-                  <>
-                    <Spinner data-icon="inline-start" />
-                    Adding...
-                  </>
-                ) : (
-                  "Add codes"
-                )}
-              </Button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="submit"
+                  variant="secondary"
+                  disabled={codeBusy || !codeInput.trim() || !codeFormReady}
+                  aria-busy={codeBusy}
+                >
+                  {codeBusy ? (
+                    <>
+                      <Spinner data-icon="inline-start" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add codes"
+                  )}
+                </Button>
+                {pendingCodeCount > 0 ? (
+                  <span className="text-xs text-muted-dim tabular-nums">
+                    {pendingCodeCount} code{pendingCodeCount === 1 ? "" : "s"} pasted
+                  </span>
+                ) : null}
+              </div>
             </form>
             {blockTypes.length > 1 ? (
               // The "Add codes to" selection doubles as the list filter, so
@@ -1246,7 +1275,21 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value?: number }) {
+// Same splitting as the add handlers, so the live count matches what submit
+// will actually send.
+function countItems(input: string): number {
+  return input.split(/[\n,;\s]+/).filter(Boolean).length;
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value?: number;
+  sub?: string;
+}) {
   const display = useCountUp(value ?? 0);
   return (
     <div className="flex flex-col gap-3 py-5 sm:px-8 sm:first:pl-0">
@@ -1258,6 +1301,9 @@ function StatCard({ label, value }: { label: string; value?: number }) {
           {display}
         </span>
       )}
+      {sub && value !== undefined ? (
+        <span className="text-xs text-muted-dim tabular-nums">{sub}</span>
+      ) : null}
     </div>
   );
 }
