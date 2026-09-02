@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
-import { adminEmailStatus, requireEventAdmin } from "./admins";
+import type { Doc, Id } from "./_generated/dataModel";
+import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
 
@@ -259,6 +259,98 @@ export const rejectFlagged = mutation({
       subjectEmail: flagged.email,
       details: `Duplicate across ${flagged.matchedEventIds.length} other event(s)`,
     });
+  },
+});
+
+const ATTENDEE_SEARCH_ROWS = 200;
+const ATTENDEE_SEARCH_LIMIT = 20;
+
+// Cross-event history for addresses starting with `query`: every event the
+// address was made eligible for, plus any code claims (which may exist even
+// without an eligible-list row, e.g. after a re-claim or list cleanup).
+// Prefix matching lets both lookups stay on their email indexes.
+export const searchAttendees = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const prefix = args.query.trim().toLowerCase();
+    if (!prefix) return { attendees: [], hasMore: false };
+    const upper = prefix + "\uffff";
+
+    const eligibleRows = await ctx.db
+      .query("emails")
+      .withIndex("by_email", (q) => q.gte("email", prefix).lt("email", upper))
+      .take(ATTENDEE_SEARCH_ROWS);
+    const claimRows = await ctx.db
+      .query("codes")
+      .withIndex("by_claimedBy", (q) =>
+        q.gte("claimedBy", prefix).lt("claimedBy", upper)
+      )
+      .take(ATTENDEE_SEARCH_ROWS);
+
+    type EventHistory = { eligible: boolean; claimedAt: number | null };
+    const byEmail = new Map<string, Map<Id<"events">, EventHistory>>();
+    const historyFor = (email: string, eventId: Id<"events">) => {
+      let events = byEmail.get(email);
+      if (!events) {
+        events = new Map();
+        byEmail.set(email, events);
+      }
+      let history = events.get(eventId);
+      if (!history) {
+        history = { eligible: false, claimedAt: null };
+        events.set(eventId, history);
+      }
+      return history;
+    };
+    for (const row of eligibleRows) {
+      historyFor(row.email, row.eventId).eligible = true;
+    }
+    for (const code of claimRows) {
+      if (!code.claimedBy) continue;
+      const history = historyFor(code.claimedBy, code.eventId);
+      const claimedAt = code.claimedAt ?? code._creationTime;
+      if (history.claimedAt === null || claimedAt > history.claimedAt) {
+        history.claimedAt = claimedAt;
+      }
+    }
+
+    const emails = [...byEmail.keys()].sort();
+    const hasMore =
+      emails.length > ATTENDEE_SEARCH_LIMIT ||
+      eligibleRows.length === ATTENDEE_SEARCH_ROWS ||
+      claimRows.length === ATTENDEE_SEARCH_ROWS;
+
+    const eventCache = new Map<Id<"events">, Doc<"events"> | null>();
+    const attendees = [];
+    for (const email of emails.slice(0, ATTENDEE_SEARCH_LIMIT)) {
+      const events = [];
+      for (const [eventId, history] of byEmail.get(email)!) {
+        let event = eventCache.get(eventId);
+        if (event === undefined) {
+          event = await ctx.db.get(eventId);
+          eventCache.set(eventId, event);
+        }
+        if (!event) continue;
+        events.push({
+          id: eventId,
+          name: event.name,
+          eventDate: event.eventDate ?? null,
+          createdAt: event._creationTime,
+          eligible: history.eligible,
+          claimedAt: history.claimedAt,
+        });
+      }
+      // Most recent event first; undated events fall back to creation order.
+      events.sort((a, b) => {
+        if (a.eventDate && b.eventDate && a.eventDate !== b.eventDate) {
+          return a.eventDate < b.eventDate ? 1 : -1;
+        }
+        return b.createdAt - a.createdAt;
+      });
+      attendees.push({ email, events });
+    }
+    return { attendees, hasMore };
   },
 });
 
