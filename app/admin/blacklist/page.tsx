@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, ShieldAlert, X } from "lucide-react";
+import { Ban, Search, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -29,9 +29,16 @@ export default function BlacklistPage() {
   const removeEmail = useMutation(api.blacklist.remove);
 
   const [email, setEmail] = useState("");
+  const [search, setSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [removingId, setRemovingId] = useState<Id<"blacklistedEmails"> | null>(
     null
+  );
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const visibleEntries = (entries ?? []).filter(
+    (entry) =>
+      normalizedSearch === "" || entry.email.includes(normalizedSearch)
   );
 
   async function handleAdd(e: React.FormEvent) {
@@ -125,6 +132,29 @@ export default function BlacklistPage() {
         </Field>
       </form>
 
+      {entries && entries.length > 0 ? (
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <InputGroup className="max-w-sm">
+            <InputGroupAddon align="inline-start">
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search blacklisted emails"
+              aria-label="Search blacklisted emails"
+              className="text-sm"
+            />
+          </InputGroup>
+          <span className="shrink-0 text-xs text-muted-dim">
+            {normalizedSearch
+              ? `${visibleEntries.length} of ${entries.length}`
+              : `${entries.length} ${entries.length === 1 ? "email" : "emails"}`}
+          </span>
+        </div>
+      ) : null}
+
       {entries === undefined ? (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-12 rounded-md" />
@@ -136,9 +166,17 @@ export default function BlacklistPage() {
             <EmptyDescription>No blacklisted emails.</EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : visibleEntries.length === 0 ? (
+        <Empty className="border border-dashed border-border-strong py-16">
+          <EmptyHeader>
+            <EmptyDescription>
+              No blacklisted emails match &ldquo;{search.trim()}&rdquo;.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <ul className="divide-y divide-border border-y border-border">
-          {entries.map((entry) => (
+          {visibleEntries.map((entry) => (
             <li
               key={entry._id}
               className="flex min-h-12 items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
