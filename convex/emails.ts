@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
-import { adminEmailStatus, requireEventAdmin } from "./admins";
+import type { Doc, Id } from "./_generated/dataModel";
+import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
 
@@ -259,6 +259,120 @@ export const rejectFlagged = mutation({
       subjectEmail: flagged.email,
       details: `Duplicate across ${flagged.matchedEventIds.length} other event(s)`,
     });
+  },
+});
+
+const ATTENDEE_SEARCH_ROWS = 200;
+const ATTENDEE_SEARCH_LIMIT = 20;
+// Per-address cap on eligibility/claim rows so a request can never read an
+// unbounded number of documents. Far above any real attendee's history.
+const ATTENDEE_HISTORY_ROWS = 500;
+
+// Single timeline for ordering events: the YYYY-MM-DD event date when set,
+// otherwise when the event was created.
+function eventTimestamp(event: Doc<"events">): number {
+  if (event.eventDate) {
+    const [year, month, day] = event.eventDate.split("-").map(Number);
+    if (year && month && day) return Date.UTC(year, month - 1, day);
+  }
+  return event._creationTime;
+}
+
+// Cross-event history for addresses starting with `query`: every event the
+// address was made eligible for, plus any code claims (which may exist even
+// without an eligible-list row, e.g. after a re-claim or list cleanup).
+// Prefix matching lets both lookups stay on their email indexes.
+export const searchAttendees = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const prefix = args.query.trim().toLowerCase();
+    if (!prefix) return { attendees: [], hasMore: false };
+    const upper = prefix + "\uffff";
+
+    // Discovery pass: a bounded prefix scan of both indexes just to find
+    // which addresses match. Each returned address then gets its own exact
+    // lookups so its history is complete even if the scan cut through it.
+    const eligibleRows = await ctx.db
+      .query("emails")
+      .withIndex("by_email", (q) => q.gte("email", prefix).lt("email", upper))
+      .take(ATTENDEE_SEARCH_ROWS);
+    const claimRows = await ctx.db
+      .query("codes")
+      .withIndex("by_claimedBy", (q) =>
+        q.gte("claimedBy", prefix).lt("claimedBy", upper)
+      )
+      .take(ATTENDEE_SEARCH_ROWS);
+    const matched = new Set<string>();
+    for (const row of eligibleRows) matched.add(row.email);
+    for (const code of claimRows) {
+      if (code.claimedBy) matched.add(code.claimedBy);
+    }
+    const emails = [...matched].sort();
+    const hasMore =
+      emails.length > ATTENDEE_SEARCH_LIMIT ||
+      eligibleRows.length === ATTENDEE_SEARCH_ROWS ||
+      claimRows.length === ATTENDEE_SEARCH_ROWS;
+
+    type EventHistory = { eligible: boolean; claimedAt: number | null };
+    const eventCache = new Map<Id<"events">, Doc<"events"> | null>();
+    const attendees = [];
+    for (const email of emails.slice(0, ATTENDEE_SEARCH_LIMIT)) {
+      const byEvent = new Map<Id<"events">, EventHistory>();
+      const historyFor = (eventId: Id<"events">) => {
+        let history = byEvent.get(eventId);
+        if (!history) {
+          history = { eligible: false, claimedAt: null };
+          byEvent.set(eventId, history);
+        }
+        return history;
+      };
+      // One extra row past the cap tells us whether anything was cut off.
+      const eligibleRows = await ctx.db
+        .query("emails")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .take(ATTENDEE_HISTORY_ROWS + 1);
+      const eligibilityTruncated = eligibleRows.length > ATTENDEE_HISTORY_ROWS;
+      for (const row of eligibleRows.slice(0, ATTENDEE_HISTORY_ROWS)) {
+        historyFor(row.eventId).eligible = true;
+      }
+      const claimRows = await ctx.db
+        .query("codes")
+        .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
+        .take(ATTENDEE_HISTORY_ROWS + 1);
+      const claimsTruncated = claimRows.length > ATTENDEE_HISTORY_ROWS;
+      for (const code of claimRows.slice(0, ATTENDEE_HISTORY_ROWS)) {
+        const history = historyFor(code.eventId);
+        const claimedAt = code.claimedAt ?? code._creationTime;
+        if (history.claimedAt === null || claimedAt > history.claimedAt) {
+          history.claimedAt = claimedAt;
+        }
+      }
+
+      const rows: { event: Doc<"events">; history: EventHistory }[] = [];
+      for (const [eventId, history] of byEvent) {
+        let event = eventCache.get(eventId);
+        if (event === undefined) {
+          event = await ctx.db.get(eventId);
+          eventCache.set(eventId, event);
+        }
+        if (event) rows.push({ event, history });
+      }
+      rows.sort((a, b) => eventTimestamp(b.event) - eventTimestamp(a.event));
+      attendees.push({
+        email,
+        eligibilityTruncated,
+        claimsTruncated,
+        events: rows.map(({ event, history }) => ({
+          id: event._id,
+          name: event.name,
+          eventDate: event.eventDate ?? null,
+          eligible: history.eligible,
+          claimedAt: history.claimedAt,
+        })),
+      });
+    }
+    return { attendees, hasMore };
   },
 });
 
