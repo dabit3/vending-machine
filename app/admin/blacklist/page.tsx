@@ -324,15 +324,18 @@ export default function BlacklistPage() {
                             <span className="shrink-0 text-muted-foreground">
                               {event.claimedAt !== null
                                 ? `Claimed ${formatClaimDate(event.claimedAt)}`
-                                : "Eligible, not claimed"}
+                                : attendee.claimsTruncated
+                                  ? "Eligible, claim status unknown"
+                                  : "Eligible, not claimed"}
                             </span>
                           </li>
                         ))}
                       </ul>
-                      {attendee.historyTruncated ? (
+                      {attendee.eligibilityTruncated ||
+                      attendee.claimsTruncated ? (
                         <p className="mt-2 text-xs text-muted-dim">
                           History is too long to show in full; some events
-                          are omitted.
+                          may be missing.
                         </p>
                       ) : null}
                     </li>

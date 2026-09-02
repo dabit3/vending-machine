@@ -327,18 +327,21 @@ export const searchAttendees = query({
         }
         return history;
       };
-      const eligible = await ctx.db
+      // One extra row past the cap tells us whether anything was cut off.
+      const eligibleRows = await ctx.db
         .query("emails")
         .withIndex("by_email", (q) => q.eq("email", email))
-        .take(ATTENDEE_HISTORY_ROWS);
-      for (const row of eligible) {
+        .take(ATTENDEE_HISTORY_ROWS + 1);
+      const eligibilityTruncated = eligibleRows.length > ATTENDEE_HISTORY_ROWS;
+      for (const row of eligibleRows.slice(0, ATTENDEE_HISTORY_ROWS)) {
         historyFor(row.eventId).eligible = true;
       }
-      const claims = await ctx.db
+      const claimRows = await ctx.db
         .query("codes")
         .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
-        .take(ATTENDEE_HISTORY_ROWS);
-      for (const code of claims) {
+        .take(ATTENDEE_HISTORY_ROWS + 1);
+      const claimsTruncated = claimRows.length > ATTENDEE_HISTORY_ROWS;
+      for (const code of claimRows.slice(0, ATTENDEE_HISTORY_ROWS)) {
         const history = historyFor(code.eventId);
         const claimedAt = code.claimedAt ?? code._creationTime;
         if (history.claimedAt === null || claimedAt > history.claimedAt) {
@@ -358,9 +361,8 @@ export const searchAttendees = query({
       rows.sort((a, b) => eventTimestamp(b.event) - eventTimestamp(a.event));
       attendees.push({
         email,
-        historyTruncated:
-          eligible.length === ATTENDEE_HISTORY_ROWS ||
-          claims.length === ATTENDEE_HISTORY_ROWS,
+        eligibilityTruncated,
+        claimsTruncated,
         events: rows.map(({ event, history }) => ({
           id: event._id,
           name: event.name,
