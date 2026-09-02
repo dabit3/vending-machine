@@ -329,6 +329,12 @@ export default function BlacklistPage() {
                           </li>
                         ))}
                       </ul>
+                      {attendee.historyTruncated ? (
+                        <p className="mt-2 text-xs text-muted-dim">
+                          History is too long to show in full; some events
+                          are omitted.
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

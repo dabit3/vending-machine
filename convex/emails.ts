@@ -264,6 +264,9 @@ export const rejectFlagged = mutation({
 
 const ATTENDEE_SEARCH_ROWS = 200;
 const ATTENDEE_SEARCH_LIMIT = 20;
+// Per-address cap on eligibility/claim rows so a request can never read an
+// unbounded number of documents. Far above any real attendee's history.
+const ATTENDEE_HISTORY_ROWS = 500;
 
 // Single timeline for ordering events: the YYYY-MM-DD event date when set,
 // otherwise when the event was created.
@@ -327,14 +330,14 @@ export const searchAttendees = query({
       const eligible = await ctx.db
         .query("emails")
         .withIndex("by_email", (q) => q.eq("email", email))
-        .collect();
+        .take(ATTENDEE_HISTORY_ROWS);
       for (const row of eligible) {
         historyFor(row.eventId).eligible = true;
       }
       const claims = await ctx.db
         .query("codes")
         .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
-        .collect();
+        .take(ATTENDEE_HISTORY_ROWS);
       for (const code of claims) {
         const history = historyFor(code.eventId);
         const claimedAt = code.claimedAt ?? code._creationTime;
@@ -355,6 +358,9 @@ export const searchAttendees = query({
       rows.sort((a, b) => eventTimestamp(b.event) - eventTimestamp(a.event));
       attendees.push({
         email,
+        historyTruncated:
+          eligible.length === ATTENDEE_HISTORY_ROWS ||
+          claims.length === ATTENDEE_HISTORY_ROWS,
         events: rows.map(({ event, history }) => ({
           id: event._id,
           name: event.name,
