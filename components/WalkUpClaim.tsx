@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { ArrowLeft, UserPlus } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -34,11 +34,23 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
   const [submitting, setSubmitting] = useState(false);
   const [showQr, setShowQr] = useState(false);
   const [lastAdded, setLastAdded] = useState("");
+  const emailRef = useRef<HTMLInputElement>(null);
+  const addAnotherRef = useRef<HTMLButtonElement>(null);
+  const wasShowingQr = useRef(false);
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
     () => "",
   );
+
+  useEffect(() => {
+    if (showQr) {
+      addAnotherRef.current?.focus({ preventScroll: true });
+    } else if (wasShowingQr.current) {
+      emailRef.current?.focus({ preventScroll: true });
+    }
+    wasShowingQr.current = showQr;
+  }, [showQr]);
 
   if (event === undefined) {
     return (
@@ -146,14 +158,17 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
             <CardContent className="py-(--card-spacing)">
               <form onSubmit={handleAdd} className="flex flex-col gap-4">
                 <Input
+                  ref={emailRef}
                   type="email"
                   required
                   aria-label="Attendee email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="attendee@example.com"
-                  className="h-12 text-sm"
+                  className="h-12"
                   autoComplete="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
                 />
                 <Button
                   type="submit"
@@ -214,10 +229,17 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                 {claimUrl ? claimUrl.replace(/^https?:\/\//, "") : "\u00A0"}
               </span>
               <Button
+                ref={addAnotherRef}
                 variant="secondary"
                 size="lg"
                 className="w-full"
                 onClick={() => setShowQr(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setShowQr(false);
+                  }
+                }}
               >
                 <UserPlus data-icon="inline-start" />
                 Add another attendee

@@ -73,11 +73,11 @@ function EventRow({
         href={`/${event.slug}`}
         className={cn(
           "group flex items-center gap-6 px-2 py-7 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-4",
-          past && "opacity-60 transition-opacity hover:opacity-100",
+          past && "opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100",
         )}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight sm:text-2xl">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight wrap-anywhere sm:text-2xl">
             {event.name}
             {claimed ? (
               <Badge variant="secondary" className="gap-1">
@@ -91,11 +91,22 @@ function EventRow({
               {event.description}
             </p>
           ) : null}
+          {event.eventDate ? (
+            <time
+              dateTime={event.eventDate}
+              className="mt-1.5 block text-xs text-muted-dim tabular-nums sm:hidden"
+            >
+              {formatEventDate(event.eventDate)}
+            </time>
+          ) : null}
         </div>
         {event.eventDate ? (
-          <span className="hidden shrink-0 text-xs text-muted-dim tabular-nums sm:inline">
+          <time
+            dateTime={event.eventDate}
+            className="hidden shrink-0 text-xs text-muted-dim tabular-nums sm:inline"
+          >
             {formatEventDate(event.eventDate)}
-          </span>
+          </time>
         ) : null}
       </Link>
     </li>

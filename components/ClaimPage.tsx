@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -104,11 +104,23 @@ export default function ClaimPage({
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
   const [previewRead, setPreviewRead] = useState(false);
+  const qrTriggerRef = useRef<HTMLButtonElement>(null);
+  const qrBackRef = useRef<HTMLButtonElement>(null);
+  const wasShowingQr = useRef(false);
   const origin = useSyncExternalStore(
     subscribeNoop,
     () => window.location.origin,
     () => "",
   );
+
+  useEffect(() => {
+    if (showQr) {
+      qrBackRef.current?.focus({ preventScroll: true });
+    } else if (wasShowingQr.current) {
+      qrTriggerRef.current?.focus({ preventScroll: true });
+    }
+    wasShowingQr.current = showQr;
+  }, [showQr]);
 
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
 
@@ -269,10 +281,11 @@ export default function ClaimPage({
             >
               <CardHeader className="gap-4 pt-(--card-spacing)">
                 <div className="flex items-start justify-between gap-3">
-                  <CardTitle className="font-heading text-3xl font-semibold tracking-[-0.02em] text-balance">
+                  <CardTitle className="min-w-0 font-heading text-3xl font-semibold tracking-[-0.02em] text-balance wrap-anywhere">
                     {event.name}
                   </CardTitle>
                   <Button
+                    ref={qrTriggerRef}
                     variant="ghost"
                     size="icon"
                     className="-mt-1 -mr-2 shrink-0 text-muted-foreground"
@@ -394,7 +407,11 @@ export default function ClaimPage({
                     <Dialog open={readOpen} onOpenChange={setReadOpen}>
                       <DialogTrigger
                         render={
-                          <Button variant="brand" size="lg" className="w-full" />
+                          <Button
+                            variant="brand"
+                            size="lg"
+                            className="h-auto min-h-9 w-full py-1.5 whitespace-normal"
+                          />
                         }
                       >
                         <BookOpen data-icon="inline-start" />
@@ -409,7 +426,7 @@ export default function ClaimPage({
                             Redemption instructions for {event.name}
                           </DialogDescription>
                         </DialogHeader>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere">
                           {event.claimInstructions}
                         </p>
                         <Button
@@ -539,6 +556,7 @@ export default function ClaimPage({
               eventName={event.name}
               url={origin ? `${origin}/${slug}` : ""}
               onBack={() => setShowQr(false)}
+              backButtonRef={qrBackRef}
               hidden={!showQr}
             />
               </div>
@@ -573,7 +591,7 @@ function RedeemInstructionsDialog({
             Redemption instructions for {eventName}
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere">
           {instructions}
         </p>
       </DialogContent>
@@ -585,11 +603,13 @@ function QrPanel({
   eventName,
   url,
   onBack,
+  backButtonRef,
   hidden,
 }: {
   eventName: string;
   url: string;
   onBack: () => void;
+  backButtonRef: React.Ref<HTMLButtonElement>;
   hidden: boolean;
 }) {
   return (
@@ -599,17 +619,24 @@ function QrPanel({
     >
       <CardHeader className="gap-2 pt-(--card-spacing)">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <span className="eyebrow text-muted-foreground">Scan to claim</span>
-            <CardTitle className="font-heading text-2xl font-semibold tracking-[-0.02em] text-balance">
+            <CardTitle className="font-heading text-2xl font-semibold tracking-[-0.02em] text-balance wrap-anywhere">
               {eventName}
             </CardTitle>
           </div>
           <Button
+            ref={backButtonRef}
             variant="ghost"
             size="icon"
             className="-mt-1 -mr-2 shrink-0 text-muted-foreground"
             onClick={onBack}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onBack();
+              }
+            }}
             aria-label="Back to claim form"
             title="Back to claim form"
           >
