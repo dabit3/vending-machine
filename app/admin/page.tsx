@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 
 interface ManagedEventItem {
   _id: string;
@@ -287,22 +288,12 @@ function NewEventDialog() {
                 Optional — shown on the home and claim pages.
               </FieldDescription>
             </Field>
-            <Field>
-              <FieldLabel htmlFor="event-instructions">
-                Redemption instructions
-              </FieldLabel>
-              <Textarea
-                id="event-instructions"
-                value={claimInstructions}
-                onChange={(e) => setClaimInstructions(e.target.value)}
-                placeholder="How to redeem the code after claiming"
-                rows={4}
-                className="resize-y"
-              />
-              <FieldDescription>
-                Optional — shown to attendees after they claim a code.
-              </FieldDescription>
-            </Field>
+            <ClaimInstructionsField
+              id="event-instructions"
+              value={claimInstructions}
+              onChange={setClaimInstructions}
+              description="Optional — shown to attendees after they claim a code."
+            />
             <Field orientation="horizontal">
               <Checkbox
                 id="event-hidden"
