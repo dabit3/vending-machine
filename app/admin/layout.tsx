@@ -17,7 +17,7 @@ export default function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <HeaderBar>
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:h-14 sm:flex-nowrap sm:px-6 sm:py-0">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/"
@@ -35,8 +35,10 @@ export default function AdminLayout({
               Admin
             </Badge>
           </div>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <div className="order-last w-full overflow-x-auto sm:order-none sm:ml-auto sm:w-auto">
             <AdminNav />
+          </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-4">
             <Separator
               orientation="vertical"
               className="hidden !h-5 sm:block"

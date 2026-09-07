@@ -1,5 +1,6 @@
 import { ConvexError } from "convex/values";
 import type { GenerationInput } from "@/convex/stripeValidation";
+import { truncateStripeBatchName } from "./stripe-name";
 
 export type StripeForm = {
   name: string;
@@ -37,8 +38,8 @@ export function generationInput(
     throw new Error("Enter a value between $0.01 and $999,999.99.");
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > 500)
     throw new Error("Enter a quantity between 1 and 500.");
-  if (!form.name.trim() || form.name.trim().length > 80)
-    throw new Error("Enter a batch name of 1–80 characters.");
+  const name = truncateStripeBatchName(form.name.trim()).trimEnd();
+  if (!name) throw new Error("Enter a batch name.");
   const expiresAt = form.expiration
     ? new Date(`${form.expiration}T23:59:59`).getTime()
     : undefined;
@@ -50,7 +51,7 @@ export function generationInput(
   if (form.prefix.trim() && !/[a-z0-9]/i.test(form.prefix))
     throw new Error("The prefix must include a letter or number.");
   return {
-    name: form.name.trim(),
+    name,
     amountCents,
     quantity,
     codePrefix: form.prefix,

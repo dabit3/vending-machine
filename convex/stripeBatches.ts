@@ -45,18 +45,56 @@ export const list = query({
   },
 });
 
+export type BatchLibraryFilter = "all" | "available" | "assigned" | "attention";
+
 export const history = query({
-  args: { paginationOpts: paginationOptsValidator },
+  args: {
+    paginationOpts: paginationOptsValidator,
+    filter: v.optional(
+      v.union(
+        v.literal("all"),
+        v.literal("available"),
+        v.literal("assigned"),
+        v.literal("attention"),
+      ),
+    ),
+  },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const result = await ctx.db
-      .query("stripeBatches")
-      .order("desc")
-      .paginate({
-        ...args.paginationOpts,
-        numItems: Math.min(args.paginationOpts.numItems, 100),
-      });
-    return { ...result, page: result.page.map(batchSummary) };
+    let batches = ctx.db.query("stripeBatches").order("desc");
+    if (args.filter === "available") {
+      batches = batches.filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "complete"),
+          q.eq(q.field("eventId"), undefined),
+          q.or(
+            q.eq(q.field("expiresAt"), undefined),
+            q.gt(q.field("expiresAt"), Date.now()),
+          ),
+        ),
+      );
+    } else if (args.filter === "assigned") {
+      batches = batches.filter((q) => q.neq(q.field("eventId"), undefined));
+    } else if (args.filter === "attention") {
+      batches = batches.filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "failed"),
+          q.neq(q.field("error"), undefined),
+        ),
+      );
+    }
+    const result = await batches.paginate({
+      ...args.paginationOpts,
+      numItems: Math.min(args.paginationOpts.numItems, 100),
+    });
+    const page = await Promise.all(
+      result.page.map(async (batch) => {
+        const eventId = batch.eventId ?? batch.targetEventId;
+        const event = eventId ? await ctx.db.get(eventId) : null;
+        return { ...batchSummary(batch), eventName: event?.name ?? null };
+      }),
+    );
+    return { ...result, page };
   },
 });
 
@@ -65,7 +103,14 @@ export const get = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     const batch = await ctx.db.get(args.batchId);
-    return batch ? { ...batchSummary(batch), codes: batch.codes } : null;
+    if (!batch) return null;
+    const eventId = batch.eventId ?? batch.targetEventId;
+    const event = eventId ? await ctx.db.get(eventId) : null;
+    return {
+      ...batchSummary(batch),
+      codes: batch.codes,
+      eventName: event?.name ?? null,
+    };
   },
 });
 

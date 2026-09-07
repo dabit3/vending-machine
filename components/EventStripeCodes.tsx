@@ -26,7 +26,7 @@ export default function EventStripeCodes({
           System admins can generate codes directly in Stripe.
         </p>
         <Link
-          href={`/admin/codes?event=${eventId}`}
+          href={`/admin/codes/new?event=${eventId}`}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <Sparkles data-icon="inline-start" />

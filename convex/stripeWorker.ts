@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
+import { truncateStripeBatchName } from "../lib/stripe-name";
 
 function promotionCode(
   seed: string,
@@ -50,10 +51,15 @@ export const generate = internalAction({
       let couponId = batch.couponId;
       if (!couponId) {
         await authorize();
+        const name = truncateStripeBatchName(batch.name);
+        const idempotencyKey =
+          name === batch.name
+            ? `vm:${batch._id}:coupon`
+            : `vm:${batch._id}:coupon:name40`;
         const coupon = await stripe.coupons.create(
           {
             id: `vm_${batch._id}`,
-            name: batch.name,
+            name,
             amount_off: batch.amountCents,
             currency: "usd",
             duration: "once",
@@ -63,7 +69,7 @@ export const generate = internalAction({
             }),
             metadata: { vending_batch: batch._id },
           },
-          { idempotencyKey: `vm:${batch._id}:coupon` },
+          { idempotencyKey },
         );
         couponId = coupon.id;
         await ctx.runMutation(internal.stripeBatches.saveCoupon, {

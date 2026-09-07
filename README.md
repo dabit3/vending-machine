@@ -30,7 +30,8 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 - `/<slug>` — claim page for an event (requires signing in to verify email ownership)
 - `/admin` — admin dashboard (Clerk-protected): create events
 - `/admin/events/new` — create an event with new Stripe codes, a saved batch, or an empty code pool
-- `/admin/codes` — generate, export, and assign Stripe batches (system admins only)
+- `/admin/codes` — browse, filter, view, export, and assign saved Stripe code blocks (system admins only)
+- `/admin/codes/new` — generate and save a code block without creating an event (system admins only)
 - `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats, review flagged emails
 - `/admin/blacklist` — app-wide email blacklist (global admins only)
 - `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)
@@ -68,10 +69,12 @@ The allowlist is per Convex deployment (dev and prod each have their own `admins
 
 1. Set `STRIPE_API_KEY` in the Convex deployment environment through the Convex dashboard. Do not put the key in a `NEXT_PUBLIC_` variable.
 2. Use a restricted Stripe key with write access to Coupons and Promotion Codes.
-3. Deploy the Convex schema and functions before using Code studio. For development, run `npx convex dev --once` against the intended deployment.
-4. Start with a Stripe test key. Code studio shows the mode and requires explicit confirmation for live generation.
+3. Deploy the Convex schema and functions before using the code library. For development, run `npx convex dev --once` against the intended deployment.
+4. Start with a Stripe test key. The creation form shows the mode and requires explicit confirmation for live generation.
 
 Each batch contains 1–500 single-use USD promotion codes. Prefixes and expiration dates are optional. The backend saves progress and retains batch history.
+
+To save codes without an event, open **Codes → New code block**. Review the details and confirm generation. The block appears in the library automatically, with its progress and saved codes. Event assignment is optional. The **Use saved** field links to creation in a new tab, so the event draft stays open.
 
 If generation fails, resume the same batch within 23 hours of its first attempt. After that window, reconcile the batch in Stripe before creating replacements. Deleting an event or removing its codes does not revoke the Stripe promotion codes. The app does not synchronize redemption or revocation changes from Stripe.
 

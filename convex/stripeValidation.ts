@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { truncateStripeBatchName } from "../lib/stripe-name";
 
 export const generationFields = {
   name: v.string(),
@@ -32,9 +33,8 @@ export function stripeMode() {
 }
 
 export function validateGeneration(input: GenerationInput) {
-  const name = input.name.trim();
-  if (!name || name.length > 80)
-    throw new ConvexError("Enter a batch name of 1–80 characters.");
+  const name = truncateStripeBatchName(input.name.trim()).trimEnd();
+  if (!name) throw new ConvexError("Enter a batch name.");
   if (
     !Number.isSafeInteger(input.amountCents) ||
     input.amountCents < 1 ||

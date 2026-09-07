@@ -14,6 +14,43 @@ test("converts decimal USD input to integer cents and preserves the reviewed mod
   });
 });
 
+test.each([39, 40, 41, 80, 81, 120])(
+  "silently limits a %i-character batch name to 40 characters",
+  (length) => {
+    const name = "N".repeat(length);
+    expect(generationInput({ ...form, name }, false, requestId).name).toBe(
+      name.slice(0, 40),
+    );
+  },
+);
+
+test("trims names without leaving trailing whitespace or splitting a Unicode character", () => {
+  expect(
+    generationInput(
+      { ...form, name: `  ${"N".repeat(39)} suffix  ` },
+      false,
+      requestId,
+    ).name,
+  ).toBe("N".repeat(39));
+  expect(
+    generationInput(
+      { ...form, name: `${"N".repeat(39)}\u{1D400}suffix` },
+      false,
+      requestId,
+    ).name,
+  ).toBe("N".repeat(39));
+  expect(
+    generationInput(
+      { ...form, name: `${"N".repeat(38)}\u{1D400}suffix` },
+      false,
+      requestId,
+    ).name,
+  ).toBe(`${"N".repeat(38)}\u{1D400}`);
+  expect(() =>
+    generationInput({ ...form, name: "   " }, false, requestId),
+  ).toThrow("batch name");
+});
+
 test.each(["1.001", "", "Infinity", "NaN", "1e2", "-50", "0", "1000000"])(
   "rejects invalid amount %s",
   (amount) => {

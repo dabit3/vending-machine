@@ -1,15 +1,30 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { getFunctionName } from "convex/server";
+import { getFunctionName, type FunctionReturnType } from "convex/server";
+import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 import { beforeEach, expect, test, vi } from "vitest";
 import SystemAdminGate from "../components/SystemAdminGate";
 import AdminNav from "../components/AdminNav";
 import NewEventForm from "../components/NewEventForm";
+import AdminDashboard from "../app/admin/page";
+import CodeStudioPage from "../components/CodeStudioPage";
+import { SavedBatchPicker } from "../components/StripeBatchDetails";
+import StripeCodeStudio from "../components/StripeCodeStudio";
+import { StripeGenerationFields } from "../components/StripeGenerationFields";
+import { emptyStripeForm } from "../lib/stripe-form";
+import NewCodeBlockPage from "../app/admin/codes/new/page";
 
 const state = vi.hoisted(() => ({
   authenticated: true,
   loading: false,
   global: false,
   configured: true,
+  history: [] as FunctionReturnType<typeof api.stripeBatches.history>["page"],
+  historyStatus: "Exhausted" as
+    "Exhausted" | "CanLoadMore" | "LoadingFirstPage" | "LoadingMore",
+  detail: undefined as
+    FunctionReturnType<typeof api.stripeBatches.get> | undefined,
+  events: [] as FunctionReturnType<typeof api.events.listManaged>,
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin",
@@ -26,12 +41,14 @@ vi.mock("convex/react", () => ({
       return { isGlobalAdmin: state.global, hasEventAccess: true };
     if (getFunctionName(ref) === "stripeBatches:configuration")
       return { configured: state.configured, live: false };
+    if (getFunctionName(ref) === "stripeBatches:get") return state.detail;
+    if (getFunctionName(ref) === "events:listManaged") return state.events;
     return undefined;
   },
   useMutation: () => vi.fn(),
   usePaginatedQuery: () => ({
-    results: [],
-    status: "Exhausted",
+    results: state.history,
+    status: state.historyStatus,
     loadMore: vi.fn(),
   }),
 }));
@@ -42,11 +59,17 @@ beforeEach(() =>
     loading: false,
     global: false,
     configured: true,
+    history: [],
+    historyStatus: "Exhausted",
+    detail: undefined,
+    events: [],
   }),
 );
 
 test("event admins do not see Stripe navigation or privileged page contents", () => {
-  expect(renderToStaticMarkup(<AdminNav />)).not.toContain("Code studio");
+  expect(renderToStaticMarkup(<AdminNav />)).not.toContain(
+    'href="/admin/codes"',
+  );
   const html = renderToStaticMarkup(
     <SystemAdminGate>
       <div>Privileged generator</div>
@@ -75,7 +98,8 @@ test("loading and anonymous sessions cannot render privileged contents", () => {
 
 test("system admins see code studio and the privileged contents", () => {
   state.global = true;
-  expect(renderToStaticMarkup(<AdminNav />)).toContain("Code studio");
+  expect(renderToStaticMarkup(<AdminNav />)).toContain('href="/admin/codes"');
+  expect(renderToStaticMarkup(<AdminNav />)).toContain(">Codes</a>");
   expect(
     renderToStaticMarkup(
       <SystemAdminGate>
@@ -83,6 +107,143 @@ test("system admins see code studio and the privileged contents", () => {
       </SystemAdminGate>,
     ),
   ).toContain("Privileged generator");
+});
+
+function savedBlock(): FunctionReturnType<
+  typeof api.stripeBatches.history
+>["page"][number] {
+  return {
+    _id: "a".repeat(32) as Id<"stripeBatches">,
+    _creationTime: Date.UTC(2026, 0, 1),
+    name: "Saved credits",
+    prefix: "",
+    amountCents: 5000,
+    quantity: 2,
+    expiresAt: undefined,
+    live: false,
+    createdBy: "admin@example.com",
+    status: "complete",
+    generatedCount: 2,
+    couponId: "coupon_saved",
+    error: undefined,
+    eventId: undefined,
+    targetEventId: undefined,
+    codeType: undefined,
+    expired: false,
+    canRetry: false,
+    eventName: null,
+  };
+}
+
+test("the library shows saved blocks as browsable rows with values, status, assignment, and pagination", () => {
+  const batch = savedBlock();
+  state.history = [
+    batch,
+    {
+      ...batch,
+      _id: "b".repeat(32) as Id<"stripeBatches">,
+      name: "Assigned credits",
+      eventId: "e".repeat(32) as Id<"events">,
+      eventName: "Hackathon",
+    },
+  ];
+  state.historyStatus = "CanLoadMore";
+  const html = renderToStaticMarkup(<CodeStudioPage />);
+  for (const label of [
+    "Saved credits",
+    "Assigned credits",
+    "$50.00",
+    "Ready",
+    "Unassigned",
+    "Assigned to Hackathon",
+    "Load more code blocks",
+  ])
+    expect(html.includes(label)).toBe(true);
+  expect(html).toContain(`href="/admin/codes?batch=${batch._id}"`);
+  expect(html).not.toContain("Choose a batch");
+});
+
+test("saved block details show all codes and make event assignment optional", () => {
+  const batch = savedBlock();
+  state.detail = {
+    ...batch,
+    codes: [
+      { id: "promo_one", code: "CODE-ONE" },
+      { id: "promo_two", code: "CODE-TWO" },
+    ],
+  };
+  const html = renderToStaticMarkup(<CodeStudioPage batchId={batch._id} />);
+  for (const label of [
+    "CODE-ONE",
+    "CODE-TWO",
+    "Copy all",
+    "Download CSV",
+    "Saved to your code library",
+    "No event required",
+    "Add to an existing event (optional)",
+  ])
+    expect(html.includes(label)).toBe(true);
+  expect(html).toContain(`href="/admin/events/new?batch=${batch._id}"`);
+  expect(html).not.toContain("<details open");
+});
+
+test("expired blocks remain viewable but do not offer event assignment", () => {
+  const batch = savedBlock();
+  state.detail = {
+    ...batch,
+    expired: true,
+    codes: [{ id: "promo_one", code: "CODE-ONE" }],
+  };
+  const html = renderToStaticMarkup(<CodeStudioPage batchId={batch._id} />);
+  expect(html.includes("Expired code block")).toBe(true);
+  expect(html).toContain("Download CSV");
+  expect(html).not.toContain(`/admin/events/new?batch=${batch._id}`);
+});
+
+test("the standalone creation route requires system-admin access", async () => {
+  const page = await NewCodeBlockPage({ searchParams: Promise.resolve({}) });
+  expect(renderToStaticMarkup(page)).toContain("System admins only");
+  expect(renderToStaticMarkup(page)).not.toContain("Review and save codes");
+  state.global = true;
+  const html = renderToStaticMarkup(page);
+  expect(html).toContain("Review and save codes");
+  expect(html).not.toContain('id="event-name"');
+});
+
+test("the dashboard exposes standalone code creation only to system admins", () => {
+  state.global = true;
+  const html = renderToStaticMarkup(<AdminDashboard />);
+  expect(html.includes('href="/admin/codes/new"')).toBe(true);
+  expect(html).toContain("New code block");
+  state.global = false;
+  expect(renderToStaticMarkup(<AdminDashboard />)).not.toContain(
+    'href="/admin/codes/new"',
+  );
+});
+
+test("the codes page opens a library with an explicit create action", () => {
+  const html = renderToStaticMarkup(<CodeStudioPage />);
+  expect(html.includes("Code blocks")).toBe(true);
+  expect(html.includes('href="/admin/codes/new"')).toBe(true);
+  expect(html).toContain("No code blocks yet");
+  expect(html).not.toContain("Review and generate");
+});
+
+test("standalone creation explains that no event or separate save step is required", () => {
+  const html = renderToStaticMarkup(<StripeCodeStudio />);
+  expect(html.includes("No event required")).toBe(true);
+  expect(html.includes("saved automatically")).toBe(true);
+  expect(html).toContain("Review and save codes");
+});
+
+test("use saved explains automatic saving and links to creation without losing the event draft", () => {
+  const html = renderToStaticMarkup(
+    <SavedBatchPicker value="" onChange={() => {}} />,
+  );
+  expect(html.includes("saved automatically")).toBe(true);
+  expect(html.includes('href="/admin/codes/new"')).toBe(true);
+  expect(html).toContain('target="_blank"');
+  expect(html).toContain("Create a code block");
 });
 
 test("new event form exposes all three code sources and keeps page settings optional", () => {
@@ -103,7 +264,28 @@ test("new event form exposes all three code sources and keeps page settings opti
   ])
     expect(html).toContain(label);
   expect(html).toContain('max="500"');
+  expect(html).toContain('maxLength="40"');
+  expect(html).toContain('maxLength="120"');
   expect(html).not.toContain("STRIPE_API_KEY");
+});
+
+test("code studio shortens batch names prefilled from long event names", () => {
+  const name = "N".repeat(100);
+  const html = renderToStaticMarkup(<StripeCodeStudio eventName={name} />);
+  expect(html).toContain(`value="${name.slice(0, 40)}"`);
+  expect(html).not.toContain(`value="${name}"`);
+});
+
+test("the batch-name placeholder previews the shortened event name", () => {
+  const name = "N".repeat(100);
+  const html = renderToStaticMarkup(
+    <StripeGenerationFields
+      value={emptyStripeForm}
+      onChange={() => {}}
+      namePlaceholder={name}
+    />,
+  );
+  expect(html).toContain(`placeholder="${name.slice(0, 40)}"`);
 });
 
 test("missing Stripe setup disables generation without removing the other event flows", () => {

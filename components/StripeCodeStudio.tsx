@@ -1,21 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useMutation, useQuery } from "convex/react";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
+import { truncateStripeBatchName } from "@/lib/stripe-name";
 import {
   emptyStripeForm,
   generationInput,
   mutationError,
 } from "@/lib/stripe-form";
-import StripeBatchDetails, {
-  BatchHistoryPicker,
-  SavedBatchPicker,
-} from "@/components/StripeBatchDetails";
+import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import {
   ConfirmStripeGeneration,
   StripeGenerationFields,
@@ -46,29 +45,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default function StripeCodeStudio({
   eventId,
   eventName,
-  initialBatchId,
 }: {
   eventId?: Id<"events">;
   eventName?: string;
-  initialBatchId?: Id<"stripeBatches">;
 }) {
+  const router = useRouter();
   const config = useQuery(api.stripeBatches.configuration);
-  const history = usePaginatedQuery(
-    api.stripeBatches.history,
-    {},
-    { initialNumItems: 25 },
-  );
-  const batches =
-    history.status === "LoadingFirstPage" ? undefined : history.results;
   const create = useMutation(api.stripeBatches.create);
   const attach = useMutation(api.stripeBatches.attach);
   const [form, setForm] = useState({
     ...emptyStripeForm,
-    name: eventName ?? "",
+    name: truncateStripeBatchName(eventName ?? ""),
   });
-  const [selected, setSelected] = useState<Id<"stripeBatches"> | null>(
-    initialBatchId ?? null,
-  );
   const [savedId, setSavedId] = useState<Id<"stripeBatches"> | "">("");
   const [blockName, setBlockName] = useState("");
   const [pending, setPending] = useState<GenerationInput | null>(null);
@@ -76,7 +64,12 @@ export default function StripeCodeStudio({
   const [error, setError] = useState<string | null>(null);
   const request = useRef<string | null>(null);
   const lock = useRef(false);
-  const effectiveSelected = selected ?? batches?.[0]?._id ?? null;
+
+  function openBlock(batchId: Id<"stripeBatches">) {
+    router.push(
+      `/admin/codes?batch=${batchId}${eventId ? `&event=${eventId}` : ""}`,
+    );
+  }
 
   function review(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +80,9 @@ export default function StripeCodeStudio({
       setPending(generationInput(form, config.live, request.current));
     } catch (error) {
       setError(
-        error instanceof Error ? error.message : "Check the batch details.",
+        error instanceof Error
+          ? error.message
+          : "Check the code block details.",
       );
     }
   }
@@ -103,14 +98,14 @@ export default function StripeCodeStudio({
         eventId,
         codeType: blockName.trim() || undefined,
       });
-      setSelected(batchId);
       setPending(null);
       request.current = null;
-      toast.success("Code generation started", {
+      toast.success("Code block saved", {
         description: eventId
-          ? "Codes will be added to this event when the batch finishes."
-          : "Your batch is saved. You can leave this page while it runs.",
+          ? "Codes are generating and will be added to this event when ready."
+          : "Codes are generating. Your block is saved in the code library; no event is required.",
       });
+      openBlock(batchId);
     } catch (error) {
       setError(
         mutationError(
@@ -136,14 +131,14 @@ export default function StripeCodeStudio({
         eventId,
         codeType: blockName.trim() || undefined,
       });
-      setSelected(savedId);
-      setSavedId("");
       toast.success("Saved codes added to event");
+      openBlock(savedId);
+      setSavedId("");
     } catch (error) {
       setError(
         mutationError(
           error,
-          "Could not add the batch. Check your system-admin access.",
+          "Could not add the block. Check your system-admin access.",
         ),
       );
     } finally {
@@ -172,17 +167,47 @@ export default function StripeCodeStudio({
     </Field>
   );
 
+  const generationForm = !config?.configured ? (
+    <StripeSetupNotice />
+  ) : (
+    <form onSubmit={review} className="flex flex-col gap-5">
+      <fieldset disabled={busy} className="flex min-w-0 flex-col gap-5">
+        <StripeGenerationFields
+          value={form}
+          onChange={(next) => {
+            setForm(next);
+            request.current = null;
+          }}
+        />
+        {blockField}
+      </fieldset>
+      {config.live && (
+        <Alert>
+          <AlertTitle>Live Stripe account</AlertTitle>
+          <AlertDescription>
+            You will review the maximum discount and confirm before any codes
+            are created.
+          </AlertDescription>
+        </Alert>
+      )}
+      <Button type="submit" disabled={busy}>
+        <Sparkles data-icon="inline-start" />
+        Review and save codes
+      </Button>
+    </form>
+  );
+
   return (
-    <div className="grid items-start gap-6 xl:grid-cols-2">
+    <div className="mx-auto w-full max-w-2xl">
       <Card>
         <CardHeader>
           <CardTitle>
-            {eventId ? "Add Stripe codes" : "Generate a batch"}
+            {eventId ? "Add a code block" : "Generate a code block"}
           </CardTitle>
           <CardDescription>
             {eventName
-              ? `Codes will be added to “${eventName}”.`
-              : "Create single-use promotion codes without leaving the app."}
+              ? `Codes will be saved and added to “${eventName}”.`
+              : "No event required. Codes are saved automatically to your library. Assign the block to an event whenever you are ready."}
           </CardDescription>
           {config?.configured && (
             <CardAction>
@@ -193,63 +218,30 @@ export default function StripeCodeStudio({
         <CardContent className="flex flex-col gap-5">
           {config === undefined ? (
             <Skeleton className="h-64" />
-          ) : (
+          ) : eventId ? (
             <Tabs defaultValue="generate" onValueChange={() => setError(null)}>
               <TabsList>
                 <TabsTrigger value="generate">Generate new</TabsTrigger>
-                {eventId && (
-                  <TabsTrigger value="saved">Use saved batch</TabsTrigger>
-                )}
+                <TabsTrigger value="saved">Use saved block</TabsTrigger>
               </TabsList>
               <TabsContent value="generate" className="pt-4">
-                {!config.configured ? (
-                  <StripeSetupNotice />
-                ) : (
-                  <form onSubmit={review} className="flex flex-col gap-5">
-                    <fieldset
-                      disabled={busy}
-                      className="flex min-w-0 flex-col gap-5"
-                    >
-                      <StripeGenerationFields
-                        value={form}
-                        onChange={(next) => {
-                          setForm(next);
-                          request.current = null;
-                        }}
-                      />
-                      {blockField}
-                    </fieldset>
-                    {config.live && (
-                      <Alert>
-                        <AlertTitle>Live Stripe account</AlertTitle>
-                        <AlertDescription>
-                          You will review the maximum discount and confirm
-                          before any codes are created.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                    <Button type="submit" disabled={busy}>
-                      <Sparkles data-icon="inline-start" />
-                      Review and generate
-                    </Button>
-                  </form>
-                )}
+                {generationForm}
               </TabsContent>
-              {eventId && (
-                <TabsContent value="saved" className="pt-4">
-                  <form onSubmit={useSaved} className="flex flex-col gap-5">
-                    <FieldGroup>
-                      <SavedBatchPicker value={savedId} onChange={setSavedId} />
-                      {blockField}
-                    </FieldGroup>
-                    <Button type="submit" disabled={busy || !savedId}>
-                      {busy && <Spinner data-icon="inline-start" />}Add saved
-                      codes
-                    </Button>
-                  </form>
-                </TabsContent>
-              )}
+              <TabsContent value="saved" className="pt-4">
+                <form onSubmit={useSaved} className="flex flex-col gap-5">
+                  <FieldGroup>
+                    <SavedBatchPicker value={savedId} onChange={setSavedId} />
+                    {blockField}
+                  </FieldGroup>
+                  <Button type="submit" disabled={busy || !savedId}>
+                    {busy && <Spinner data-icon="inline-start" />}Add saved
+                    codes
+                  </Button>
+                </form>
+              </TabsContent>
             </Tabs>
+          ) : (
+            generationForm
           )}
           {error && !pending && (
             <Alert variant="destructive">
@@ -258,29 +250,6 @@ export default function StripeCodeStudio({
           )}
         </CardContent>
       </Card>
-      <div className="flex min-w-0 flex-col gap-5">
-        <BatchHistoryPicker
-          batches={batches}
-          value={effectiveSelected ?? ""}
-          onChange={setSelected}
-        />
-        {(history.status === "CanLoadMore" ||
-          history.status === "LoadingMore") && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={history.status === "LoadingMore"}
-            onClick={() => history.loadMore(25)}
-          >
-            Load older batches
-          </Button>
-        )}
-        <StripeBatchDetails
-          key={effectiveSelected ?? "empty"}
-          batchId={effectiveSelected}
-          targetEventId={eventId}
-        />
-      </div>
       <ConfirmStripeGeneration
         input={pending}
         busy={busy}

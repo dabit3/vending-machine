@@ -4,6 +4,10 @@ import { useId } from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { usd, type StripeForm } from "@/lib/stripe-form";
+import {
+  STRIPE_BATCH_NAME_MAX_LENGTH,
+  truncateStripeBatchName,
+} from "@/lib/stripe-name";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -70,10 +74,12 @@ export function StripeGenerationFields({
         <Input
           id={`${id}-name`}
           value={value.name}
-          onChange={(e) => set("name", e.target.value)}
+          onChange={(e) => set("name", truncateStripeBatchName(e.target.value))}
           required={!namePlaceholder}
-          maxLength={80}
-          placeholder={namePlaceholder || "Conference credits"}
+          maxLength={STRIPE_BATCH_NAME_MAX_LENGTH}
+          placeholder={truncateStripeBatchName(
+            namePlaceholder || "Conference credits",
+          )}
         />
         <FieldDescription>
           Also used as the code block name when added to an event.

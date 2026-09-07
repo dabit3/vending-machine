@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarPlus, Plus } from "lucide-react";
+import { CalendarPlus, Plus, Ticket } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
@@ -94,11 +94,25 @@ export default function AdminDashboard() {
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {isGlobalAdmin
-              ? "Create events and manage their emails and codes."
+              ? "Create events, or save code blocks for later from Codes."
               : "Manage the emails and codes of your events."}
           </p>
         </div>
-        {isGlobalAdmin ? <Link href="/admin/events/new" className={buttonVariants()}><Plus data-icon="inline-start" />New event</Link> : null}
+        {isGlobalAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/codes/new"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Ticket data-icon="inline-start" />
+              New code block
+            </Link>
+            <Link href="/admin/events/new" className={buttonVariants()}>
+              <Plus data-icon="inline-start" />
+              New event
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       {events === undefined ? (

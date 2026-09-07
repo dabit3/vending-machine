@@ -164,6 +164,90 @@ describe("Stripe authorization", () => {
 });
 
 describe("Stripe generation", () => {
+  test.each([39, 40, 41, 80, 81, 120])(
+    "normalizes a %i-character name before saving the batch and calling Stripe",
+    async (length) => {
+      const { t, admin } = await setup();
+      const request = { ...input, name: "N".repeat(length), quantity: 1 };
+      const expectedName = request.name.slice(0, 40);
+      const batchId = await admin.mutation(api.stripeBatches.create, request);
+      expect(await admin.mutation(api.stripeBatches.create, request)).toBe(
+        batchId,
+      );
+      expect(
+        await admin.query(api.stripeBatches.get, { batchId }),
+      ).toMatchObject({ name: expectedName });
+      await drain(t);
+      expect(stripe.coupon).toHaveBeenCalledWith(
+        expect.objectContaining({ name: expectedName }),
+        { idempotencyKey: `vm:${batchId}:coupon` },
+      );
+      expect(
+        await admin.query(api.stripeBatches.get, { batchId }),
+      ).toMatchObject({ status: "complete" });
+    },
+  );
+
+  test("shortens legacy batch names at the Stripe boundary and uses a stable replacement idempotency key", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, {
+      ...input,
+      quantity: 1,
+    });
+    const legacyName = "L".repeat(60);
+    await t.run(async (ctx) => {
+      await ctx.db.patch(batchId, { name: legacyName, status: "failed" });
+    });
+    stripe.coupon.mockRejectedValueOnce(new Error("temporary failure"));
+    await admin.mutation(api.stripeBatches.retry, {
+      batchId,
+      confirmLive: false,
+    });
+    await drain(t);
+    await admin.mutation(api.stripeBatches.retry, {
+      batchId,
+      confirmLive: false,
+    });
+    await drain(t);
+    const [first, second] = stripe.coupon.mock.calls;
+    expect(first[0]).toMatchObject({
+      id: `vm_${batchId}`,
+      name: "L".repeat(40),
+    });
+    expect(first[1].idempotencyKey).not.toBe(`vm:${batchId}:coupon`);
+    expect(second).toEqual(first);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject(
+      { status: "complete", name: legacyName },
+    );
+  });
+
+  test("legacy batches with a saved coupon reuse it without creating another coupon", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, {
+      ...input,
+      quantity: 1,
+    });
+    await t.run(async (ctx) => {
+      await ctx.db.patch(batchId, {
+        name: "L".repeat(60),
+        status: "failed",
+        couponId: "coupon_existing",
+      });
+    });
+    await admin.mutation(api.stripeBatches.retry, {
+      batchId,
+      confirmLive: false,
+    });
+    await drain(t);
+    expect(stripe.coupon).not.toHaveBeenCalled();
+    expect(stripe.promotion).toHaveBeenCalledWith(
+      expect.objectContaining({ coupon: "coupon_existing" }),
+      expect.anything(),
+    );
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject(
+      { status: "complete" },
+    );
+  });
   test("limits concurrent batches and creation bursts", async () => {
     const { t, admin } = await setup();
     for (let index = 0; index < 3; index++) {
@@ -401,7 +485,6 @@ describe("Stripe generation", () => {
     { amountCents: Infinity },
     { amountCents: 100_000_000 },
     { name: " " },
-    { name: "n".repeat(81) },
     { codePrefix: "!!!" },
     { expiresAt: 0 },
     { requestId: "short" },
@@ -429,7 +512,173 @@ describe("Stripe generation", () => {
   });
 });
 
+describe("code library", () => {
+  test("saves a standalone block and all its codes without creating an event", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, {
+      ...input,
+      quantity: 2,
+    });
+    await drain(t);
+    const block = await admin.query(api.stripeBatches.get, { batchId });
+    expect(block).toMatchObject({
+      status: "complete",
+      generatedCount: 2,
+      eventName: null,
+    });
+    expect(block?.codes).toHaveLength(2);
+    expect(block?.eventId).toBeUndefined();
+    expect(block?.targetEventId).toBeUndefined();
+    expect(await t.run((ctx) => ctx.db.query("events").collect())).toHaveLength(
+      0,
+    );
+    expect(await t.run((ctx) => ctx.db.query("codes").collect())).toHaveLength(
+      0,
+    );
+    vi.stubEnv("STRIPE_API_KEY", "");
+    const history = await admin.query(api.stripeBatches.history, {
+      filter: "available",
+      paginationOpts: { numItems: 25, cursor: null },
+    });
+    expect(history.page).toMatchObject([{ _id: batchId, generatedCount: 2 }]);
+    expect(history.page[0]).not.toHaveProperty("codes");
+    expect(history.page[0]).not.toHaveProperty("seed");
+  });
+
+  test("filters the full saved library, preserves pagination, and resolves event names", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, {
+      name: "Assigned event",
+    });
+    const ids = await t.run(async (ctx) => {
+      const base = {
+        name: "Block",
+        prefix: "",
+        amountCents: 5000,
+        quantity: 1,
+        live: false,
+        createdBy: identity.email,
+        requestId: "library-test-request",
+        requestFingerprint: "{}",
+        status: "complete" as const,
+        version: 1,
+        codes: [{ id: "promo_example", code: "EXAMPLE" }],
+      };
+      const available = await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Available",
+      });
+      const assigned = await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Assigned",
+        eventId: event.id,
+      });
+      await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Expired",
+        expiresAt: Date.now() - 1000,
+      });
+      const failed = await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Failed",
+        status: "failed",
+        codes: [],
+        error: "Generation stopped",
+      });
+      await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Generating",
+        status: "queued",
+        codes: [],
+      });
+      const needsAssignment = await ctx.db.insert("stripeBatches", {
+        ...base,
+        name: "Needs assignment",
+        error: "Target changed",
+      });
+      await ctx.db.insert("eventAdmins", {
+        eventId: event.id,
+        email: "event-admin@example.com",
+      });
+      return { available, assigned, failed, needsAssignment };
+    });
+    const paginationOpts = { numItems: 25, cursor: null };
+    expect(
+      (await admin.query(api.stripeBatches.history, { paginationOpts })).page,
+    ).toHaveLength(6);
+    const assigned = await admin.query(api.stripeBatches.history, {
+      filter: "assigned",
+      paginationOpts,
+    });
+    expect(assigned.page).toMatchObject([
+      { _id: ids.assigned, eventName: "Assigned event" },
+    ]);
+    const attention = await admin.query(api.stripeBatches.history, {
+      filter: "attention",
+      paginationOpts,
+    });
+    expect(new Set(attention.page.map((block) => block._id))).toEqual(
+      new Set([ids.failed, ids.needsAssignment]),
+    );
+    const first = await admin.query(api.stripeBatches.history, {
+      filter: "available",
+      paginationOpts: { numItems: 1, cursor: null },
+    });
+    const second = await admin.query(api.stripeBatches.history, {
+      filter: "available",
+      paginationOpts: { numItems: 1, cursor: first.continueCursor },
+    });
+    expect(
+      new Set([...first.page, ...second.page].map((block) => block._id)),
+    ).toEqual(new Set([ids.available, ids.needsAssignment]));
+    const eventAdmin = t.withIdentity({
+      subject: "event-admin",
+      email: "event-admin@example.com",
+      emailVerified: true,
+    });
+    await expect(
+      eventAdmin.query(api.stripeBatches.history, {
+        filter: "assigned",
+        paginationOpts,
+      }),
+    ).rejects.toThrow("Not an admin");
+    await admin.mutation(api.events.remove, { id: event.id });
+    expect(
+      (
+        await admin.query(api.stripeBatches.history, {
+          filter: "assigned",
+          paginationOpts,
+        })
+      ).page,
+    ).toMatchObject([{ _id: ids.assigned, eventName: null }]);
+    expect(
+      await admin.query(api.stripeBatches.get, { batchId: ids.assigned }),
+    ).toMatchObject({ eventName: null });
+  });
+});
+
 describe("batch assignment", () => {
+  test("shortens a batch name derived from a long event name without renaming the event", async () => {
+    const { t, admin } = await setup();
+    const name = "Community coding workshop ".repeat(4).trim();
+    const event = await admin.mutation(api.events.create, {
+      name,
+      stripeGeneration: { ...input, name, quantity: 1 },
+    });
+    await drain(t);
+    expect(await admin.query(api.events.get, { id: event.id })).toMatchObject({
+      name,
+    });
+    expect(
+      await admin.query(api.stripeBatches.list, { eventId: event.id }),
+    ).toMatchObject([
+      {
+        name: name.slice(0, 40).trimEnd(),
+        status: "complete",
+        eventId: event.id,
+      },
+    ]);
+  });
   test("creates an event and its generation job atomically, then attaches its codes", async () => {
     const { t, admin } = await setup();
     const event = await admin.mutation(api.events.create, {

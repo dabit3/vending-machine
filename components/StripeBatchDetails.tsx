@@ -3,7 +3,6 @@
 import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
 import { AlertTriangle, Copy, Download, RefreshCw, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -56,8 +55,6 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 
-type BatchSummary = FunctionReturnType<typeof api.stripeBatches.list>[number];
-
 export function SavedBatchPicker({
   value,
   onChange,
@@ -67,7 +64,7 @@ export function SavedBatchPicker({
 }) {
   const { results, status, loadMore } = usePaginatedQuery(
     api.stripeBatches.history,
-    {},
+    { filter: "available" },
     { initialNumItems: 25 },
   );
   const selected = useQuery(
@@ -85,7 +82,7 @@ export function SavedBatchPicker({
   );
   return (
     <Field>
-      <FieldLabel htmlFor={id}>Saved batch</FieldLabel>
+      <FieldLabel htmlFor={id}>Saved code block</FieldLabel>
       <NativeSelect
         id={id}
         required
@@ -95,7 +92,9 @@ export function SavedBatchPicker({
         disabled={batches === undefined}
       >
         <NativeSelectOption value="">
-          {batches === undefined ? "Loading batches…" : "Choose a batch"}
+          {batches === undefined
+            ? "Loading code blocks…"
+            : "Choose a code block"}
         </NativeSelectOption>
         {available?.map((batch) => (
           <NativeSelectOption key={batch._id} value={batch._id}>
@@ -105,9 +104,33 @@ export function SavedBatchPicker({
         ))}
       </NativeSelect>
       <FieldDescription>
-        {available.length === 0
-          ? "No available batches loaded. Load older batches, generate new codes, or add codes later."
-          : "Each batch can be assigned to one event. Already assigned and expired batches are excluded."}
+        Code blocks are saved automatically when generated in Codes. Only
+        completed, unassigned, unexpired blocks can be used here.
+        {batches !== undefined &&
+          available.length === 0 &&
+          " No available blocks are loaded yet."}
+      </FieldDescription>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/admin/codes/new"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Create a code block (new tab)
+        </Link>
+        <Link
+          href="/admin/codes"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
+        >
+          View code library (new tab)
+        </Link>
+      </div>
+      <FieldDescription>
+        Your event draft stays here. Return after generation finishes to select
+        the saved block.
       </FieldDescription>
       {(status === "CanLoadMore" || status === "LoadingMore") && (
         <Button
@@ -117,52 +140,9 @@ export function SavedBatchPicker({
           disabled={status === "LoadingMore"}
           onClick={() => loadMore(25)}
         >
-          Load older batches
+          Load more saved blocks
         </Button>
       )}
-    </Field>
-  );
-}
-
-export function BatchHistoryPicker({
-  batches,
-  value,
-  onChange,
-}: {
-  batches: BatchSummary[] | undefined;
-  value: string;
-  onChange: (value: Id<"stripeBatches">) => void;
-}) {
-  const id = useId();
-  return (
-    <Field>
-      <FieldLabel htmlFor={id}>Saved batches</FieldLabel>
-      <NativeSelect
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value as Id<"stripeBatches">)}
-        className="w-full"
-        disabled={!batches?.length}
-      >
-        {!batches?.length && (
-          <NativeSelectOption value="">
-            {batches ? "No batches yet" : "Loading…"}
-          </NativeSelectOption>
-        )}
-        {value && !batches?.some((batch) => batch._id === value) && (
-          <NativeSelectOption value={value}>Selected batch</NativeSelectOption>
-        )}
-        {batches?.map((batch) => (
-          <NativeSelectOption key={batch._id} value={batch._id}>
-            {batch.name} · {batch.generatedCount}/{batch.quantity} ·{" "}
-            {batch.status} ·{" "}
-            {new Date(batch._creationTime).toLocaleDateString()}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
-      <FieldDescription>
-        Your batch history, saved across sessions.
-      </FieldDescription>
     </Field>
   );
 }
@@ -287,7 +267,9 @@ export default function StripeBatchDetails({
                 >
                   {running && <Spinner data-icon="inline-start" />}
                   {batch.status === "complete"
-                    ? "Complete"
+                    ? batch.expired
+                      ? "Expired"
+                      : "Saved"
                     : batch.status === "failed"
                       ? "Needs attention"
                       : "Generating"}
@@ -361,24 +343,60 @@ export default function StripeBatchDetails({
                 <Separator />
                 {batch.eventId ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">Added to event</Badge>
-                    <Link
-                      href={`/admin/events/${batch.eventId}`}
-                      className={buttonVariants({
-                        variant: "link",
-                        size: "sm",
-                      })}
-                    >
-                      Manage event
-                    </Link>
+                    <Badge variant="secondary">
+                      {batch.eventName
+                        ? `Assigned to ${batch.eventName}`
+                        : "Previously assigned · event deleted"}
+                    </Badge>
+                    {batch.eventName && (
+                      <Link
+                        href={`/admin/events/${batch.eventId}`}
+                        className={buttonVariants({
+                          variant: "link",
+                          size: "sm",
+                        })}
+                      >
+                        Manage event
+                      </Link>
+                    )}
                   </div>
+                ) : batch.expired ? (
+                  <Alert>
+                    <AlertTitle>Expired code block</AlertTitle>
+                    <AlertDescription>
+                      You can still view and export these codes, but this block
+                      can no longer be added to an event.
+                    </AlertDescription>
+                  </Alert>
                 ) : (
-                  <BatchAssignment
-                    key={batch._id}
-                    batchId={batch._id}
-                    defaultEventId={targetEventId ?? batch.targetEventId}
-                    name={batch.name}
-                  />
+                  <>
+                    <Alert>
+                      <AlertTitle>Saved to your code library</AlertTitle>
+                      <AlertDescription>
+                        No event required. Your codes are saved and ready to
+                        select from “Use saved” when you create an event.
+                      </AlertDescription>
+                    </Alert>
+                    <Link
+                      href={`/admin/events/new?batch=${batch._id}`}
+                      className={buttonVariants({ variant: "outline" })}
+                    >
+                      Create an event with this block
+                    </Link>
+                    <details open={!!targetEventId}>
+                      <summary className="cursor-pointer text-sm font-medium">
+                        Add to an existing event (optional)
+                      </summary>
+                      <div className="pt-4">
+                        <BatchAssignment
+                          key={batch._id}
+                          batchId={batch._id}
+                          defaultEventId={targetEventId ?? batch.targetEventId}
+                          name={batch.name}
+                        />
+                      </div>
+                    </details>
+                  </>
                 )}
               </>
             )}
@@ -510,12 +528,6 @@ function BatchAssignment({
         <Button type="submit" disabled={busy || !eventId}>
           {busy && <Spinner data-icon="inline-start" />}Add codes to event
         </Button>
-        <Link
-          href={`/admin/events/new?batch=${batchId}`}
-          className={buttonVariants({ variant: "outline" })}
-        >
-          Create an event
-        </Link>
       </div>
     </form>
   );
