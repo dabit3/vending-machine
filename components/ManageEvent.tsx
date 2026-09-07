@@ -72,6 +72,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
+import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 
 const UPLOAD_CHUNK_SIZE = 500;
 
@@ -1559,22 +1560,13 @@ function EventDetailsForm({
                 Optional — shown on the home and claim pages.
               </FieldDescription>
             </Field>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="detail-instructions">
-                Redemption instructions
-              </FieldLabel>
-              <Textarea
-                id="detail-instructions"
-                value={claimInstructions}
-                onChange={(e) => setClaimInstructions(e.target.value)}
-                rows={4}
-                className="resize-y"
-              />
-              <FieldDescription>
-                Optional — when set, attendees see a &ldquo;How to
-                redeem&rdquo; button after claiming their code.
-              </FieldDescription>
-            </Field>
+            <ClaimInstructionsField
+              id="detail-instructions"
+              className="sm:col-span-2"
+              value={claimInstructions}
+              onChange={setClaimInstructions}
+              description="Optional — when set, attendees see a “How to redeem” button after claiming their code."
+            />
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-hidden"

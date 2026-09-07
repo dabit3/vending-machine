@@ -93,6 +93,11 @@ test("new event form exposes all three code sources and keeps page settings opti
     "Use saved",
     "Add later",
     "Claim page settings",
+    "Redemption instructions",
+    ">None</button>",
+    ">Pro</button>",
+    ">Max</button>",
+    ">Custom</button>",
     "Review and create",
     "Value per code (USD)",
   ])

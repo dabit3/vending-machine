@@ -17,6 +17,7 @@ import {
   usd,
 } from "@/lib/stripe-form";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
+import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 import {
   ConfirmStripeGeneration,
   StripeGenerationFields,
@@ -224,22 +225,12 @@ export default function NewEventForm({
                         name unless you set a custom slug.
                       </FieldDescription>
                     </Field>
-                    <Field>
-                      <FieldLabel htmlFor="event-instructions">
-                        Redemption instructions
-                      </FieldLabel>
-                      <Textarea
-                        id="event-instructions"
-                        value={instructions}
-                        onChange={(e) => setInstructions(e.target.value)}
-                        rows={4}
-                        placeholder="Where and how attendees redeem their codes"
-                      />
-                      <FieldDescription>
-                        Attendees must read these before claiming. They can also
-                        view them after claiming.
-                      </FieldDescription>
-                    </Field>
+                    <ClaimInstructionsField
+                      id="event-instructions"
+                      value={instructions}
+                      onChange={setInstructions}
+                      description="Attendees must read these before claiming. They can also view them after claiming."
+                    />
                     <Field orientation="horizontal">
                       <Checkbox
                         id="event-hidden"
