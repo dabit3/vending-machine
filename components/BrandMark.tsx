@@ -4,13 +4,13 @@ import { cn } from "@/lib/utils";
 
 export function BrandWordmark() {
   return (
-    <span className="inline-flex h-9 w-[105px] shrink-0 sm:h-10 sm:w-[117px]" aria-hidden="true">
+    <span className="inline-flex h-6 w-[70px] shrink-0 sm:h-7 sm:w-[82px]" aria-hidden="true">
       <Image
         src="/devin-lockup-black.png"
         alt=""
         width={2984}
         height={1024}
-        sizes="(max-width: 639px) 105px, 117px"
+        sizes="(max-width: 639px) 70px, 82px"
         fetchPriority="high"
         className="h-full w-full object-contain dark:hidden"
       />
@@ -19,7 +19,7 @@ export function BrandWordmark() {
         alt=""
         width={2984}
         height={1024}
-        sizes="(max-width: 639px) 105px, 117px"
+        sizes="(max-width: 639px) 70px, 82px"
         fetchPriority="high"
         className="h-full w-full object-contain hidden dark:block"
       />
