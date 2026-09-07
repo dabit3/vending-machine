@@ -4,11 +4,10 @@ import { v } from "convex/values";
 
 export async function adminEmailStatus(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return { email: null, isAdmin: false };
+  if (!identity || identity.emailVerified !== true) {
+    return { email: null, isAdmin: false };
+  }
   const email = identity.email?.trim().toLowerCase();
-  const anyAdmin = await ctx.db.query("admins").first();
-  // Bootstrap: while the admin list is empty, any signed-in user is an admin.
-  if (!anyAdmin) return { email, isAdmin: true };
   if (!email) return { email: null, isAdmin: false };
   const match = await ctx.db
     .query("admins")
@@ -108,15 +107,6 @@ export const add = mutation({
     if (!email || !email.includes("@")) {
       throw new Error("Enter a valid email address");
     }
-    const anyAdmin = await ctx.db.query("admins").first();
-    if (!anyAdmin) {
-      const { email: callerEmail } = await adminEmailStatus(ctx);
-      if (email !== callerEmail) {
-        throw new Error(
-          "The admin list is empty — add your own email first so you don't lock yourself out"
-        );
-      }
-    }
     const existing = await ctx.db
       .query("admins")
       .withIndex("by_email", (q) => q.eq("email", email))
@@ -135,7 +125,7 @@ export const remove = mutation({
     const admins = await ctx.db.query("admins").collect();
     if (admins.length === 1) {
       throw new Error(
-        "Cannot remove the last admin — an empty list would let any signed-in user administer events"
+        "Cannot remove the last admin — add another system admin first"
       );
     }
     await ctx.db.delete(args.id);

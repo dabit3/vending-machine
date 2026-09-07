@@ -1,28 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { CalendarPlus, OctagonX, Plus } from "lucide-react";
-import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { CalendarPlus, Plus } from "lucide-react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
-import { slugify } from "@/lib/slug";
 import { cn } from "@/lib/utils";
-import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -30,16 +15,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import {
-  Field,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
-import { Textarea } from "@/components/ui/textarea";
 
 interface ManagedEventItem {
   _id: string;
@@ -122,7 +98,7 @@ export default function AdminDashboard() {
               : "Manage the emails and codes of your events."}
           </p>
         </div>
-        {isGlobalAdmin ? <NewEventDialog /> : null}
+        {isGlobalAdmin ? <Link href="/admin/events/new" className={buttonVariants()}><Plus data-icon="inline-start" />New event</Link> : null}
       </div>
 
       {events === undefined ? (
@@ -186,165 +162,5 @@ export default function AdminDashboard() {
         </>
       )}
     </div>
-  );
-}
-
-function NewEventDialog() {
-  const createEvent = useMutation(api.events.create);
-  const router = useRouter();
-
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [description, setDescription] = useState("");
-  const [eventDate, setEventDate] = useState("");
-  const [claimInstructions, setClaimInstructions] = useState("");
-  const [hidden, setHidden] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const { id } = await createEvent({
-        name,
-        slug: slug || undefined,
-        description: description || undefined,
-        eventDate: eventDate || undefined,
-        claimInstructions: claimInstructions || undefined,
-        hidden: hidden || undefined,
-      });
-      toast.success(`Event "${name}" created`);
-      router.push(`/admin/events/${id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create event");
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>
-        <Plus data-icon="inline-start" />
-        New event
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="font-heading tracking-tight">
-            New event
-          </DialogTitle>
-          <DialogDescription>
-            Name it, and the claim page URL is generated for you.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleCreate} className="flex flex-col gap-6">
-          <FieldGroup>
-            <Field>
-              <FieldLabel htmlFor="event-name">Name</FieldLabel>
-              <Input
-                id="event-name"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Hackathon 1"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-slug">Slug</FieldLabel>
-              <Input
-                id="event-slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder={slugify(name) || "hackathon-1"}
-                className="font-mono"
-              />
-              <FieldDescription>
-                Optional — generated from the name.
-              </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-description">Description</FieldLabel>
-              <Textarea
-                id="event-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Shown on the claim page"
-                rows={4}
-                className="resize-y"
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-date">Event date</FieldLabel>
-              <Input
-                id="event-date"
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
-              <FieldDescription>
-                Optional — shown on the home and claim pages.
-              </FieldDescription>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="event-instructions">
-                Redemption instructions
-              </FieldLabel>
-              <Textarea
-                id="event-instructions"
-                value={claimInstructions}
-                onChange={(e) => setClaimInstructions(e.target.value)}
-                placeholder="How to redeem the code after claiming"
-                rows={4}
-                className="resize-y"
-              />
-              <FieldDescription>
-                Optional — shown to attendees after they claim a code.
-              </FieldDescription>
-            </Field>
-            <Field orientation="horizontal">
-              <Checkbox
-                id="event-hidden"
-                checked={hidden}
-                onCheckedChange={(checked) => setHidden(checked === true)}
-              />
-              <FieldLabel htmlFor="event-hidden" className="font-normal">
-                Hide from home page
-              </FieldLabel>
-            </Field>
-          </FieldGroup>
-          {error ? (
-            <Alert variant="destructive">
-              <OctagonX />
-              <AlertTitle>{error}</AlertTitle>
-            </Alert>
-          ) : null}
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={submitting}
-              aria-busy={submitting}
-            >
-              {submitting ? (
-                <>
-                  <Spinner data-icon="inline-start" />
-                  Creating...
-                </>
-              ) : (
-                "Create event"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }

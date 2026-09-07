@@ -29,6 +29,8 @@ Dispense credit codes to event participants (hackathons, conferences, meetups). 
 - `/` — public list of events (newest first)
 - `/<slug>` — claim page for an event (requires signing in to verify email ownership)
 - `/admin` — admin dashboard (Clerk-protected): create events
+- `/admin/events/new` — create an event with new Stripe codes, a saved batch, or an empty code pool
+- `/admin/codes` — generate, export, and assign Stripe batches (system admins only)
 - `/admin/events/<id>` — manage an event: edit name/slug/description, emails, codes, see claim stats, review flagged emails
 - `/admin/blacklist` — app-wide email blacklist (global admins only)
 - `/sign-in` — Clerk sign-in page (kept same-origin so protected-route redirects don't break client navigations)
@@ -44,7 +46,7 @@ npm run dev                  # in another
 
 ### Clerk + Convex auth
 
-1. In Clerk, create a JWT template named `convex` (see [Convex Clerk docs](https://docs.convex.dev/auth/clerk)).
+1. In Clerk, create a JWT template named `convex` (see [Convex Clerk docs](https://docs.convex.dev/auth/clerk)). Include the `email` and `email_verified` claims.
 2. Set the issuer domain on your Convex deployment:
    ```bash
    npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-app>.clerk.accounts.dev
@@ -54,11 +56,24 @@ npm run dev                  # in another
 
 Admin access is controlled by an email allowlist stored in Convex (`admins` table), managed at `/admin/admins`:
 
-- **Bootstrap**: while the list is empty, any signed-in Clerk user is an admin. Sign in and add your own email to lock it down (the app forces your own email to be first, so you can't lock yourself out).
-- Once the list has entries, only listed emails can use the admin dashboard or call admin Convex functions. The last remaining admin can't be removed.
-- Emergency access: if you ever do get locked out, delete all rows from the `admins` table in the Convex dashboard to re-enter bootstrap mode.
+- System admins require a verified Clerk email on the allowlist. An empty allowlist grants no system-admin access.
+- Before the first sign-in, add your normalized, lowercase email to the `admins` table through the trusted Convex dashboard.
+- Existing system admins manage the allowlist at `/admin/admins`. The app prevents removal of the last system admin.
+- Event admins can manage their assigned events. They cannot create events, generate Stripe codes, or access Stripe batch history.
+- If you lose access, restore an admin entry through the trusted Convex dashboard. Do not delete the allowlist.
 
 The allowlist is per Convex deployment (dev and prod each have their own `admins` table).
+
+### Stripe configuration
+
+1. Set `STRIPE_API_KEY` in the Convex deployment environment through the Convex dashboard. Do not put the key in a `NEXT_PUBLIC_` variable.
+2. Use a restricted Stripe key with write access to Coupons and Promotion Codes.
+3. Deploy the Convex schema and functions before using Code studio. For development, run `npx convex dev --once` against the intended deployment.
+4. Start with a Stripe test key. Code studio shows the mode and requires explicit confirmation for live generation.
+
+Each batch contains 1–500 single-use USD promotion codes. Prefixes and expiration dates are optional. The backend saves progress and retains batch history.
+
+If generation fails, resume the same batch within 23 hours of its first attempt. After that window, reconcile the batch in Stripe before creating replacements. Deleting an event or removing its codes does not revoke the Stripe promotion codes. The app does not synchronize redemption or revocation changes from Stripe.
 
 ## Deploy (Vercel)
 
@@ -73,7 +88,7 @@ Clerk production instances require a domain you own, but the **development insta
    ```bash
    npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-app>.clerk.accounts.dev --prod
    ```
-3. First sign-in on the live site is bootstrap mode — add your admin email right away, then load events/emails/codes (prod data is separate from local dev).
+3. Before the first sign-in, add your verified email to the production `admins` table through the trusted Convex dashboard.
 
 ### Going to production checklist
 
@@ -92,5 +107,5 @@ Dev and prod are fully separate instances in both Clerk and Convex — none of t
    ```bash
    npx convex env set CLERK_JWT_ISSUER_DOMAIN https://clerk.<your-domain> --prod
    ```
-6. The prod `admins` table starts empty (bootstrap mode: any signed-in user is admin) — sign in and add your email first thing.
+6. Before the first sign-in, add your verified email to the production `admins` table through the trusted Convex dashboard.
 7. Events, emails, and codes live per deployment; re-create/upload them in prod.

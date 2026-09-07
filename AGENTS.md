@@ -8,6 +8,19 @@ Important - do not test locally with chromium / playright unless I specifically 
 
 ## Verification
 
+- Run `npm test` for backend, authorization, and server-rendered UI tests. Stripe calls use mocks.
 - Run `npm run lint` for ESLint checks.
 - Run `npx --no-install tsc --noEmit --incremental false` for TypeScript checks without cache changes.
 - Run `npm run build` to verify the production build.
+
+## Admin and Stripe access
+
+- System admins require a verified Clerk email in the Convex `admins` table. An empty table grants no system-admin access.
+- If the table is empty, add the first admin through the trusted Convex dashboard. The older testing skill describes obsolete bootstrap behavior.
+- The Clerk `convex` JWT template must include the `email` and `email_verified` claims.
+- Set `STRIPE_API_KEY` on the Convex deployment, not in the Next.js environment. Use a restricted key for Coupons and Promotion Codes.
+- Keep Stripe calls in internal backend functions. Event admin access does not authorize Stripe operations or batch history access.
+- Stripe batches retain their history after event deletion. Event deletion does not revoke coupons or promotion codes in Stripe.
+- Resume failed batches within 23 hours of their first attempt. After that window, reconcile the batch in Stripe before generating replacements.
+- Regenerate backend types with `npx convex codegen`. This command does not deploy the changed functions.
+- Deploy the Convex functions and schema before using the new UI. Get user approval before deployment or real Stripe operations.

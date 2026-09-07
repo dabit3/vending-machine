@@ -1,5 +1,8 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
+import { generationFields } from "./stripeValidation";
+import { notExpired } from "./codeExpiry";
 import {
   adminEmailStatus,
   isEventAdmin,
@@ -75,6 +78,7 @@ export const getBySlug = query({
             .eq("codeType", typeKey === "" ? undefined : typeKey)
             .eq("claimedBy", undefined)
         )
+        .filter(notExpired)
         .filter((q) => q.eq(q.field("reservedFor"), undefined))
         .first();
       if (hit) availableTypes.add(typeKey);
@@ -85,6 +89,7 @@ export const getBySlug = query({
         .withIndex("by_event_reservedFor", (q) =>
           q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
         )
+        .filter(notExpired)
         .filter((q) => q.eq(q.field("claimedBy"), undefined))
         .first();
       if (reserved) availableTypes.add(reserved.codeType ?? "");
@@ -174,9 +179,12 @@ export const create = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
+    stripeGeneration: v.optional(v.object(generationFields)),
+    stripeBatchId: v.optional(v.id("stripeBatches")),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const identity = await requireAdmin(ctx);
+    if (args.stripeGeneration && args.stripeBatchId) throw new ConvexError("Choose one code source.");
     const base = slugify(args.slug?.trim() || args.name);
     if (!base) throw new Error("Event name must contain letters or numbers");
     let slug = base;
@@ -196,6 +204,13 @@ export const create = mutation({
       claimInstructions: args.claimInstructions?.trim() || undefined,
       hidden: args.hidden || undefined,
     });
+    if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
+    if (args.stripeBatchId) {
+      const batch = await ctx.db.get(args.stripeBatchId);
+      if (!batch) throw new ConvexError("Batch not found.");
+      const error = await attachBatchToEvent(ctx, batch, id, identity.email!.trim().toLowerCase());
+      if (error) throw new ConvexError(error);
+    }
     return { id, slug };
   },
 });

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { notExpired } from "./codeExpiry";
 import { requireEventAdmin } from "./admins";
 import { isBlacklisted } from "./blacklist";
 import { logAudit } from "./auditLog";
@@ -162,6 +163,7 @@ export const approve = mutation({
       .withIndex("by_event_reservedFor", (q) =>
         q.eq("eventId", request.eventId).eq("reservedFor", request.email)
       )
+      .filter(notExpired)
       .filter((q) => q.eq(q.field("claimedBy"), undefined))
       .first();
 
@@ -225,6 +227,7 @@ export const approve = mutation({
         .withIndex("by_event_claimedBy", (q) =>
           q.eq("eventId", request.eventId).eq("claimedBy", undefined)
         )
+        .filter(notExpired)
         .filter((q) => q.eq(q.field("reservedFor"), undefined))
         .first();
       if (available) {

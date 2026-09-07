@@ -13,11 +13,16 @@ import type * as auditLog from "../auditLog.js";
 import type * as blacklist from "../blacklist.js";
 import type * as blockValues from "../blockValues.js";
 import type * as claims from "../claims.js";
+import type * as codeExpiry from "../codeExpiry.js";
 import type * as codes from "../codes.js";
 import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
 import type * as notifications from "../notifications.js";
+import type * as stripeBatchModel from "../stripeBatchModel.js";
+import type * as stripeBatches from "../stripeBatches.js";
+import type * as stripeValidation from "../stripeValidation.js";
+import type * as stripeWorker from "../stripeWorker.js";
 import type * as waitlist from "../waitlist.js";
 
 import type {
@@ -32,11 +37,16 @@ declare const fullApi: ApiFromModules<{
   blacklist: typeof blacklist;
   blockValues: typeof blockValues;
   claims: typeof claims;
+  codeExpiry: typeof codeExpiry;
   codes: typeof codes;
   emails: typeof emails;
   eventAdmins: typeof eventAdmins;
   events: typeof events;
   notifications: typeof notifications;
+  stripeBatchModel: typeof stripeBatchModel;
+  stripeBatches: typeof stripeBatches;
+  stripeValidation: typeof stripeValidation;
+  stripeWorker: typeof stripeWorker;
   waitlist: typeof waitlist;
 }>;
 

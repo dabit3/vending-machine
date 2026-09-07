@@ -92,7 +92,7 @@ export default function AdminsPage() {
           Admins
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Only these emails can access the control room and manage events.
+          These system admins can create events, generate Stripe codes, and manage access. Their sign-in email must be verified.
         </p>
       </div>
 
@@ -101,8 +101,8 @@ export default function AdminsPage() {
           <ShieldAlert />
           <AlertTitle>The admin list is empty</AlertTitle>
           <AlertDescription>
-            Any signed-in user currently has admin access. Add your own email
-            to lock it down.
+            System-admin access is disabled. A trusted operator must add the
+            first admin through the Convex dashboard.
           </AlertDescription>
         </Alert>
       ) : null}

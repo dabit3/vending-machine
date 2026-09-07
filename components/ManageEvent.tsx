@@ -71,6 +71,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import EventStripeCodes from "@/components/EventStripeCodes";
 
 const UPLOAD_CHUNK_SIZE = 500;
 
@@ -800,6 +801,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
             <CodeBlocks
               codes={codes}
               values={event.codeTypeValues}
@@ -1161,7 +1163,8 @@ function CodeBlockRow({
                   <AlertDialogDescription>
                     This removes the block and all of its unclaimed codes.
                     Codes already dispensed are kept, so attendees keep their
-                    claim status and can still see their code.
+                    claim status and can still see their code. This does not
+                    revoke Stripe promotion codes.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1606,7 +1609,8 @@ function EventDetailsForm({
                     <AlertDialogDescription>
                       This permanently removes the event along with all of its
                       eligible emails and codes. Attendees will no longer be
-                      able to claim or re-view their codes.
+                      able to claim or re-view their codes. This does not revoke
+                      Stripe promotion codes. Code studio keeps their batch history.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

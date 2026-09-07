@@ -6,6 +6,35 @@ export default defineSchema({
     email: v.string(),
   }).index("by_email", ["email"]),
 
+  stripeBatches: defineTable({
+    name: v.string(),
+    prefix: v.string(),
+    amountCents: v.number(),
+    quantity: v.number(),
+    expiresAt: v.optional(v.number()),
+    live: v.boolean(),
+    createdBy: v.string(),
+    requestId: v.string(),
+    requestFingerprint: v.string(),
+    status: v.union(v.literal("queued"), v.literal("running"), v.literal("failed"), v.literal("complete")),
+    version: v.number(),
+    seed: v.optional(v.string()),
+    keyFingerprint: v.optional(v.string()),
+    startedAt: v.optional(v.number()),
+    couponId: v.optional(v.string()),
+    codes: v.array(v.object({ id: v.string(), code: v.string() })),
+    error: v.optional(v.string()),
+    targetEventId: v.optional(v.id("events")),
+    eventId: v.optional(v.id("events")),
+    codeType: v.optional(v.string()),
+    attachedBy: v.optional(v.string()),
+    attachedAt: v.optional(v.number()),
+  })
+    .index("by_creator_request", ["createdBy", "requestId"])
+    .index("by_creator", ["createdBy"])
+    .index("by_status", ["status"])
+    .index("by_target_event", ["targetEventId"]),
+
   eventAdmins: defineTable({
     eventId: v.id("events"),
     email: v.string(),
@@ -70,6 +99,7 @@ export default defineSchema({
   codes: defineTable({
     eventId: v.id("events"),
     code: v.string(),
+    expiresAt: v.optional(v.number()),
     codeType: v.optional(v.string()),
     claimedBy: v.optional(v.string()),
     claimedAt: v.optional(v.number()),

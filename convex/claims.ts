@@ -4,6 +4,7 @@ import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 import { blockValue } from "./blockValues";
 import { dropTypeIfEmpty } from "./codes";
+import { notExpired } from "./codeExpiry";
 
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
@@ -198,6 +199,7 @@ export const claim = mutation({
       .withIndex("by_event_reservedFor", (q) =>
         q.eq("eventId", event._id).eq("reservedFor", email)
       )
+      .filter(notExpired)
       .filter((q) => q.eq(q.field("claimedBy"), undefined))
       .first();
     const unclaimed = reserved
@@ -211,6 +213,7 @@ export const claim = mutation({
                 .eq("codeType", requestedType)
                 .eq("claimedBy", undefined)
             )
+            .filter(notExpired)
             .filter((q) => q.eq(q.field("reservedFor"), undefined))
             .first()
         : await ctx.db
@@ -218,6 +221,7 @@ export const claim = mutation({
             .withIndex("by_event_claimedBy", (q) =>
               q.eq("eventId", event._id).eq("claimedBy", undefined)
             )
+            .filter(notExpired)
             .filter((q) => q.eq(q.field("reservedFor"), undefined))
             .first();
     const available = reserved ?? unclaimed;
