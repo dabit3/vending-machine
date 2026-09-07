@@ -247,7 +247,8 @@ async function deleteEntry(ctx: MutationCtx, entry: Doc<"showcaseEntries">) {
   await ctx.db.delete(entry._id);
 }
 
-// Admin moderation, or an attendee withdrawing their own entry.
+// Admin moderation, or an attendee withdrawing their own entry while the
+// showcase is still open (closed standings are final).
 export const remove = mutation({
   args: { entryId: v.id("showcaseEntries") },
   handler: async (ctx, args) => {
@@ -256,6 +257,11 @@ export const remove = mutation({
     const email = await verifiedEmail(ctx);
     if (entry.email !== email) {
       await requireEventAdmin(ctx, entry.eventId);
+    } else if (!(await isEventAdmin(ctx, entry.eventId))) {
+      const event = await ctx.db.get(entry.eventId);
+      if (event?.showcaseOpen !== true) {
+        throw new Error("The showcase has closed — entries can no longer be withdrawn.");
+      }
     }
     await deleteEntry(ctx, entry);
     await logAudit(ctx, {

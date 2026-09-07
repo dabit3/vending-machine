@@ -253,7 +253,10 @@ export default function ShowcasePage({ slug }: { slug: string }) {
                         canVote={board.event.showcaseOpen && board.canParticipate}
                         votesLeft={board.votesRemaining > 0}
                         pending={pendingId === entry._id}
-                        canRemove={entry.mine || board.viewerIsAdmin}
+                        canRemove={
+                          board.viewerIsAdmin ||
+                          (entry.mine && board.event.showcaseOpen)
+                        }
                         onVote={() => handleVote(entry)}
                         onRemove={() => handleRemove(entry)}
                       />

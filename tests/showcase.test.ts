@@ -202,11 +202,23 @@ test("admins open/close the showcase, see emails, and moderate entries", async (
     (await t.query(api.showcase.board, { slug: "hack-night" }))?.entries,
   ).toEqual([]);
 
-  // Closing freezes submissions but the board remains readable.
+  // Closing freezes submissions and withdrawals but the board remains
+  // readable; admins can still moderate.
+  const { entryId: finalEntry } = await a.mutation(api.showcase.submit, {
+    slug: "hack-night",
+    title: "Final",
+  });
   await adm.mutation(api.showcase.setOpen, { eventId, open: false });
   await expect(
     a.mutation(api.showcase.submit, { slug: "hack-night", title: "Late" }),
   ).rejects.toThrow(/isn't open/i);
+  await expect(
+    a.mutation(api.showcase.remove, { entryId: finalEntry }),
+  ).rejects.toThrow(/closed/i);
+  expect(
+    (await t.query(api.showcase.board, { slug: "hack-night" }))?.entries,
+  ).toHaveLength(1);
+  await adm.mutation(api.showcase.remove, { entryId: finalEntry });
   expect(
     (await t.query(api.showcase.board, { slug: "hack-night" }))?.event.showcaseOpen,
   ).toBe(false);
