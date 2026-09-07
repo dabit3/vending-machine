@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -7,14 +7,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { APP_URL, getAppName } from "@/lib/app-name";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: "--font-ibm-plex-mono",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -28,10 +25,10 @@ export const metadata: Metadata = {
 // page background automatically.
 const clerkAppearance: React.ComponentProps<typeof ClerkProvider>["appearance"] = {
   variables: {
-    colorPrimary: "#2200ff",
-    colorPrimaryForeground: "#ffffff",
+    colorPrimary: "#467bf7",
+    colorPrimaryForeground: "#121212",
     borderRadius: "0.625rem",
-    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    fontFamily: '"General Sans", Arial, sans-serif',
   },
   options: {
     unsafe_disableDevelopmentModeWarnings: true,
@@ -51,9 +48,17 @@ export default function RootLayout({
     <ClerkProvider appearance={clerkAppearance}>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full overscroll-none antialiased`}
+        className={`${ibmPlexMono.variable} h-full overscroll-none antialiased`}
         suppressHydrationWarning
       >
+        <head>
+          <link rel="preconnect" href="https://api.fontshare.com" />
+          <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
+          <link
+            rel="stylesheet"
+            href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap"
+          />
+        </head>
         <body className="flex min-h-full flex-col overscroll-none">
           <ThemeProvider
             attribute="class"
