@@ -2,6 +2,31 @@ import Image from "next/image";
 import { isDevin } from "@/lib/app-name";
 import { cn } from "@/lib/utils";
 
+export function BrandWordmark() {
+  return (
+    <span className="inline-flex h-9 w-[105px] shrink-0 sm:h-10 sm:w-[117px]" aria-hidden="true">
+      <Image
+        src="/devin-lockup-black.png"
+        alt=""
+        width={2984}
+        height={1024}
+        sizes="(max-width: 639px) 105px, 117px"
+        fetchPriority="high"
+        className="h-full w-full object-contain dark:hidden"
+      />
+      <Image
+        src="/devin-lockup-white.png"
+        alt=""
+        width={2984}
+        height={1024}
+        sizes="(max-width: 639px) 105px, 117px"
+        fetchPriority="high"
+        className="h-full w-full object-contain hidden dark:block"
+      />
+    </span>
+  );
+}
+
 // Logo mark: a dispenser slot ejecting a receipt with a torn edge.
 // The slot bar inherits currentColor; the receipt follows the foreground color.
 // When IS_DEVIN=true, the Devin logo is shown instead — scaled up slightly

@@ -45,6 +45,8 @@ afterEach(() => vi.useRealTimers());
 test.each(["light", "dark"])("the %s homepage preserves event links, grouping, and claimed status", (theme) => {
   state.theme = theme;
   const html = renderToStaticMarkup(<Home />);
+  expect(html).toMatch(/<h1\b[^>]*>Try Devin<\/h1>/);
+  expect(html).not.toContain("Claim your credits.");
   expect(html).toContain("h-[520px]");
   expect(html).toContain("sm:h-[486px]");
   expect(html).toContain("max-w-5xl");
@@ -63,6 +65,19 @@ test.each(["light", "dark"])("the %s homepage preserves event links, grouping, a
   expect(html.indexOf("Past events")).toBeLessThan(html.indexOf('href="/recent"'));
   expect(html).not.toContain("text-black");
   expect(html).not.toContain("text-white");
+});
+
+test.each([
+  { date: "2026-08-25", visible: true },
+  { date: "2026-08-24", visible: false },
+  { date: "2026-08-23", visible: false },
+  { date: "2026-08-08", visible: false },
+])("front page visibility for an event dated $date", ({ date, visible }) => {
+  vi.setSystemTime(new Date(2026, 8, 7, 12));
+  state.events = [{ _id: "boundary", name: "Boundary event", slug: "boundary", eventDate: date }];
+  const html = renderToStaticMarkup(<Home />);
+  expect(html.includes('href="/boundary"')).toBe(visible);
+  expect(html.includes("Past events")).toBe(visible);
 });
 
 test("anonymous visitors can browse without querying claimed codes", () => {

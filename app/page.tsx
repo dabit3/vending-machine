@@ -20,6 +20,7 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
+import { getAppName } from "@/lib/app-name";
 
 // The hero background is a theme-paired Unicorn Studio WebGL scene
 // (experiment). A Unicorn project publishes exactly one authored design and
@@ -152,13 +153,13 @@ export default function Home() {
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
     ...active.filter((e) => !e.eventDate),
   ];
-  // Past events drop off the page entirely once they are more than 30 days
+  // Past events drop off the page entirely once they are 14 days or more
   // old; they stay reachable via their claim URL.
   const past = (
     events?.filter((e) => {
       if (!e.eventDate) return false;
       const days = daysUntilEvent(e.eventDate);
-      return days < 0 && days >= -30;
+      return days < 0 && days > -14;
     }) ?? []
   ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
@@ -172,7 +173,7 @@ export default function Home() {
         distribution
       </p>
       <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-foreground motion-reduce:animate-none sm:text-7xl">
-        Claim your credits.
+        {getAppName()}
       </h1>
       <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-foreground/70 motion-reduce:animate-none">
         Sign in, then select your event to claim your credits.

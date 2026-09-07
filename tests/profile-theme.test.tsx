@@ -111,6 +111,19 @@ test.each([
   },
 );
 
+test.each([
+  ["public", <SiteHeader key="public" />],
+  ["admin", <AdminLayout key="admin"><div>Admin content</div></AdminLayout>],
+])("the %s header uses the supplied theme-aware logos instead of visible app-name text", (_name, content) => {
+  const html = renderToStaticMarkup(content);
+  const header = html.match(/<header\b[\s\S]*?<\/header>/)![0];
+  expect(header).toContain('aria-label="Try Devin home"');
+  const images = [...header.matchAll(/<img\b[^>]*>/g)].map((match) => match[0]);
+  expect(images.find((image) => image.includes("devin-lockup-black.png"))).toContain("dark:hidden");
+  expect(images.find((image) => image.includes("devin-lockup-white.png"))).toContain("hidden dark:block");
+  expect(header).not.toContain(">Try Devin</span>");
+});
+
 test("the admin header uses the same profile theme action", () => {
   renderToStaticMarkup(
     <AdminLayout>
