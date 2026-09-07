@@ -14,6 +14,7 @@ import {
   QrCode,
   ShieldCheck,
   SearchX,
+  Sparkles,
   Undo2,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -562,6 +563,26 @@ export default function ClaimPage({
               </div>
             </div>
           )}
+          {event?.showcaseOpen ? (
+            <Link
+              href={`/${slug}/showcase`}
+              className="group mt-4 flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-5 py-4 text-sm transition-colors hover:border-brand/60 hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <Sparkles className="size-4 shrink-0 text-brand" aria-hidden />
+                <span className="min-w-0">
+                  <span className="block font-medium">Live showcase</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Share what you built and vote for crowd favorites
+                  </span>
+                </span>
+              </span>
+              <ArrowUpRight
+                className="size-4 shrink-0 text-muted-dim transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-foreground"
+                aria-hidden
+              />
+            </Link>
+          ) : null}
         </div>
       </main>
       <SiteFooter />

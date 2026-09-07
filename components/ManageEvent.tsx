@@ -16,6 +16,7 @@ import {
   QrCode,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
   Ticket,
   Trash2,
   Upload,
@@ -468,6 +469,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <QrCode data-icon="inline-start" />
               Walk-up claim
             </Button>
+            <ShowcaseToggle
+              eventId={id}
+              slug={event.slug}
+              open={event.showcaseOpen}
+            />
             <Button
               variant="outline"
               render={
@@ -1621,5 +1627,70 @@ function EventDetailsForm({
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+// Opens or closes the live showcase where attendees share what they built
+// and vote for crowd favorites; links to the public board while open.
+function ShowcaseToggle({
+  eventId,
+  slug,
+  open,
+}: {
+  eventId: Id<"events">;
+  slug: string;
+  open: boolean;
+}) {
+  const setOpen = useMutation(api.showcase.setOpen);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    setBusy(true);
+    try {
+      await setOpen({ eventId, open: !open });
+      toast.success(open ? "Showcase closed" : "Showcase is live", {
+        description: open
+          ? "Entries and votes are frozen; the board stays visible."
+          : `Attendees can now submit and vote at /${slug}/showcase`,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't update showcase");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        onClick={toggle}
+        disabled={busy}
+        aria-busy={busy}
+        aria-pressed={open}
+      >
+        {busy ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <Sparkles
+            data-icon="inline-start"
+            className={cn(open && "text-brand")}
+          />
+        )}
+        {open ? "Close showcase" : "Open showcase"}
+      </Button>
+      {open ? (
+        <Button
+          variant="outline"
+          render={
+            <Link href={`/${slug}/showcase`} target="_blank" rel="noreferrer" />
+          }
+          nativeButton={false}
+        >
+          <span className="font-mono text-xs">/{slug}/showcase</span>
+          <ArrowUpRight data-icon="inline-end" />
+        </Button>
+      ) : null}
+    </>
   );
 }

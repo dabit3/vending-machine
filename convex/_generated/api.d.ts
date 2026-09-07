@@ -19,6 +19,7 @@ import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
 import type * as notifications from "../notifications.js";
+import type * as showcase from "../showcase.js";
 import type * as stripeBatchModel from "../stripeBatchModel.js";
 import type * as stripeBatches from "../stripeBatches.js";
 import type * as stripeValidation from "../stripeValidation.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   eventAdmins: typeof eventAdmins;
   events: typeof events;
   notifications: typeof notifications;
+  showcase: typeof showcase;
   stripeBatchModel: typeof stripeBatchModel;
   stripeBatches: typeof stripeBatches;
   stripeValidation: typeof stripeValidation;

@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
+import { deleteShowcaseForEvent } from "./showcase";
 import {
   adminEmailStatus,
   isEventAdmin,
@@ -104,6 +105,7 @@ export const getBySlug = query({
       claimInstructions: event.claimInstructions,
       creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
+      showcaseOpen: event.showcaseOpen === true,
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
       soldOut: availableTypes.size === 0,
@@ -134,6 +136,7 @@ export const get = query({
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       hidden: event.hidden,
+      showcaseOpen: event.showcaseOpen === true,
     };
   },
 });
@@ -287,6 +290,7 @@ export const remove = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
     for (const entry of auditLogs) await ctx.db.delete(entry._id);
+    await deleteShowcaseForEvent(ctx, args.id);
     await ctx.db.delete(args.id);
   },
 });

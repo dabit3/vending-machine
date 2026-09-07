@@ -61,7 +61,31 @@ export default defineSchema({
     // Optional free-text value per code block, keyed by type ("" = unnamed),
     // e.g. "100" or "Team plan". Rendered with a "$" prefix only when numeric.
     codeTypeValues: v.optional(v.record(v.string(), v.string())),
+    // When set, attendees can share what they built and vote on the
+    // event's live showcase page.
+    showcaseOpen: v.optional(v.boolean()),
   }).index("by_slug", ["slug"]),
+
+  showcaseEntries: defineTable({
+    eventId: v.id("events"),
+    email: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    url: v.optional(v.string()),
+    // Denormalized vote tally kept in sync by showcase.toggleVote.
+    voteCount: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_event_email", ["eventId", "email"]),
+
+  showcaseVotes: defineTable({
+    eventId: v.id("events"),
+    entryId: v.id("showcaseEntries"),
+    voterEmail: v.string(),
+  })
+    .index("by_entry", ["entryId"])
+    .index("by_event_voter", ["eventId", "voterEmail"])
+    .index("by_entry_voter", ["entryId", "voterEmail"]),
 
   emails: defineTable({
     eventId: v.id("events"),
