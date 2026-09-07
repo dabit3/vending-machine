@@ -6,6 +6,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 Important - do not test locally with chromium / playright unless I specifically ask you to.
 
+## Branding
+
+- The app name is **Try Devin**, and its public domain is `https://trydevin.ai`.
+- Keep the shared name and public URL in `lib/app-name.ts`. `IS_DEVIN` controls the logo, not the app name.
+- Production Convex uses `SITE_URL=https://trydevin.ai` for approval-email links. Keep development URLs separate.
+- Put theme switching in the shared `ProfileMenu` avatar dropdown, not the main header. Preserve the existing `next-themes` preferences and default.
+
 ## Verification
 
 - Run `npm test` for backend, authorization, and server-rendered UI tests. Stripe calls use mocks.

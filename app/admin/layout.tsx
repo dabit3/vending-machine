@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import ProfileMenu from "@/components/ProfileMenu";
 import AdminGate from "@/components/AdminGate";
 import AdminNav from "@/components/AdminNav";
 import BrandMark from "@/components/BrandMark";
@@ -43,7 +43,7 @@ export default function AdminLayout({
               orientation="vertical"
               className="hidden !h-5 sm:block"
             />
-            <UserButton />
+            <ProfileMenu />
           </div>
         </div>
       </HeaderBar>

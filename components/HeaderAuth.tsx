@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { SignInButton, UserButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import ProfileMenu from "@/components/ProfileMenu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -62,7 +63,7 @@ export default function HeaderAuth() {
           Admin
         </Button>
       ) : null}
-      <UserButton />
+      <ProfileMenu />
     </div>
   );
 }

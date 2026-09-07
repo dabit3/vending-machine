@@ -1,4 +1,6 @@
-# Vending Machine
+# Try Devin
+
+Live app: https://trydevin.ai
 
 [![Made with Devin](https://img.shields.io/badge/Made%20with-Devin-blue)](https://devin.ai)
 

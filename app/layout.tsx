@@ -4,7 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
-import { getAppName } from "@/lib/app-name";
+import { APP_URL, getAppName } from "@/lib/app-name";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,6 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
+  applicationName: getAppName(),
   title: getAppName(),
   description: "Claim credits for hackathons, conferences, and meetups.",
 };

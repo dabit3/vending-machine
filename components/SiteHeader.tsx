@@ -2,7 +2,6 @@ import Link from "next/link";
 import BrandMark from "@/components/BrandMark";
 import HeaderAuth from "@/components/HeaderAuth";
 import HeaderBar from "@/components/HeaderBar";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { getAppName } from "@/lib/app-name";
 
 export default function SiteHeader() {
@@ -18,8 +17,7 @@ export default function SiteHeader() {
             {getAppName()}
           </span>
         </Link>
-        <nav aria-label="Account and appearance" className="flex shrink-0 items-center gap-2">
-          <ThemeToggle />
+        <nav aria-label="Account" className="flex shrink-0 items-center gap-2">
           <HeaderAuth />
         </nav>
       </div>
