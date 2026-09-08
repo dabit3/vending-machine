@@ -1,4 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
@@ -30,20 +32,61 @@ function normalizeEventDate(raw?: string): string | undefined {
   return trimmed;
 }
 
+function publicEvent(event: Doc<"events">) {
+  return {
+    _id: event._id,
+    _creationTime: event._creationTime,
+    name: event.name,
+    slug: event.slug,
+    description: event.description,
+    eventDate: event.eventDate,
+  };
+}
+
+// Home page listing. `since` (YYYY-MM-DD) drops dated events before that day;
+// undated events are always included. Older events are served page by page
+// through listArchived instead.
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { since: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const events = await ctx.db.query("events").order("desc").collect();
     return events
-      .filter((event) => !event.hidden)
-      .map((event) => ({
-        _id: event._id,
-        _creationTime: event._creationTime,
-        name: event.name,
-        slug: event.slug,
-        description: event.description,
-        eventDate: event.eventDate,
-      }));
+      .filter(
+        (event) =>
+          !event.hidden &&
+          (!args.since || !event.eventDate || event.eventDate >= args.since)
+      )
+      .map(publicEvent);
+  },
+});
+
+// Dated events before `before` (YYYY-MM-DD), most recent first. The lower
+// bound excludes undated events, which sort before every string in the index.
+function archivedEvents(ctx: QueryCtx, before: string) {
+  return ctx.db
+    .query("events")
+    .withIndex("by_eventDate", (q) =>
+      q.gte("eventDate", "").lt("eventDate", before)
+    )
+    .order("desc")
+    .filter((q) => q.neq(q.field("hidden"), true));
+}
+
+export const hasArchived = query({
+  args: { before: v.string() },
+  handler: async (ctx, args) => {
+    return (await archivedEvents(ctx, args.before).first()) !== null;
+  },
+});
+
+export const listArchived = query({
+  args: { before: v.string(), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, args) => {
+    const result = await archivedEvents(ctx, args.before).paginate({
+      ...args.paginationOpts,
+      numItems: Math.min(args.paginationOpts.numItems, 100),
+    });
+    return { ...result, page: result.page.map(publicEvent) };
   },
 });
 

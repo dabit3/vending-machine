@@ -61,7 +61,9 @@ export default defineSchema({
     // Optional free-text value per code block, keyed by type ("" = unnamed),
     // e.g. "100" or "Team plan". Rendered with a "$" prefix only when numeric.
     codeTypeValues: v.optional(v.record(v.string(), v.string())),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_eventDate", ["eventDate"]),
 
   emails: defineTable({
     eventId: v.id("events"),

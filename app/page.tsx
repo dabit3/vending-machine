@@ -1,17 +1,23 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { BadgeCheck, Ticket } from "lucide-react";
+import { BadgeCheck, ChevronDown, Ticket } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import {
+  daysUntilEvent,
+  formatEventDate,
+  localDateKey,
+} from "@/lib/event-date";
 import UnicornSceneEmbed from "@/components/UnicornSceneEmbed";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Empty,
   EmptyHeader,
@@ -41,6 +47,11 @@ const UNICORN_PROJECTS = {
 const UNICORN_CACHE_VERSION = 2;
 
 const isProdBuild = process.env.NODE_ENV === "production";
+
+// Past events stay in the main listing for this many days after their date;
+// anything older waits behind "View older events" and loads in pages.
+const RECENT_PAST_DAYS = 14;
+const OLDER_PAGE_SIZE = 25;
 
 // Stable no-op subscription for the hydration gate below: the snapshot never
 // changes on the client, we only care that the server snapshot is false.
@@ -114,8 +125,43 @@ function EventRow({
   );
 }
 
+function EventListSkeleton({ label }: { label: string }) {
+  return (
+    <div
+      className="mt-4 border-t border-border"
+      role="status"
+      aria-label={label}
+    >
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
+        >
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <Skeleton className="h-5 w-2/3 rounded-sm" />
+            <Skeleton className="h-3 w-1/2 rounded-sm" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Home() {
-  const events = useQuery(api.events.list);
+  // Dated events before this day are "older": the server leaves them out of
+  // the main listing and serves them separately, 25 at a time, on request.
+  // Computed on the client so the boundary matches daysUntilEvent's local day.
+  const olderBefore = localDateKey(1 - RECENT_PAST_DAYS);
+  const events = useQuery(api.events.list, { since: olderBefore });
+  const hasOlder = useQuery(api.events.hasArchived, { before: olderBefore });
+  const [showOlder, setShowOlder] = useState(false);
+  const older = usePaginatedQuery(
+    api.events.listArchived,
+    showOlder ? { before: olderBefore } : "skip",
+    { initialNumItems: OLDER_PAGE_SIZE },
+  );
+  const olderCanLoadMore =
+    older.status === "CanLoadMore" || older.status === "LoadingMore";
   const { isAuthenticated } = useConvexAuth();
   const mine = useQuery(api.codes.mine, isAuthenticated ? {} : "skip");
   const claimedEventIds = new Set(
@@ -153,13 +199,14 @@ export default function Home() {
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
     ...active.filter((e) => !e.eventDate),
   ];
-  // Past events drop off the page entirely once they are 14 days or more
-  // old; they stay reachable via their claim URL.
+  // Older past events belong to the paginated "older" list below; the server
+  // already leaves them out (see olderBefore), this just keeps the boundary
+  // exact if the day rolls over while a result is cached.
   const past = (
     events?.filter((e) => {
       if (!e.eventDate) return false;
       const days = daysUntilEvent(e.eventDate);
-      return days < 0 && days > -14;
+      return days < 0 && days > -RECENT_PAST_DAYS;
     }) ?? []
   ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 
@@ -226,23 +273,7 @@ export default function Home() {
           </h2>
 
           {events === undefined ? (
-            <div
-              className="mt-4 border-t border-border"
-              role="status"
-              aria-label="Loading active events"
-            >
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
-                >
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <Skeleton className="h-5 w-2/3 rounded-sm" />
-                    <Skeleton className="h-3 w-1/2 rounded-sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            <EventListSkeleton label="Loading active events" />
           ) : events.length === 0 ? (
             <Empty className="mt-6 border border-dashed border-border-strong py-16">
               <EmptyHeader>
@@ -298,6 +329,64 @@ export default function Home() {
               ) : null}
             </>
           )}
+
+          {events !== undefined && hasOlder ? (
+            showOlder ? (
+              <>
+                <div className="mt-14 flex items-baseline justify-between">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    Older events
+                  </h2>
+                  {older.status !== "LoadingFirstPage" ? (
+                    <span className="font-mono text-xs text-muted-dim tabular-nums">
+                      {String(older.results.length).padStart(2, "0")}
+                      {olderCanLoadMore ? "+" : ""}
+                    </span>
+                  ) : null}
+                </div>
+                {older.status === "LoadingFirstPage" ? (
+                  <EventListSkeleton label="Loading older events" />
+                ) : (
+                  <ul className="mt-4 border-t border-border">
+                    {older.results.map((event, index) => (
+                      <EventRow
+                        key={event._id}
+                        event={event}
+                        index={index % OLDER_PAGE_SIZE}
+                        claimed={claimedEventIds.has(event._id)}
+                        past
+                      />
+                    ))}
+                  </ul>
+                )}
+                {olderCanLoadMore ? (
+                  <div className="mt-6 flex justify-center">
+                    <Button
+                      variant="outline"
+                      disabled={older.status === "LoadingMore"}
+                      onClick={() => older.loadMore(OLDER_PAGE_SIZE)}
+                    >
+                      {older.status === "LoadingMore" ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : (
+                        <ChevronDown data-icon="inline-start" />
+                      )}
+                      {older.status === "LoadingMore"
+                        ? "Loading events…"
+                        : `Show ${OLDER_PAGE_SIZE} more`}
+                    </Button>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="mt-10 flex justify-center">
+                <Button variant="outline" onClick={() => setShowOlder(true)}>
+                  <ChevronDown data-icon="inline-start" />
+                  View older events
+                </Button>
+              </div>
+            )
+          ) : null}
         </section>
       </main>
       <SiteFooter />

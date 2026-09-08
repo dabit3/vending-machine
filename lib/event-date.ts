@@ -22,6 +22,14 @@ export function daysUntilEvent(date: string, now: Date = new Date()): number {
   return Math.round((eventDay.getTime() - today.getTime()) / MS_PER_DAY);
 }
 
+// YYYY-MM-DD of the local calendar day `offset` days from `now`, matching the
+// comparison basis of daysUntilEvent.
+export function localDateKey(offset = 0, now: Date = new Date()): string {
+  const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+}
+
 // Short countdown label for upcoming events; null once the event has passed.
 export function eventCountdownLabel(date: string, now?: Date): string | null {
   const days = daysUntilEvent(date, now);
