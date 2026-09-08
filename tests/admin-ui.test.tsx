@@ -309,18 +309,42 @@ test("new event form exposes all three code sources and keeps page settings opti
     ">Pro</button>",
     ">Max</button>",
     ">Custom</button>",
-    "Review and create",
-    "Value per code (USD)",
+    "Create event",
   ])
     expect(html).toContain(label);
-  expect(html).toContain('max="500"');
-  expect(html).toContain('maxLength="40"');
   expect(html).toContain('maxLength="120"');
   expect(html).not.toContain("STRIPE_API_KEY");
 });
 
-test.each(["event", "standalone"])("the %s form places a four-letter optional prefix beside the batch name", (mode) => {
-  const html = renderToStaticMarkup(mode === "event" ? <NewEventForm /> : <StripeCodeStudio />);
+test("new event form defaults to adding codes later", () => {
+  const html = renderToStaticMarkup(<NewEventForm />);
+  const selectedTabs = [...html.matchAll(/<button\b[^>]*aria-selected="true"[^>]*>([^<]*)<\/button>/g)].map(
+    (match) => match[1],
+  );
+  expect(selectedTabs).toContain("Add later");
+  expect(selectedTabs).not.toContain("Generate new");
+  expect(html).toContain("Add codes when you’re ready");
+  expect(html).not.toContain("Review and create");
+  expect(html).not.toContain("Value per code (USD)");
+});
+
+test("generation fields cap quantity and batch name", () => {
+  const html = renderToStaticMarkup(
+    <StripeGenerationFields value={emptyStripeForm} onChange={() => {}} />,
+  );
+  expect(html).toContain("Value per code (USD)");
+  expect(html).toContain('max="500"');
+  expect(html).toContain('maxLength="40"');
+});
+
+test.each(["fields", "standalone"])("the generation %s place a four-letter optional prefix beside the batch name", (mode) => {
+  const html = renderToStaticMarkup(
+    mode === "fields" ? (
+      <StripeGenerationFields value={emptyStripeForm} onChange={() => {}} />
+    ) : (
+      <StripeCodeStudio />
+    ),
+  );
   const prefixInput = [...html.matchAll(/<input\b[^>]*>/g)]
     .map((match) => match[0])
     .find((input) => input.includes('-prefix"'));
@@ -375,8 +399,11 @@ test("the batch-name placeholder previews the shortened event name", () => {
 test("missing Stripe setup disables generation without removing the other event flows", () => {
   state.configured = false;
   const html = renderToStaticMarkup(<NewEventForm />);
-  expect(html).toContain("Stripe setup required");
   expect(html).toContain("Use saved");
   expect(html).toContain("Add later");
-  expect(html).toContain("disabled");
+  expect(html).not.toContain("Stripe setup required");
+  expect(html).not.toMatch(/<button type="submit"[^>]*\sdisabled=""/);
+  const studio = renderToStaticMarkup(<StripeCodeStudio />);
+  expect(studio).toContain("Stripe setup required");
+  expect(studio).not.toContain("Value per code (USD)");
 });

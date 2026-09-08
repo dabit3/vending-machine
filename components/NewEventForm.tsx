@@ -64,7 +64,7 @@ export default function NewEventForm({
   const [instructions, setInstructions] = useState("");
   const [hidden, setHidden] = useState(false);
   const [dynamic, setDynamic] = useState(false);
-  const [source, setSource] = useState(initialBatchId ? "saved" : "generate");
+  const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
   );
