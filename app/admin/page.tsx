@@ -110,6 +110,7 @@ export default function AdminDashboard() {
   ).sort(byDateDesc);
   const olderPageCount = Math.max(1, Math.ceil(older.length / OLDER_PAGE_SIZE));
   const olderPageIndex = Math.min(olderPage, olderPageCount - 1);
+  if (olderPage !== olderPageIndex) setOlderPage(olderPageIndex);
   const olderStart = olderPageIndex * OLDER_PAGE_SIZE;
   const olderVisible = older.slice(olderStart, olderStart + OLDER_PAGE_SIZE);
 
