@@ -30,12 +30,18 @@ function normalizeEventDate(raw?: string): string | undefined {
   return trimmed;
 }
 
+// Dynamic events are only reachable through their claim URL / QR code, so
+// they are always hidden from the home page regardless of the stored flag.
+function isHidden(event: { hidden?: boolean; dynamic?: boolean }) {
+  return Boolean(event.hidden || event.dynamic);
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
     const events = await ctx.db.query("events").order("desc").collect();
     return events
-      .filter((event) => !event.hidden)
+      .filter((event) => !isHidden(event))
       .map((event) => ({
         _id: event._id,
         _creationTime: event._creationTime,
@@ -134,7 +140,7 @@ export const get = query({
       codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
-      hidden: event.hidden,
+      hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
     };
   },
@@ -168,7 +174,7 @@ export const listManaged = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
-      hidden: event.hidden,
+      hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
     }));
   },
@@ -206,7 +212,7 @@ export const create = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      hidden: args.hidden || undefined,
+      hidden: isHidden(args) || undefined,
       dynamic: args.dynamic || undefined,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
@@ -248,7 +254,7 @@ export const update = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      hidden: args.hidden || undefined,
+      hidden: isHidden(args) || undefined,
       dynamic: args.dynamic || undefined,
     });
     return { slug };

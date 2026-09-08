@@ -1610,11 +1610,13 @@ function EventDetailsForm({
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-hidden"
-                checked={hidden}
+                checked={hidden || dynamic}
+                disabled={dynamic}
                 onCheckedChange={(checked) => setHidden(checked === true)}
               />
               <FieldLabel htmlFor="detail-hidden" className="font-normal">
                 Hide from home page
+                {dynamic ? " (always on for dynamic events)" : null}
               </FieldLabel>
             </Field>
             <Field orientation="horizontal" className="sm:col-span-2">
