@@ -28,7 +28,7 @@ export default function AdminLayout({
             </Link>
             <Badge
               variant="outline"
-              className="shrink-0 border-border-strong text-muted-foreground"
+              className="shrink-0"
             >
               Admin
             </Badge>
