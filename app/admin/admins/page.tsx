@@ -153,7 +153,7 @@ export default function AdminsPage() {
                 {admin.isSelf ? (
                   <Badge
                     variant="outline"
-                    className="shrink-0 border-border-strong text-muted-foreground"
+                    className="shrink-0"
                   >
                     You
                   </Badge>
