@@ -40,7 +40,7 @@ export default function AdminNav() {
             href={link.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:px-3",
+              "rounded-md px-2.5 py-1.5 font-mono text-[0.8rem] font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:px-3",
               active
                 ? "bg-muted text-foreground"
                 : "text-muted-foreground hover:text-foreground"
