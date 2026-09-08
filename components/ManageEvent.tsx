@@ -161,9 +161,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Dynamic events have no participant list to manage; the emails card only
   // shows who has actually claimed a code.
   const isDynamic = event?.dynamic === true;
-  const listedEmails = isDynamic
-    ? emails?.filter((e) => claimedCodesByEmail.has(e.email))
-    : emails;
+  const listedEmails: { email: string; id?: Id<"emails"> }[] | undefined =
+    isDynamic
+      ? codes && [...claimedCodesByEmail.keys()].map((email) => ({ email }))
+      : emails?.map((e) => ({ email: e.email, id: e._id }));
   const unclaimedCodeCount = codeCount - claimedCount;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
@@ -729,23 +730,27 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             )}
             <RowList
               fill
-              items={listedEmails?.map((e) => ({
-                key: e._id,
-                label: e.email,
-                onReclaim: claimedCodesByEmail.has(e.email)
-                  ? () =>
-                      setReclaimTarget({
-                        email: e.email,
-                        codes: claimedCodesByEmail.get(e.email) ?? [],
-                      })
-                  : undefined,
-                onRemove: isDynamic
-                  ? undefined
-                  : () =>
-                      removeEmail({ id: e._id }).catch(() =>
-                        toast.error("Failed to remove email")
-                      ),
-              }))}
+              items={listedEmails?.map((e) => {
+                const emailId = e.id;
+                return {
+                  key: emailId ?? e.email,
+                  label: e.email,
+                  onReclaim: claimedCodesByEmail.has(e.email)
+                    ? () =>
+                        setReclaimTarget({
+                          email: e.email,
+                          codes: claimedCodesByEmail.get(e.email) ?? [],
+                        })
+                    : undefined,
+                  onRemove:
+                    emailId === undefined
+                      ? undefined
+                      : () =>
+                          removeEmail({ id: emailId }).catch(() =>
+                            toast.error("Failed to remove email")
+                          ),
+                };
+              })}
               emptyText={isDynamic ? "No one has claimed yet." : "No emails yet."}
             />
             <AlertDialog
