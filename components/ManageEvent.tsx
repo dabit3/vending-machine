@@ -13,6 +13,7 @@ import {
   Eye,
   Inbox,
   Plus,
+  QrCode,
   RotateCcw,
   ShieldCheck,
   Ticket,
@@ -70,7 +71,6 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import EventQrDialog from "@/components/EventQrDialog";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 
@@ -489,7 +489,22 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <Eye data-icon="inline-start" />
               Preview claim
             </Button>
-            <EventQrDialog eventName={event.name} slug={event.slug} />
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Open shareable QR code page"
+              title="Open shareable QR code page"
+              render={
+                <Link
+                  href={`/${event.slug}/qr`}
+                  target="_blank"
+                  rel="noreferrer"
+                />
+              }
+              nativeButton={false}
+            >
+              <QrCode />
+            </Button>
           <Button
             variant="outline"
             render={
