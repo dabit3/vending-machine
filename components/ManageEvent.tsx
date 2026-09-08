@@ -13,7 +13,6 @@ import {
   Eye,
   Inbox,
   Plus,
-  QrCode,
   RotateCcw,
   ShieldCheck,
   Ticket,
@@ -71,6 +70,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import EventQrDialog from "@/components/EventQrDialog";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 
@@ -472,7 +472,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               render={<Link href={`/admin/events/${id}/walkup`} />}
               nativeButton={false}
             >
-              <QrCode data-icon="inline-start" />
+              <UserPlus data-icon="inline-start" />
               Walk-up claim
             </Button>
             <Button
@@ -489,6 +489,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <Eye data-icon="inline-start" />
               Preview claim
             </Button>
+            <EventQrDialog eventName={event.name} slug={event.slug} />
           <Button
             variant="outline"
             render={
