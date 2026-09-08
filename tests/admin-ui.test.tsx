@@ -221,6 +221,43 @@ test("the dashboard exposes standalone code creation only to system admins", () 
   );
 });
 
+test("the dashboard collapses events 14+ days old behind a view-more button", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 8, 7, 12));
+  const event = (id: string, eventDate?: string) => ({
+    _id: id as Id<"events">,
+    _creationTime: 0,
+    name: `Event ${id}`,
+    slug: id,
+    description: undefined,
+    eventDate,
+    hidden: undefined,
+  });
+  try {
+    state.events = [
+      event("upcoming", "2026-09-10"),
+      event("undated"),
+      event("recent", "2026-08-25"),
+      event("boundary", "2026-08-24"),
+      event("ancient", "2026-01-01"),
+    ];
+    const html = renderToStaticMarkup(<AdminDashboard />);
+    for (const id of ["upcoming", "undated", "recent"]) {
+      expect(html).toContain(`href="/admin/events/${id}"`);
+    }
+    expect(html).not.toContain('href="/admin/events/boundary"');
+    expect(html).not.toContain('href="/admin/events/ancient"');
+    expect(html).toContain("View 2 older events");
+    expect(html).not.toContain("Older events");
+    expect(html.indexOf("Past events")).toBeLessThan(html.indexOf("View 2 older events"));
+
+    state.events = [event("upcoming", "2026-09-10")];
+    expect(renderToStaticMarkup(<AdminDashboard />)).not.toContain("older event");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("the codes page opens a library with an explicit create action", () => {
   const html = renderToStaticMarkup(<CodeStudioPage />);
   expect(html.includes("Code blocks")).toBe(true);
