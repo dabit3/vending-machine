@@ -81,14 +81,14 @@ export default function EventQrPage({ slug }: { slug: string }) {
                   </h1>
                 )}
               </div>
-              <div className="rounded-xl border border-border bg-background p-5 text-foreground">
+              <div className="rounded-xl border border-border bg-white p-5">
                 {claimUrl ? (
                   <QRCodeSVG
                     value={claimUrl}
                     size={288}
                     marginSize={0}
-                    fgColor="currentColor"
-                    bgColor="transparent"
+                    fgColor="#000000"
+                    bgColor="#ffffff"
                     className="size-[min(288px,70vw)]"
                     aria-label={`QR code linking to ${claimUrl}`}
                   />
