@@ -418,15 +418,11 @@ export default function ClaimPage({
                     <Dialog open={readOpen} onOpenChange={setReadOpen}>
                       <DialogTrigger
                         render={
-                          <Button
-                            variant="brand"
-                            size="lg"
-                            className="h-auto min-h-9 w-full py-1.5 whitespace-normal"
-                          />
+                          <Button variant="brand" size="lg" className="w-full" />
                         }
                       >
                         <BookOpen data-icon="inline-start" />
-                        Read redemption instructions to claim.
+                        Read instructions to claim
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
