@@ -158,6 +158,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const claimedDisplay = useCountUp(claimedCount);
   const unclaimedEmailCount =
     emails?.filter((e) => !claimedCodesByEmail.has(e.email)).length ?? 0;
+  // Dynamic events have no participant list to manage; the emails card only
+  // shows who has actually claimed a code.
+  const isDynamic = event?.dynamic === true;
+  const listedEmails = isDynamic
+    ? emails?.filter((e) => claimedCodesByEmail.has(e.email))
+    : emails;
   const unclaimedCodeCount = codeCount - claimedCount;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
@@ -345,10 +351,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   }
 
   function exportEmails() {
-    if (!emails || !event) return;
+    if (!listedEmails || !event) return;
     downloadCsv(`${event.slug}-emails.csv`, [
       ["email"],
-      ...emails.map((e) => [e.email]),
+      ...listedEmails.map((e) => [e.email]),
     ]);
   }
 
@@ -502,10 +508,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <StatCard
-          label="Eligible emails"
-          value={emails?.length}
+          label={isDynamic ? "Claimed emails" : "Eligible emails"}
+          value={listedEmails?.length}
           sub={
-            emails && codes ? `${unclaimedEmailCount} yet to claim` : undefined
+            !isDynamic && emails && codes
+              ? `${unclaimedEmailCount} yet to claim`
+              : undefined
           }
         />
         <StatCard
@@ -662,59 +670,66 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Inbox className="size-4 text-muted-dim" aria-hidden />
-              Eligible emails
-              {emails ? <Badge variant="secondary">{emails.length}</Badge> : null}
+              {isDynamic ? "Claimed emails" : "Eligible emails"}
+              {listedEmails ? (
+                <Badge variant="secondary">{listedEmails.length}</Badge>
+              ) : null}
             </CardTitle>
             <CardDescription>
-              Only these addresses can claim a code.
-              {emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}
+              {isDynamic
+                ? "This event is dynamic — anyone who signs in can claim, so there's no participant list. These addresses have claimed a code."
+                : `Only these addresses can claim a code.${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
-              {emails && emails.length > 0 ? (
+              {listedEmails && listedEmails.length > 0 ? (
                 <Button variant="outline" size="sm" onClick={exportEmails}>
                   <Download data-icon="inline-start" />
                   Export
                 </Button>
               ) : null}
-              <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
+              {isDynamic ? null : (
+                <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
+              )}
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow">
-            <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
-              <Textarea
-                aria-label="Email addresses to add"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                rows={4}
-                placeholder={"one@example.com\ntwo@example.com"}
-                className="max-h-48 resize-y overflow-y-auto text-sm"
-              />
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  disabled={emailBusy || !emailInput.trim()}
-                  aria-busy={emailBusy}
-                >
-                  {emailBusy ? (
-                    <>
-                      <Spinner data-icon="inline-start" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add emails"
-                  )}
-                </Button>
-                {pendingEmailCount > 0 ? (
-                  <span className="text-xs text-muted-dim tabular-nums">
-                    {pendingEmailCount} email{pendingEmailCount === 1 ? "" : "s"} pasted
-                  </span>
-                ) : null}
-              </div>
-            </form>
+            {isDynamic ? null : (
+              <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
+                <Textarea
+                  aria-label="Email addresses to add"
+                  value={emailInput}
+                  onChange={(e) => setEmailInput(e.target.value)}
+                  rows={4}
+                  placeholder={"one@example.com\ntwo@example.com"}
+                  className="max-h-48 resize-y overflow-y-auto text-sm"
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={emailBusy || !emailInput.trim()}
+                    aria-busy={emailBusy}
+                  >
+                    {emailBusy ? (
+                      <>
+                        <Spinner data-icon="inline-start" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add emails"
+                    )}
+                  </Button>
+                  {pendingEmailCount > 0 ? (
+                    <span className="text-xs text-muted-dim tabular-nums">
+                      {pendingEmailCount} email{pendingEmailCount === 1 ? "" : "s"} pasted
+                    </span>
+                  ) : null}
+                </div>
+              </form>
+            )}
             <RowList
               fill
-              items={emails?.map((e) => ({
+              items={listedEmails?.map((e) => ({
                 key: e._id,
                 label: e.email,
                 onReclaim: claimedCodesByEmail.has(e.email)
@@ -724,12 +739,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         codes: claimedCodesByEmail.get(e.email) ?? [],
                       })
                   : undefined,
-                onRemove: () =>
-                  removeEmail({ id: e._id }).catch(() =>
-                    toast.error("Failed to remove email")
-                  ),
+                onRemove: isDynamic
+                  ? undefined
+                  : () =>
+                      removeEmail({ id: e._id }).catch(() =>
+                        toast.error("Failed to remove email")
+                      ),
               }))}
-              emptyText="No emails yet."
+              emptyText={isDynamic ? "No one has claimed yet." : "No emails yet."}
             />
             <AlertDialog
               open={reclaimTarget !== null}
