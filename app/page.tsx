@@ -22,6 +22,8 @@ import {
 import { cn } from "@/lib/utils";
 import { getAppName } from "@/lib/app-name";
 
+const RECENT_PAST_DAYS = 7;
+
 // The hero background is a theme-paired Unicorn Studio WebGL scene
 // (experiment). A Unicorn project publishes exactly one authored design and
 // the SDK has no color-scheme awareness, so a light-authored project shows
@@ -153,13 +155,13 @@ export default function Home() {
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
     ...active.filter((e) => !e.eventDate),
   ];
-  // Past events drop off the page entirely once they are 14 days or more
-  // old; they stay reachable via their claim URL.
+  // Past events drop off the page entirely once they are RECENT_PAST_DAYS or
+  // more days old; they stay reachable via their claim URL.
   const past = (
     events?.filter((e) => {
       if (!e.eventDate) return false;
       const days = daysUntilEvent(e.eventDate);
-      return days < 0 && days > -14;
+      return days < 0 && days > -RECENT_PAST_DAYS;
     }) ?? []
   ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
 

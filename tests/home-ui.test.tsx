@@ -68,10 +68,10 @@ test.each(["light", "dark"])("the %s homepage preserves event links, grouping, a
 });
 
 test.each([
-  { date: "2026-08-25", visible: true },
+  { date: "2026-09-01", visible: true },
+  { date: "2026-08-31", visible: false },
+  { date: "2026-08-30", visible: false },
   { date: "2026-08-24", visible: false },
-  { date: "2026-08-23", visible: false },
-  { date: "2026-08-08", visible: false },
 ])("front page visibility for an event dated $date", ({ date, visible }) => {
   vi.setSystemTime(new Date(2026, 8, 7, 12));
   state.events = [{ _id: "boundary", name: "Boundary event", slug: "boundary", eventDate: date }];
