@@ -277,14 +277,9 @@ export default function Home() {
               )}
               {past.length > 0 ? (
                 <>
-                  <div className="mt-14 flex items-baseline justify-between">
-                    <h2 className="text-sm font-medium text-muted-foreground">
-                      Past events
-                    </h2>
-                    <span className="font-mono text-xs text-muted-dim tabular-nums">
-                      {String(past.length).padStart(2, "0")}
-                    </span>
-                  </div>
+                  <h2 className="mt-14 text-sm font-medium text-muted-foreground">
+                    Past events
+                  </h2>
                   <ul className="mt-4 border-t border-border">
                     {past.map((event, index) => (
                       <EventRow
