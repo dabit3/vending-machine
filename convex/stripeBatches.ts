@@ -312,7 +312,10 @@ export const fail = internalMutation({
   handler: async (ctx, args) => {
     const batch = await ctx.db.get(args.batchId);
     if (batch?.version === args.version && batch.status === "running") {
-      await ctx.db.patch(batch._id, { status: "failed", error: args.error });
+      const error = batch.couponId && batch.codes.length === batch.quantity
+        ? "All codes are saved, but the batch could not be finalized. Resume this batch to finish without creating new codes."
+        : args.error;
+      await ctx.db.patch(batch._id, { status: "failed", error });
     }
   },
 });

@@ -5,6 +5,13 @@
 // on write, so the escaped form cannot collide with a real name.
 export function blockKey(codeType: string | undefined): string {
   const key = codeType ?? "";
+  if (/[^\x20-\x7e]/.test(key)) {
+    const encoded = key
+      .split("")
+      .map((char) => char.charCodeAt(0).toString(16).padStart(4, "0"))
+      .join("");
+    return ` ~${encoded}`;
+  }
   return /^[$_]/.test(key) ? ` ${key}` : key;
 }
 

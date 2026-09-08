@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { api, internal } from "../convex/_generated/api";
 import schema from "../convex/schema";
 import { RETRY_WINDOW_MS } from "../convex/stripeBatchModel";
+import { blockKey, blockValue } from "../convex/blockValues";
 
 const stripe = vi.hoisted(() => ({ coupon: vi.fn(), promotion: vi.fn() }));
 vi.mock("stripe", async (importOriginal) => {
@@ -702,6 +703,101 @@ describe("code library", () => {
 });
 
 describe("batch assignment", () => {
+  test.each([
+    { name: "Itaú Hackathon", codeType: undefined },
+    { name: "Workshop", codeType: "Créditos" },
+  ])("finishes and assigns Unicode block names: $name / $codeType", async ({ name, codeType }) => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Unicode event" });
+    const batchId = await admin.mutation(api.stripeBatches.create, {
+      ...input, name, codeType, eventId: event.id, quantity: 2,
+    });
+    await drain(t);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({
+      name, status: "complete", eventId: event.id, generatedCount: 2,
+    });
+    const type = codeType ?? name;
+    const updatedEvent = await admin.query(api.events.get, { id: event.id });
+    expect(updatedEvent).toMatchObject({ codeTypes: [type] });
+    expect(updatedEvent?.codeTypeValues?.[blockKey(type)]).toBe("50");
+    const attendee = { subject: "attendee", email: "attendee@example.com", emailVerified: true };
+    await t.run((ctx) => ctx.db.insert("emails", { eventId: event.id, email: attendee.email }));
+    const user = t.withIdentity(attendee);
+    expect(await user.mutation(api.claims.claim, { slug: event.slug, codeType: type })).toMatchObject({
+      ok: true, codeType: type, creditAmount: "50",
+    });
+    expect(await user.query(api.codes.mine)).toMatchObject([{ event: { creditAmount: "50" } }]);
+  });
+
+  test("manual Unicode blocks keep their values through renaming and cleanup", async () => {
+    const { admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Manual blocks" });
+    await admin.mutation(api.codes.add, {
+      eventId: event.id, codes: ["MANUAL-CODE"], codeType: "Itaú Hackathon", value: "50",
+    });
+    await admin.mutation(api.codes.renameType, {
+      eventId: event.id, from: "Itaú Hackathon", to: "Créditos",
+    });
+    let updated = (await admin.query(api.events.get, { id: event.id }))!;
+    expect(blockValue(updated, "Créditos")).toBe("50");
+    expect(updated.codeTypeValues).not.toHaveProperty(blockKey("Itaú Hackathon"));
+    await admin.mutation(api.codes.setTypeValue, {
+      eventId: event.id, codeType: "Créditos", value: "75",
+    });
+    updated = (await admin.query(api.events.get, { id: event.id }))!;
+    expect(blockValue(updated, "Créditos")).toBe("75");
+    const [code] = await admin.query(api.codes.list, { eventId: event.id });
+    await admin.mutation(api.codes.remove, { id: code._id });
+    updated = (await admin.query(api.events.get, { id: event.id }))!;
+    expect(updated.codeTypes).toEqual([]);
+    expect(updated.codeTypeValues).toEqual({});
+    expect(stripe.promotion).not.toHaveBeenCalled();
+  });
+
+  test("resumes an 80-of-80 saved Unicode batch without creating any new Stripe codes", async () => {
+    const { t, admin } = await setup();
+    const name = "Itaú Hackathon";
+    const event = await admin.mutation(api.events.create, { name });
+    const batchId = await admin.mutation(api.stripeBatches.create, {
+      ...input, name, quantity: 80, eventId: event.id,
+    });
+    const savedCodes = Array.from({ length: 80 }, (_, index) => ({
+      id: `promo_saved_${index}`, code: `SAVED-${index}`,
+    }));
+    await t.run((ctx) => ctx.db.patch(batchId, {
+      status: "failed", codes: savedCodes, couponId: "coupon_saved",
+      seed: "saved-seed", startedAt: Date.now(), error: "Generation stopped",
+    }));
+    await admin.mutation(api.stripeBatches.retry, { batchId, confirmLive: false });
+    await drain(t);
+    const batch = await admin.query(api.stripeBatches.get, { batchId });
+    expect(batch).toMatchObject({ status: "complete", eventId: event.id, generatedCount: 80 });
+    expect(batch?.codes).toEqual(savedCodes);
+    expect(batch?.error).toBeUndefined();
+    expect(stripe.coupon).not.toHaveBeenCalled();
+    expect(stripe.promotion).not.toHaveBeenCalled();
+    await admin.mutation(api.stripeBatches.attach, { batchId, eventId: event.id });
+    expect(await admin.query(api.codes.list, { eventId: event.id })).toHaveLength(80);
+    expect(blockValue((await admin.query(api.events.get, { id: event.id }))!, name)).toBe("50");
+  });
+
+  test("fully saved batches report a finalization failure rather than a Stripe generation failure", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, quantity: 1 });
+    await t.run((ctx) => ctx.db.patch(batchId, {
+      status: "running", couponId: "coupon_saved", codes: [{ id: "promo_saved", code: "SAVED" }],
+    }));
+    await t.mutation(internal.stripeBatches.fail, {
+      batchId, version: 0, error: "Generation stopped. Check Stripe permissions.",
+    });
+    const batch = await admin.query(api.stripeBatches.get, { batchId });
+    expect(batch?.status).toBe("failed");
+    expect(batch?.error).toContain("All codes are saved");
+    expect(batch?.error).not.toContain("Stripe permissions");
+    await drain(t);
+    expect(stripe.promotion).not.toHaveBeenCalled();
+  });
+
   test.each([undefined, "camp"])("new events use the custom or automatic prefix %j for their entire batch", async (codePrefix) => {
     const { t, admin } = await setup();
     const event = await admin.mutation(api.events.create, {

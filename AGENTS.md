@@ -28,6 +28,8 @@ Important - do not test locally with chromium / playright unless I specifically 
 - Set `STRIPE_API_KEY` on the Convex deployment, not in the Next.js environment. Use a restricted key for Coupons and Promotion Codes.
 - Keep Stripe calls in internal backend functions. Event admin access does not authorize Stripe operations or batch history access.
 - Batch names use a shared 40-character cap in `lib/stripe-name.ts`. Shorten overlong names without an error before saving or calling Stripe.
+- Convex object keys require printable ASCII. Use `blockKey` for every `codeTypeValues` read and write.
+- Preserve legacy ASCII keys and Unicode display names. Encode non-ASCII or control characters only in storage keys.
 - Code prefixes use a shared four-letter limit in `lib/stripe-name.ts`. Accept only ASCII letters and store them uppercase.
 - Generate blank prefixes once in `startBatch`, after request deduplication. Keep generated prefixes out of request fingerprints.
 - Preserve stored prefixes on retries, including longer or empty legacy prefixes.

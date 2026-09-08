@@ -187,6 +187,18 @@ test("saved block details show all codes and make event assignment optional", ()
   expect(html).not.toContain("<details open");
 });
 
+test.each([1, 2])("failed batches with %i saved codes distinguish generation from finalization", (generatedCount) => {
+  const batch = savedBlock();
+  state.detail = {
+    ...batch, status: "failed", generatedCount, canRetry: true, error: "Saved batch needs attention.",
+    codes: Array.from({ length: generatedCount }, (_, index) => ({ id: `promo_${index}`, code: `SAVED-${index}` })),
+  };
+  const html = renderToStaticMarkup(<CodeStudioPage batchId={batch._id} />);
+  expect(html).toContain(generatedCount === batch.quantity ? "Finalization stopped" : "Generation stopped");
+  expect(html).toContain("Resume generation");
+  expect(html).toContain("Download CSV");
+});
+
 test("expired blocks remain viewable but do not offer event assignment", () => {
   const batch = savedBlock();
   state.detail = {

@@ -293,7 +293,9 @@ export default function StripeBatchDetails({
                 <AlertTitle>
                   {batch.status === "complete"
                     ? "Codes saved, but not assigned"
-                    : "Generation stopped"}
+                    : batch.couponId && batch.generatedCount === batch.quantity
+                      ? "Finalization stopped"
+                      : "Generation stopped"}
                 </AlertTitle>
                 <AlertDescription>{batch.error}</AlertDescription>
               </Alert>
