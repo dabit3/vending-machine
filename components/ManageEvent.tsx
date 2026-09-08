@@ -738,6 +738,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   aria-label="Email addresses to add"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
+                  disabled={emailBusy}
                   rows={4}
                   placeholder={"one@example.com\ntwo@example.com"}
                   className="max-h-48 resize-y overflow-y-auto text-sm"
