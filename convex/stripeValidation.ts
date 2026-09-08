@@ -1,5 +1,9 @@
 import { ConvexError, v } from "convex/values";
-import { truncateStripeBatchName } from "../lib/stripe-name";
+import {
+  normalizeStripeCodePrefix,
+  STRIPE_CODE_PREFIX_ERROR,
+  truncateStripeBatchName,
+} from "../lib/stripe-name";
 
 export const generationFields = {
   name: v.string(),
@@ -51,15 +55,8 @@ export function validateGeneration(input: GenerationInput) {
   ) {
     throw new ConvexError("Generate between 1 and 500 codes per batch.");
   }
-  const rawPrefix = input.codePrefix?.trim() ?? "";
-  if (rawPrefix.length > 100)
-    throw new ConvexError("The code prefix is too long.");
-  const prefix = rawPrefix
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 12);
-  if (rawPrefix && !prefix)
-    throw new ConvexError("The prefix must include a letter or number.");
+  const prefix = normalizeStripeCodePrefix(input.codePrefix);
+  if (prefix === null) throw new ConvexError(STRIPE_CODE_PREFIX_ERROR);
   if (
     input.expiresAt !== undefined &&
     (!Number.isSafeInteger(input.expiresAt) || input.expiresAt <= Date.now())

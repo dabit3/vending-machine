@@ -1,6 +1,10 @@
 import { ConvexError } from "convex/values";
 import type { GenerationInput } from "@/convex/stripeValidation";
-import { truncateStripeBatchName } from "./stripe-name";
+import {
+  normalizeStripeCodePrefix,
+  STRIPE_CODE_PREFIX_ERROR,
+  truncateStripeBatchName,
+} from "./stripe-name";
 
 export type StripeForm = {
   name: string;
@@ -48,13 +52,13 @@ export function generationInput(
     (!Number.isFinite(expiresAt) || expiresAt <= Date.now())
   )
     throw new Error("Expiration must be in the future.");
-  if (form.prefix.trim() && !/[a-z0-9]/i.test(form.prefix))
-    throw new Error("The prefix must include a letter or number.");
+  const prefix = normalizeStripeCodePrefix(form.prefix);
+  if (prefix === null) throw new Error(STRIPE_CODE_PREFIX_ERROR);
   return {
     name,
     amountCents,
     quantity,
-    codePrefix: form.prefix,
+    codePrefix: prefix,
     expiresAt,
     expectedLive: live,
     confirmLive: live,

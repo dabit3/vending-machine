@@ -66,5 +66,22 @@ test("rejects past expiration and punctuation-only prefixes", () => {
   ).toThrow("future");
   expect(() =>
     generationInput({ ...form, prefix: "---" }, false, requestId),
-  ).toThrow("letter or number");
+  ).toThrow("up to 4 letters");
+});
+
+test.each(["a", "abcd", " AbCd "])("normalizes the optional letter prefix %j", (prefix) => {
+  expect(generationInput({ ...form, prefix }, false, requestId).codePrefix).toBe(
+    prefix.trim().toUpperCase(),
+  );
+});
+
+test.each(["ABCDE", "A1", "1234", "A-B", "A B", "é", "ß", "AB_CD"])(
+  "rejects the invalid code prefix %j",
+  (prefix) => {
+    expect(() => generationInput({ ...form, prefix }, false, requestId)).toThrow("up to 4 letters");
+  },
+);
+
+test.each(["", "   "])("leaves a blank prefix for server-side generation", (prefix) => {
+  expect(generationInput({ ...form, prefix }, false, requestId).codePrefix).toBe("");
 });

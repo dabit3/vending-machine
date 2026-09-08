@@ -227,7 +227,7 @@ export default function StripeBatchDetails({
         <CardTitle>{batch?.name ?? "Your codes"}</CardTitle>
         <CardDescription>
           {batch
-            ? `${usd(batch.amountCents)} per code · Single-use · ${batch.expiresAt ? `Expires ${new Date(batch.expiresAt).toLocaleString()}` : "No expiration"}`
+            ? `${usd(batch.amountCents)} per code · Single-use · Code prefix: ${batch.prefix || "None"} · ${batch.expiresAt ? `Expires ${new Date(batch.expiresAt).toLocaleString()}` : "No expiration"}`
             : "Generate a batch or choose one from your history."}
         </CardDescription>
         {batch && (

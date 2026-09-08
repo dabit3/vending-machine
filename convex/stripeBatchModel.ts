@@ -6,6 +6,7 @@ import { requireAdmin } from "./admins";
 import { blockKey } from "./blockValues";
 import { logAudit } from "./auditLog";
 import { validateGeneration, type GenerationInput } from "./stripeValidation";
+import { generateStripeCodePrefix } from "../lib/stripe-name";
 
 export const RETRY_WINDOW_MS = 23 * 60 * 60 * 1000;
 
@@ -86,6 +87,7 @@ export async function startBatch(
   await requireBatchCapacity(ctx);
   const batchId = await ctx.db.insert("stripeBatches", {
     ...values,
+    prefix: values.prefix || generateStripeCodePrefix(),
     createdBy,
     requestId: input.requestId,
     requestFingerprint,

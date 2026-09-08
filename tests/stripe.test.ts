@@ -25,7 +25,7 @@ const identity = {
 };
 const input = {
   name: "Conference credits",
-  codePrefix: "summer sale",
+  codePrefix: "demo",
   amountCents: 5000,
   quantity: 7,
   expectedLive: false,
@@ -164,6 +164,41 @@ describe("Stripe authorization", () => {
 });
 
 describe("Stripe generation", () => {
+  test.each([undefined, "", "   "])("generates and persists one four-letter prefix when the supplied prefix is %j", async (codePrefix) => {
+    const { t, admin } = await setup();
+    const request = { ...input, codePrefix };
+    const batchId = await admin.mutation(api.stripeBatches.create, request);
+    const batch = await admin.query(api.stripeBatches.get, { batchId });
+    expect(batch?.prefix).toMatch(/^[A-Z]{4}$/);
+    expect(await admin.mutation(api.stripeBatches.create, request)).toBe(batchId);
+    expect(await admin.mutation(api.stripeBatches.create, { ...request, codePrefix: "" })).toBe(batchId);
+    await expect(
+      admin.mutation(api.stripeBatches.create, { ...request, codePrefix: "EDIT" }),
+    ).rejects.toThrow("already used");
+    await drain(t);
+    const complete = await admin.query(api.stripeBatches.get, { batchId });
+    expect(complete).toMatchObject({ prefix: batch!.prefix, status: "complete", generatedCount: input.quantity });
+    expect(complete?.codes.every((code) => code.code.startsWith(`${batch!.prefix}-`))).toBe(true);
+    expect(stripe.promotion).toHaveBeenCalledTimes(input.quantity);
+    expect(await t.run((ctx) => ctx.db.query("stripeBatches").collect())).toHaveLength(1);
+  });
+
+  test.each(["", "SUMMERSALE12"])("retry preserves a legacy prefix of %j", async (prefix) => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, quantity: 1 });
+    await t.run((ctx) => ctx.db.patch(batchId, { prefix }));
+    stripe.promotion.mockRejectedValueOnce(new Error("temporary failure"));
+    await drain(t);
+    const failedCall = stripe.promotion.mock.calls[0];
+    expect(failedCall[0].code).toMatch(
+      prefix ? /^SUMMERSALE12-[A-Z0-9]{10}$/ : /^[A-Z0-9]{10}$/,
+    );
+    await admin.mutation(api.stripeBatches.retry, { batchId, confirmLive: false });
+    await drain(t);
+    expect(stripe.promotion.mock.calls[1]).toEqual(failedCall);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({ prefix, status: "complete" });
+  });
+
   test.each([39, 40, 41, 80, 81, 120])(
     "normalizes a %i-character name before saving the batch and calling Stripe",
     async (length) => {
@@ -382,7 +417,7 @@ describe("Stripe generation", () => {
         expires_at: Math.floor(expiresAt / 1000),
       });
       expect(params.code).toMatch(
-        /^SUMMERSALE-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/,
+        /^DEMO-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/,
       );
       expect(options.idempotencyKey).toContain(`vm:${batchId}:promo:`);
     }
@@ -416,10 +451,11 @@ describe("Stripe generation", () => {
       .mockRejectedValueOnce(
         new Error("sensitive Stripe error sk_test_do_not_expose"),
       );
-    const batchId = await admin.mutation(api.stripeBatches.create, input);
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, codePrefix: "" });
     await drain(t);
     const failed = await admin.query(api.stripeBatches.get, { batchId });
     expect(failed).toMatchObject({ status: "failed", generatedCount: 1 });
+    expect(failed?.prefix).toMatch(/^[A-Z]{4}$/);
     expect(failed?.error).not.toContain("sk_test_");
     const failedKey = stripe.promotion.mock.calls[1][1].idempotencyKey;
     await admin.mutation(api.stripeBatches.retry, {
@@ -428,9 +464,10 @@ describe("Stripe generation", () => {
     });
     await drain(t);
     expect(stripe.promotion.mock.calls[2][1].idempotencyKey).toBe(failedKey);
+    expect(stripe.promotion.mock.calls[2]).toEqual(stripe.promotion.mock.calls[1]);
     expect(stripe.coupon).toHaveBeenCalledTimes(1);
     expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject(
-      { status: "complete", generatedCount: 7 },
+      { status: "complete", generatedCount: 7, prefix: failed!.prefix },
     );
   });
 
@@ -486,6 +523,13 @@ describe("Stripe generation", () => {
     { amountCents: 100_000_000 },
     { name: " " },
     { codePrefix: "!!!" },
+    { codePrefix: "ABCDE" },
+    { codePrefix: "A1" },
+    { codePrefix: "1234" },
+    { codePrefix: "A B" },
+    { codePrefix: "A-B" },
+    { codePrefix: "é" },
+    { codePrefix: "ß" },
     { expiresAt: 0 },
     { requestId: "short" },
   ])("rejects invalid input %j before scheduling Stripe", async (invalid) => {
@@ -658,6 +702,21 @@ describe("code library", () => {
 });
 
 describe("batch assignment", () => {
+  test.each([undefined, "camp"])("new events use the custom or automatic prefix %j for their entire batch", async (codePrefix) => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, {
+      name: "Prefixed event",
+      stripeGeneration: { ...input, codePrefix, quantity: 2 },
+    });
+    const [batch] = await admin.query(api.stripeBatches.list, { eventId: event.id });
+    if (codePrefix) expect(batch.prefix).toBe("CAMP");
+    else expect(batch.prefix).toMatch(/^[A-Z]{4}$/);
+    await drain(t);
+    const codes = await admin.query(api.codes.list, { eventId: event.id });
+    expect(codes).toHaveLength(2);
+    expect(codes.every((code) => code.code.startsWith(`${batch.prefix}-`))).toBe(true);
+  });
+
   test("shortens a batch name derived from a long event name without renaming the event", async () => {
     const { t, admin } = await setup();
     const name = "Community coding workshop ".repeat(4).trim();
@@ -712,12 +771,12 @@ describe("batch assignment", () => {
     ]);
   });
 
-  test("invalid generation rolls back the event and does not schedule Stripe", async () => {
+  test.each([{ quantity: 501 }, { codePrefix: "ABCDE" }, { codePrefix: "A1" }])("invalid generation %j rolls back the event and does not schedule Stripe", async (invalid) => {
     const { t, admin } = await setup();
     await expect(
       admin.mutation(api.events.create, {
         name: "Invalid event",
-        stripeGeneration: { ...input, quantity: 501 },
+        stripeGeneration: { ...input, ...invalid },
       }),
     ).rejects.toThrow();
     expect(await t.run((ctx) => ctx.db.query("events").collect())).toHaveLength(
@@ -851,7 +910,7 @@ describe("batch assignment", () => {
       slug: first.slug,
     });
     expect(JSON.stringify(publicEvent)).not.toContain("couponId");
-    expect(JSON.stringify(publicEvent)).not.toContain("SUMMERSALE-");
+    expect(JSON.stringify(publicEvent)).not.toContain("DEMO-");
   });
 
   test("automatically adds codes to the target event but keeps history if the event disappears", async () => {

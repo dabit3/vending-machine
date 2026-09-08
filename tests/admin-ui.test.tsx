@@ -269,6 +269,40 @@ test("new event form exposes all three code sources and keeps page settings opti
   expect(html).not.toContain("STRIPE_API_KEY");
 });
 
+test.each(["event", "standalone"])("the %s form places a four-letter optional prefix beside the batch name", (mode) => {
+  const html = renderToStaticMarkup(mode === "event" ? <NewEventForm /> : <StripeCodeStudio />);
+  const prefixInput = [...html.matchAll(/<input\b[^>]*>/g)]
+    .map((match) => match[0])
+    .find((input) => input.includes('-prefix"'));
+  expect(prefixInput).toContain('maxLength="4"');
+  expect(prefixInput).toContain('pattern="[A-Za-z]{0,4}"');
+  expect(prefixInput).not.toContain("required");
+  expect(html.indexOf("Batch name")).toBeLessThan(html.indexOf("Code prefix"));
+  expect(html.indexOf("Code prefix")).toBeLessThan(html.indexOf("Value per code"));
+  expect(html).toContain("generate a 4-letter prefix");
+  expect(html).not.toContain("Random codes with no prefix");
+});
+
+test("prefix previews use uppercase letters and invalid prefixes are explained", () => {
+  const render = (prefix: string) => renderToStaticMarkup(
+    <StripeGenerationFields value={{ ...emptyStripeForm, prefix }} onChange={() => {}} />,
+  );
+  expect(render("cAmp")).toContain("CAMP-XXXXXXXXXX");
+  for (const prefix of ["ABCDE", "A1", "A-B"]) {
+    const html = render(prefix);
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain("up to 4 letters");
+  }
+});
+
+test.each(["CAMP", ""])("saved batch details display the persisted prefix %j", (prefix) => {
+  const batch = savedBlock();
+  state.detail = { ...batch, prefix, codes: [] };
+  const html = renderToStaticMarkup(<CodeStudioPage batchId={batch._id} />);
+  expect(html).toContain("Code prefix");
+  expect(html).toContain(prefix || "None");
+});
+
 test("code studio shortens batch names prefilled from long event names", () => {
   const name = "N".repeat(100);
   const html = renderToStaticMarkup(<StripeCodeStudio eventName={name} />);
