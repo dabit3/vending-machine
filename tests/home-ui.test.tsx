@@ -8,25 +8,14 @@ const state = vi.hoisted(() => ({
   claimed: [] as { event: { _id: string } }[],
   theme: "light",
   authenticated: true,
-  hasOlder: false,
-  queryArgs: {} as Record<string, unknown>,
 }));
 
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isAuthenticated: state.authenticated }),
   useQuery: (ref: Parameters<typeof getFunctionName>[0], args: unknown) => {
     if (args === "skip") return undefined;
-    const name = getFunctionName(ref);
-    state.queryArgs[name] = args;
-    if (name === "events:list") return state.events;
-    if (name === "events:hasArchived") return state.hasOlder;
-    return state.claimed;
+    return getFunctionName(ref) === "events:list" ? state.events : state.claimed;
   },
-  usePaginatedQuery: () => ({
-    results: [],
-    status: "LoadingFirstPage",
-    loadMore: vi.fn(),
-  }),
 }));
 vi.mock("next-themes", () => ({
   useTheme: () => ({ resolvedTheme: state.theme }),
@@ -48,8 +37,6 @@ beforeEach(() => {
     claimed: [{ event: { _id: "today" } }],
     theme: "light",
     authenticated: true,
-    hasOlder: false,
-    queryArgs: {},
   });
 });
 
@@ -91,28 +78,6 @@ test.each([
   const html = renderToStaticMarkup(<Home />);
   expect(html.includes('href="/boundary"')).toBe(visible);
   expect(html.includes("Past events")).toBe(visible);
-});
-
-test("older events stay behind a view-more button until requested", () => {
-  vi.setSystemTime(new Date(2026, 8, 7, 12));
-  const hidden = renderToStaticMarkup(<Home />);
-  expect(hidden).not.toContain("View older events");
-  expect(hidden).not.toContain("Older events");
-  // 13 days back is the last day still listed; the server hides earlier dates.
-  expect(state.queryArgs["events:list"]).toEqual({ since: "2026-08-25" });
-  expect(state.queryArgs["events:hasArchived"]).toEqual({ before: "2026-08-25" });
-
-  state.hasOlder = true;
-  const collapsed = renderToStaticMarkup(<Home />);
-  expect(collapsed).toContain("View older events");
-  expect(collapsed).not.toContain("Older events");
-  expect(collapsed).not.toContain('href="/old"');
-  expect(collapsed.indexOf('href="/recent"')).toBeLessThan(collapsed.indexOf("View older events"));
-
-  state.events = [];
-  const onlyOlder = renderToStaticMarkup(<Home />);
-  expect(onlyOlder).toContain("Nothing to dispense yet");
-  expect(onlyOlder).toContain("View older events");
 });
 
 test("anonymous visitors can browse without querying claimed codes", () => {

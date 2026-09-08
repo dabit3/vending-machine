@@ -1,13 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { CalendarPlus, Plus, Ticket } from "lucide-react";
+import {
+  CalendarPlus,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Ticket,
+} from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Empty,
   EmptyDescription,
@@ -16,6 +24,11 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+
+// Past events stay in the main listing for this many days after their date;
+// anything older waits behind "View older events" and pages 25 at a time.
+const RECENT_PAST_DAYS = 14;
+const OLDER_PAGE_SIZE = 25;
 
 interface ManagedEventItem {
   _id: string;
@@ -66,6 +79,8 @@ export default function AdminDashboard() {
   const events = useQuery(api.events.listManaged);
   const access = useQuery(api.admins.accessLevel);
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
+  const [showOlder, setShowOlder] = useState(false);
+  const [olderPage, setOlderPage] = useState(0);
 
   // Mirrors the home page grouping: dated events that have passed sink into
   // their own dimmed group; undated events count as active. Active events
@@ -81,9 +96,22 @@ export default function AdminDashboard() {
       .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
     ...active.filter((e) => !e.eventDate),
   ];
+  // Ended events split at RECENT_PAST_DAYS: the recent ones list under
+  // "Past events", the rest are collapsed and paged under "Older events".
+  const daysAgo = (e: ManagedEventItem) =>
+    e.eventDate ? -daysUntilEvent(e.eventDate) : 0;
+  const byDateDesc = (a: ManagedEventItem, b: ManagedEventItem) =>
+    (b.eventDate ?? "").localeCompare(a.eventDate ?? "");
   const past = (
-    events?.filter((e) => e.eventDate && daysUntilEvent(e.eventDate) < 0) ?? []
-  ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
+    events?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
+  ).sort(byDateDesc);
+  const older = (
+    events?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
+  ).sort(byDateDesc);
+  const olderPageCount = Math.max(1, Math.ceil(older.length / OLDER_PAGE_SIZE));
+  const olderPageIndex = Math.min(olderPage, olderPageCount - 1);
+  const olderStart = olderPageIndex * OLDER_PAGE_SIZE;
+  const olderVisible = older.slice(olderStart, olderStart + OLDER_PAGE_SIZE);
 
   return (
     <div>
@@ -172,6 +200,66 @@ export default function AdminDashboard() {
                 ))}
               </ul>
             </>
+          ) : null}
+          {older.length > 0 ? (
+            showOlder ? (
+              <>
+                <div className="mt-12 flex items-baseline justify-between">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    Older events
+                  </h2>
+                  <span className="font-mono text-xs text-muted-dim tabular-nums">
+                    {String(older.length).padStart(2, "0")}
+                  </span>
+                </div>
+                <ul className="mt-4 border-t border-border">
+                  {olderVisible.map((event) => (
+                    <AdminEventRow key={event._id} event={event} past />
+                  ))}
+                </ul>
+                {older.length > OLDER_PAGE_SIZE ? (
+                  <nav
+                    aria-label="Older events pages"
+                    className="mt-4 flex items-center justify-between gap-4"
+                  >
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {olderStart + 1}–{olderStart + olderVisible.length} of{" "}
+                      {older.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={olderPageIndex === 0}
+                        onClick={() => setOlderPage(olderPageIndex - 1)}
+                      >
+                        <ChevronLeft data-icon="inline-start" />
+                        Previous
+                      </Button>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        Page {olderPageIndex + 1} of {olderPageCount}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={olderPageIndex >= olderPageCount - 1}
+                        onClick={() => setOlderPage(olderPageIndex + 1)}
+                      >
+                        Next
+                        <ChevronRight data-icon="inline-end" />
+                      </Button>
+                    </div>
+                  </nav>
+                ) : null}
+              </>
+            ) : (
+              <div className="mt-10 flex justify-center">
+                <Button variant="outline" onClick={() => setShowOlder(true)}>
+                  <ChevronDown data-icon="inline-start" />
+                  View {older.length} older event{older.length === 1 ? "" : "s"}
+                </Button>
+              </div>
+            )
           ) : null}
         </>
       )}
