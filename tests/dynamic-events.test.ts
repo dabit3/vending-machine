@@ -121,3 +121,49 @@ test("blacklisted emails cannot claim from dynamic events", async () => {
     ok: false,
   });
 });
+
+test("dynamic events are always hidden from the home page", async () => {
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    await ctx.db.insert("admins", { email: walkUpEmail });
+  });
+  const admin = t.withIdentity(walkUp);
+
+  const { id } = await admin.mutation(api.events.create, {
+    name: "Dynamic",
+    dynamic: true,
+    hidden: false,
+  });
+  expect(await admin.query(api.events.get, { id })).toMatchObject({
+    dynamic: true,
+    hidden: true,
+  });
+  expect(await t.query(api.events.list, {})).toEqual([]);
+
+  // Legacy dynamic rows without the stored flag are still treated as hidden.
+  await t.run(async (ctx) => {
+    await ctx.db.patch(id, { hidden: undefined });
+  });
+  expect(await t.query(api.events.list, {})).toEqual([]);
+  expect(await admin.query(api.events.listManaged, {})).toMatchObject([
+    { dynamic: true, hidden: true },
+  ]);
+
+  await admin.mutation(api.events.update, {
+    id,
+    name: "Dynamic",
+    slug: "dynamic",
+    dynamic: true,
+    hidden: false,
+  });
+  expect(await admin.query(api.events.get, { id })).toMatchObject({ hidden: true });
+
+  await admin.mutation(api.events.update, {
+    id,
+    name: "Dynamic",
+    slug: "dynamic",
+    dynamic: false,
+    hidden: false,
+  });
+  expect(await t.query(api.events.list, {})).toMatchObject([{ slug: "dynamic" }]);
+});

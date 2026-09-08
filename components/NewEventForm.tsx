@@ -236,7 +236,8 @@ export default function NewEventForm({
                     <Field orientation="horizontal">
                       <Checkbox
                         id="event-hidden"
-                        checked={hidden}
+                        checked={hidden || dynamic}
+                        disabled={dynamic}
                         onCheckedChange={(checked) =>
                           setHidden(checked === true)
                         }
@@ -246,8 +247,9 @@ export default function NewEventForm({
                       </FieldLabel>
                     </Field>
                     <FieldDescription>
-                      Hidden events are still accessible through their claim
-                      URL.
+                      {dynamic
+                        ? "Dynamic events are always hidden and only reachable through their claim URL or QR code."
+                        : "Hidden events are still accessible through their claim URL."}
                     </FieldDescription>
                     <Field orientation="horizontal">
                       <Checkbox
