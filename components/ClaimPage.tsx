@@ -422,7 +422,7 @@ export default function ClaimPage({
                         }
                       >
                         <BookOpen data-icon="inline-start" />
-                        Read instructions to claim
+                        Read how to redeem
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
