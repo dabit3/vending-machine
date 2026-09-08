@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
+import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -20,6 +21,11 @@ export const add = mutation({
   args: { eventId: v.id("events"), emails: v.array(v.string()) },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    if (args.emails.length > UPLOAD_CHUNK_SIZE) {
+      throw new Error(
+        `Add at most ${UPLOAD_CHUNK_SIZE} emails per request (got ${args.emails.length}).`
+      );
+    }
     let added = 0;
     let skipped = 0;
     let flagged = 0;

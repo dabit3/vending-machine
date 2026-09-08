@@ -29,6 +29,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
+import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { cn } from "@/lib/utils";
 import {
@@ -73,8 +74,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
-
-const UPLOAD_CHUNK_SIZE = 500;
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
@@ -227,10 +226,20 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     if (list.length === 0) return;
     setEmailBusy(true);
     try {
-      const { added, skipped, flagged, blacklisted } = await addEmails({
-        eventId: id,
-        emails: list,
-      });
+      let added = 0;
+      let skipped = 0;
+      let flagged = 0;
+      let blacklisted = 0;
+      for (let i = 0; i < list.length; i += UPLOAD_CHUNK_SIZE) {
+        const res = await addEmails({
+          eventId: id,
+          emails: list.slice(i, i + UPLOAD_CHUNK_SIZE),
+        });
+        added += res.added;
+        skipped += res.skipped;
+        flagged += res.flagged;
+        blacklisted += res.blacklisted;
+      }
       const description =
         [
           blacklisted ? `${blacklisted} rejected (blacklisted).` : "",
