@@ -55,6 +55,10 @@ export default defineSchema({
     // Hidden events are excluded from the public home page listing but
     // remain reachable via their claim URL.
     hidden: v.optional(v.boolean()),
+    // Dynamic events skip the participant list: any signed-in verified email
+    // can claim, and is recorded in `emails` on first contact so it can only
+    // claim once.
+    dynamic: v.optional(v.boolean()),
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),

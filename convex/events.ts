@@ -104,6 +104,7 @@ export const getBySlug = query({
       claimInstructions: event.claimInstructions,
       creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
+      dynamic: event.dynamic ?? false,
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
       soldOut: availableTypes.size === 0,
@@ -134,6 +135,7 @@ export const get = query({
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       hidden: event.hidden,
+      dynamic: event.dynamic,
     };
   },
 });
@@ -167,6 +169,7 @@ export const listManaged = query({
       description: event.description,
       eventDate: event.eventDate,
       hidden: event.hidden,
+      dynamic: event.dynamic,
     }));
   },
 });
@@ -179,6 +182,7 @@ export const create = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
+    dynamic: v.optional(v.boolean()),
     stripeGeneration: v.optional(v.object(generationFields)),
     stripeBatchId: v.optional(v.id("stripeBatches")),
   },
@@ -203,6 +207,7 @@ export const create = mutation({
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       hidden: args.hidden || undefined,
+      dynamic: args.dynamic || undefined,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
     if (args.stripeBatchId) {
@@ -224,6 +229,7 @@ export const update = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
+    dynamic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
@@ -243,6 +249,7 @@ export const update = mutation({
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       hidden: args.hidden || undefined,
+      dynamic: args.dynamic || undefined,
     });
     return { slug };
   },
