@@ -62,7 +62,7 @@ test.each(["light", "dark"])("the %s homepage preserves event links, grouping, a
   expect(html).toContain("Claimed");
   expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/upcoming"'));
   expect(html.indexOf('href="/upcoming"')).toBeLessThan(html.indexOf('href="/open"'));
-  expect(html.indexOf("Past events")).toBeLessThan(html.indexOf('href="/recent"'));
+  expect(html.indexOf("Recent past events")).toBeLessThan(html.indexOf('href="/recent"'));
   expect(html).not.toContain("text-black");
   expect(html).not.toContain("text-white");
 });
@@ -77,7 +77,7 @@ test.each([
   state.events = [{ _id: "boundary", name: "Boundary event", slug: "boundary", eventDate: date }];
   const html = renderToStaticMarkup(<Home />);
   expect(html.includes('href="/boundary"')).toBe(visible);
-  expect(html.includes("Past events")).toBe(visible);
+  expect(html.includes("Recent past events")).toBe(visible);
 });
 
 test("anonymous visitors can browse without querying claimed codes", () => {

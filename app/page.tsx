@@ -278,7 +278,7 @@ export default function Home() {
               {past.length > 0 ? (
                 <>
                   <h2 className="mt-14 text-sm font-medium text-muted-foreground">
-                    Past events
+                    Recent past events
                   </h2>
                   <ul className="mt-4 border-t border-border">
                     {past.map((event, index) => (
