@@ -1,10 +1,46 @@
-import { mutation, query } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
+import { isBlacklisted } from "./blacklist";
 import { blockValue } from "./blockValues";
 import { dropTypeIfEmpty } from "./codes";
 import { notExpired } from "./codeExpiry";
+
+async function findParticipant(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  email: string
+) {
+  return await ctx.db
+    .query("emails")
+    .withIndex("by_event_email", (q) =>
+      q.eq("eventId", event._id).eq("email", email)
+    )
+    .unique();
+}
+
+// Dynamic events have no pre-uploaded participant list: the first time a
+// signed-in verified email interacts with the event it is enrolled on the
+// spot, so the usual per-email claim and instructions tracking applies.
+// Blacklisted addresses are never enrolled.
+async function findOrEnrollParticipant(
+  ctx: MutationCtx,
+  event: Doc<"events">,
+  email: string
+) {
+  const existing = await findParticipant(ctx, event, email);
+  if (existing || !event.dynamic) return existing;
+  if (await isBlacklisted(ctx, email)) return null;
+  const id = await ctx.db.insert("emails", { eventId: event._id, email });
+  return await ctx.db.get(id);
+}
 
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
@@ -28,12 +64,7 @@ export const eligibility = query({
     if (!event) {
       return { eligible: false as const, reason: "not_found" as const };
     }
-    const allowed = await ctx.db
-      .query("emails")
-      .withIndex("by_event_email", (q) =>
-        q.eq("eventId", event._id).eq("email", email)
-      )
-      .unique();
+    const allowed = await findParticipant(ctx, event, email);
     if (args.preview && (await isEventAdmin(ctx, event._id))) {
       return {
         eligible: true as const,
@@ -42,7 +73,8 @@ export const eligibility = query({
         preview: true as const,
       };
     }
-    if (!allowed) {
+    const walkUpEligible = event.dynamic && !(await isBlacklisted(ctx, email));
+    if (!allowed && !walkUpEligible) {
       return { eligible: false as const, reason: "not_listed" as const, email };
     }
     const claimed = await ctx.db
@@ -51,7 +83,7 @@ export const eligibility = query({
         q.eq("eventId", event._id).eq("claimedBy", email)
       )
       .unique();
-    const instructionsViewed = allowed.instructionsViewedAt !== undefined;
+    const instructionsViewed = allowed?.instructionsViewedAt !== undefined;
     if (claimed) {
       return {
         eligible: true as const,
@@ -82,12 +114,7 @@ export const markInstructionsRead = mutation({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return;
-    const allowed = await ctx.db
-      .query("emails")
-      .withIndex("by_event_email", (q) =>
-        q.eq("eventId", event._id).eq("email", email)
-      )
-      .unique();
+    const allowed = await findOrEnrollParticipant(ctx, event, email);
     if (!allowed || allowed.instructionsViewedAt !== undefined) return;
     await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });
   },
@@ -154,16 +181,13 @@ export const claim = mutation({
       return { ok: false as const, error: "Event not found." };
     }
 
-    const allowed = await ctx.db
-      .query("emails")
-      .withIndex("by_event_email", (q) =>
-        q.eq("eventId", event._id).eq("email", email)
-      )
-      .unique();
+    const allowed = await findOrEnrollParticipant(ctx, event, email);
     if (!allowed) {
       return {
         ok: false as const,
-        error: `${email} is not on the participant list for this event. Sign in with the email you registered with.`,
+        error: event.dynamic
+          ? `${email} is not eligible to claim a code for this event.`
+          : `${email} is not on the participant list for this event. Sign in with the email you registered with.`,
       };
     }
 

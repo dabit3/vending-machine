@@ -336,8 +336,9 @@ export default function ClaimPage({
                 ) : !isAuthenticated ? (
                   <div className="flex flex-col gap-4">
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      Sign in with the email you registered with — codes are
-                      only dispensed to verified addresses.
+                      {event.dynamic
+                        ? "Sign in to claim your code — one per verified email address."
+                        : "Sign in with the email you registered with — codes are only dispensed to verified addresses."}
                     </p>
                     <SignInButton mode="modal">
                       <Button variant="brand" size="lg" className="w-full">
@@ -364,11 +365,20 @@ export default function ClaimPage({
                       <AlertTitle>
                         {eligibility.reason === "unverified"
                           ? "No verified email on your account"
-                          : "You're not on the list for this event"}
+                          : event.dynamic
+                            ? "You can't claim a code for this event"
+                            : "You're not on the list for this event"}
                       </AlertTitle>
                       <AlertDescription>
                         {eligibility.reason === "unverified" ? (
                           "Sign in with the email you registered with."
+                        ) : event.dynamic ? (
+                          <>
+                            <span className="font-medium text-foreground">
+                              {eligibility.email ?? "This email"}
+                            </span>{" "}
+                            isn&apos;t eligible for this event.
+                          </>
                         ) : (
                           <>
                             <span className="font-medium text-foreground">
@@ -401,8 +411,9 @@ export default function ClaimPage({
                 ) : mustReadInstructions ? (
                   <div className="flex flex-col gap-5">
                     <p className="text-sm leading-relaxed text-muted-foreground">
-                      You&apos;re on the list. Before your code is dispensed,
-                      take a moment to read how to redeem it.
+                      {event.dynamic ? "You're in." : "You're on the list."}{" "}
+                      Before your code is dispensed, take a moment to read how
+                      to redeem it.
                     </p>
                     <Dialog open={readOpen} onOpenChange={setReadOpen}>
                       <DialogTrigger

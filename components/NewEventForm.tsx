@@ -63,6 +63,7 @@ export default function NewEventForm({
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [hidden, setHidden] = useState(false);
+  const [dynamic, setDynamic] = useState(false);
   const [source, setSource] = useState(initialBatchId ? "saved" : "generate");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
@@ -88,6 +89,7 @@ export default function NewEventForm({
         description: description || undefined,
         claimInstructions: instructions || undefined,
         hidden,
+        dynamic,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
       });
@@ -246,6 +248,23 @@ export default function NewEventForm({
                     <FieldDescription>
                       Hidden events are still accessible through their claim
                       URL.
+                    </FieldDescription>
+                    <Field orientation="horizontal">
+                      <Checkbox
+                        id="event-dynamic"
+                        checked={dynamic}
+                        onCheckedChange={(checked) =>
+                          setDynamic(checked === true)
+                        }
+                      />
+                      <FieldLabel htmlFor="event-dynamic">
+                        Dynamic — anyone can claim
+                      </FieldLabel>
+                    </Field>
+                    <FieldDescription>
+                      No participant list needed. Anyone who signs in from the
+                      claim URL or QR code gets a code, and their email is
+                      recorded so each address can only claim once.
                     </FieldDescription>
                   </FieldGroup>
                 </details>

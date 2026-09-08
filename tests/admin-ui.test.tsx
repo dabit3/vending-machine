@@ -244,6 +244,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     description: undefined,
     eventDate,
     hidden: undefined,
+    dynamic: undefined,
   });
   try {
     state.events = [

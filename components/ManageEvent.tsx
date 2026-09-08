@@ -1478,6 +1478,7 @@ function EventDetailsForm({
     event.claimInstructions ?? ""
   );
   const [hidden, setHidden] = useState(event.hidden ?? false);
+  const [dynamic, setDynamic] = useState(event.dynamic ?? false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -1492,6 +1493,7 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         claimInstructions: claimInstructions || undefined,
         hidden: hidden || undefined,
+        dynamic: dynamic || undefined,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1575,6 +1577,17 @@ function EventDetailsForm({
               />
               <FieldLabel htmlFor="detail-hidden" className="font-normal">
                 Hide from home page
+              </FieldLabel>
+            </Field>
+            <Field orientation="horizontal" className="sm:col-span-2">
+              <Checkbox
+                id="detail-dynamic"
+                checked={dynamic}
+                onCheckedChange={(checked) => setDynamic(checked === true)}
+              />
+              <FieldLabel htmlFor="detail-dynamic" className="font-normal">
+                Dynamic — anyone who signs in can claim, no participant list
+                needed (one code per email)
               </FieldLabel>
             </Field>
           </FieldGroup>
