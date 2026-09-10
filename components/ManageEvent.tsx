@@ -29,6 +29,7 @@ import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
+import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { cn } from "@/lib/utils";
 import {
@@ -73,8 +74,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
-
-const UPLOAD_CHUNK_SIZE = 500;
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
@@ -219,18 +218,33 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   }
 
   // Shares the busy flag with the file upload so the two ways of adding to the
-  // same list can't run at once. The textarea is only cleared on success, so a
-  // failed paste isn't lost.
+  // same list can't run at once. Large pastes go up in chunks; on failure the
+  // textarea keeps only the addresses not yet sent, so a retry doesn't
+  // re-submit what already landed.
   async function handleAddEmails(e: React.FormEvent) {
     e.preventDefault();
-    const list = emailInput.split(/[\n,;\s]+/).filter(Boolean);
-    if (list.length === 0) return;
+    const rows = emailInput.split(/[\n,;\s]+/).filter(Boolean);
+    if (rows.length === 0) return;
+    // Dedupe up front so repeats split across chunks aren't double-counted.
+    const list = [...new Set(rows.map((r) => r.trim().toLowerCase()))];
     setEmailBusy(true);
+    let sent = 0;
     try {
-      const { added, skipped, flagged, blacklisted } = await addEmails({
-        eventId: id,
-        emails: list,
-      });
+      let added = 0;
+      let skipped = rows.length - list.length;
+      let flagged = 0;
+      let blacklisted = 0;
+      for (let i = 0; i < list.length; i += UPLOAD_CHUNK_SIZE) {
+        const res = await addEmails({
+          eventId: id,
+          emails: list.slice(i, i + UPLOAD_CHUNK_SIZE),
+        });
+        sent = Math.min(i + UPLOAD_CHUNK_SIZE, list.length);
+        added += res.added;
+        skipped += res.skipped;
+        flagged += res.flagged;
+        blacklisted += res.blacklisted;
+      }
       const description =
         [
           blacklisted ? `${blacklisted} rejected (blacklisted).` : "",
@@ -250,7 +264,15 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       }
       setEmailInput("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to add emails");
+      const message = err instanceof Error ? err.message : "Failed to add emails";
+      if (sent > 0) {
+        setEmailInput(list.slice(sent).join("\n"));
+        toast.error(message, {
+          description: `${sent} of ${list.length} addresses were submitted before the error; the rest are still in the box.`,
+        });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setEmailBusy(false);
     }
@@ -716,6 +738,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   aria-label="Email addresses to add"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
+                  disabled={emailBusy}
                   rows={4}
                   placeholder={"one@example.com\ntwo@example.com"}
                   className="max-h-48 resize-y overflow-y-auto text-sm"
