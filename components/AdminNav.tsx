@@ -20,6 +20,7 @@ export default function AdminNav() {
     { href: "/admin", label: "Events" },
     ...(access?.isGlobalAdmin
       ? [
+          { href: "/admin/insights", label: "Insights" },
           { href: "/admin/codes", label: "Codes" },
           { href: "/admin/admins", label: "Admins" },
           { href: "/admin/blacklist", label: "Blacklist" },

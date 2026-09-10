@@ -7,6 +7,7 @@ import SystemAdminGate from "../components/SystemAdminGate";
 import AdminNav from "../components/AdminNav";
 import NewEventForm from "../components/NewEventForm";
 import AdminDashboard from "../app/admin/page";
+import InsightsPage from "../app/admin/insights/page";
 import CodeStudioPage from "../components/CodeStudioPage";
 import { SavedBatchPicker } from "../components/StripeBatchDetails";
 import StripeCodeStudio from "../components/StripeCodeStudio";
@@ -426,4 +427,21 @@ test("missing Stripe setup disables generation without removing the other event 
   const studio = renderToStaticMarkup(<StripeCodeStudio />);
   expect(studio).toContain("Stripe setup required");
   expect(studio).not.toContain("Value per code (USD)");
+});
+
+test("insights is linked and rendered only for system admins", () => {
+  expect(renderToStaticMarkup(<AdminNav />)).not.toContain(
+    'href="/admin/insights"',
+  );
+  expect(renderToStaticMarkup(<InsightsPage />)).toContain(
+    "System admins only",
+  );
+
+  state.global = true;
+  expect(renderToStaticMarkup(<AdminNav />)).toContain(
+    'href="/admin/insights"',
+  );
+  const html = renderToStaticMarkup(<InsightsPage />);
+  expect(html).toContain("Event history");
+  expect(html).not.toContain("System admins only");
 });

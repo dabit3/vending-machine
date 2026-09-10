@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
@@ -177,6 +178,138 @@ export const listManaged = query({
       hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
     }));
+  },
+});
+
+
+// Aggregates for the global-admin history dashboard. Claims are bucketed by
+// their `claimedAt` day so the calendar reads as real activity over time,
+// while event dots use their event date (or creation date when undated).
+export const history = query({
+  args: { days: v.number() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const until = Date.now() + 24 * 60 * 60 * 1000;
+    const since = until - (args.days + 1) * 24 * 60 * 60 * 1000;
+
+    const [events, codes, emails, requests] = await Promise.all([
+      ctx.db.query("events").collect(),
+      ctx.db.query("codes").collect(),
+      ctx.db.query("emails").collect(),
+      ctx.db.query("accessRequests").collect(),
+    ]);
+
+    const eventInfo = new Map(
+      events.map((event) => [
+        event._id,
+        {
+          name: event.name,
+          slug: event.slug,
+          eventDate: event.eventDate,
+          createdAt: event._creationTime,
+        },
+      ]),
+    );
+
+    const daily = new Map<string, number>();
+    const perEvent = new Map<
+      Id<"events">,
+      {
+        codes: number;
+        claimed: number;
+        attendees: Set<string>;
+        eligible: number;
+        requests: number;
+        approved: number;
+        denied: number;
+        firstClaim: number | null;
+        lastClaim: number | null;
+      }
+    >();
+    const forEvent = (eventId: (typeof events)[number]["_id"]) => {
+      let stats = perEvent.get(eventId);
+      if (!stats) {
+        stats = {
+          codes: 0,
+          claimed: 0,
+          attendees: new Set<string>(),
+          eligible: 0,
+          requests: 0,
+          approved: 0,
+          denied: 0,
+          firstClaim: null,
+          lastClaim: null,
+        };
+        perEvent.set(eventId, stats);
+      }
+      return stats;
+    };
+
+    for (const code of codes) {
+      const stats = forEvent(code.eventId);
+      stats.codes++;
+      if (!code.claimedBy) continue;
+      stats.claimed++;
+      stats.attendees.add(code.claimedBy);
+      const at = code.claimedAt ?? code._creationTime;
+      stats.firstClaim =
+        stats.firstClaim === null ? at : Math.min(stats.firstClaim, at);
+      stats.lastClaim =
+        stats.lastClaim === null ? at : Math.max(stats.lastClaim, at);
+      if (at >= since && at < until) {
+        const day = new Date(at).toISOString().slice(0, 10);
+        daily.set(day, (daily.get(day) ?? 0) + 1);
+      }
+    }
+
+    for (const row of emails) forEvent(row.eventId).eligible++;
+    for (const request of requests) {
+      const stats = forEvent(request.eventId);
+      stats.requests++;
+      if (request.status === "approved") stats.approved++;
+      if (request.status === "denied") stats.denied++;
+    }
+
+    return {
+      since,
+      until,
+      daily: [...daily.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, count]) => ({ date, count })),
+      events: [...perEvent.entries()]
+        .map(([eventId, stats]) => {
+          const info = eventInfo.get(eventId);
+          const anchor = info?.eventDate
+            ? Date.parse(`${info.eventDate}T00:00:00Z`)
+            : (info?.createdAt ?? 0);
+          return {
+            eventId,
+            name: info?.name ?? "Deleted event",
+            slug: info?.slug,
+            anchor,
+            codes: stats.codes,
+            claimed: stats.claimed,
+            eligible: stats.eligible,
+            attendees: stats.attendees.size,
+            requests: stats.requests,
+            approved: stats.approved,
+            denied: stats.denied,
+            firstClaim: stats.firstClaim,
+            lastClaim: stats.lastClaim,
+            claimRate: stats.codes === 0 ? 0 : stats.claimed / stats.codes,
+          };
+        })
+        .sort((a, b) => a.anchor - b.anchor),
+      totals: {
+        events: events.length,
+        codes: codes.length,
+        claimed: codes.filter((code) => code.claimedBy).length,
+        attendees: new Set(
+          codes.filter((code) => code.claimedBy).map((code) => code.claimedBy)
+        ).size,
+        requests: requests.length,
+      },
+    };
   },
 });
 
