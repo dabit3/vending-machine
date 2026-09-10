@@ -259,10 +259,17 @@ export const claim = mutation({
       };
     }
 
+    const claimedAt = Date.now();
     await ctx.db.patch(available._id, {
       claimedBy: email,
-      claimedAt: Date.now(),
+      claimedAt,
       reservedFor: undefined,
+    });
+    await ctx.db.insert("claimEvents", {
+      eventId: event._id,
+      email,
+      codeType: available.codeType,
+      claimedAt,
     });
     return {
       ok: true as const,

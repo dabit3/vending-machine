@@ -92,6 +92,22 @@ test("event history is global-admin only and aggregates claims per event and day
       claimedBy: "b@example.com",
       claimedAt: Date.UTC(2026, 7, 5),
     });
+    const now = new Date();
+    const yesterday = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() - 1,
+    );
+    await ctx.db.insert("claimEvents", {
+      eventId,
+      email: "a@example.com",
+      claimedAt: yesterday,
+    });
+    await ctx.db.insert("claimEvents", {
+      eventId,
+      email: "b@example.com",
+      claimedAt: yesterday,
+    });
     await ctx.db.insert("codes", { eventId, code: "THREE" });
     await ctx.db.insert("emails", { eventId, email: "a@example.com" });
     await ctx.db.insert("accessRequests", {
@@ -111,7 +127,18 @@ test("event history is global-admin only and aggregates claims per event and day
   });
   const result = await member.query(api.events.history, args);
   expect(result.daily).toEqual([
-    { date: "2026-08-05", count: 2 },
+    {
+      date: new Date(
+        Date.UTC(
+          new Date().getUTCFullYear(),
+          new Date().getUTCMonth(),
+          new Date().getUTCDate() - 1,
+        ),
+      )
+        .toISOString()
+        .slice(0, 10),
+      count: 2,
+    },
   ]);
   expect(result.events).toHaveLength(1);
   expect(result.events[0]).toMatchObject({
@@ -120,6 +147,7 @@ test("event history is global-admin only and aggregates claims per event and day
     codes: 3,
     claimed: 2,
     attendees: 2,
+    activeInRange: true,
     eligible: 1,
     requests: 1,
     approved: 1,
@@ -130,7 +158,7 @@ test("event history is global-admin only and aggregates claims per event and day
     events: 1,
     codes: 3,
     claimed: 2,
-    attendees: 2,
+    claimants: 2,
     requests: 1,
   });
 });

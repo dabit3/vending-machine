@@ -182,21 +182,35 @@ export const listManaged = query({
 });
 
 
-// Aggregates for the global-admin history dashboard. Claims are bucketed by
-// their `claimedAt` day so the calendar reads as real activity over time,
-// while event dots use their event date (or creation date when undated).
+// Aggregates for the global-admin history dashboard. Dispense activity comes
+// from the immutable `claimEvents` table (survives re-claims and event
+// deletion) and the daily calendar reads only rows inside the selected UTC
+// window via the `by_claimedAt` index.
 export const history = query({
   args: { days: v.number() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const until = Date.now() + 24 * 60 * 60 * 1000;
-    const since = until - (args.days + 1) * 24 * 60 * 60 * 1000;
+    // Exact UTC buckets matching the calendar's ISO date keys: `until` is the
+    // next UTC midnight, so `days` covers complete calendar days.
+    const now = new Date();
+    const until = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+    );
+    const since = until - args.days * 24 * 60 * 60 * 1000;
 
-    const [events, codes, emails, requests] = await Promise.all([
+    const [events, codes, emails, requests, claimsInRange] = await Promise.all([
       ctx.db.query("events").collect(),
       ctx.db.query("codes").collect(),
       ctx.db.query("emails").collect(),
       ctx.db.query("accessRequests").collect(),
+      ctx.db
+        .query("claimEvents")
+        .withIndex("by_claimedAt", (q) =>
+          q.gte("claimedAt", since).lt("claimedAt", until)
+        )
+        .collect(),
     ]);
 
     const eventInfo = new Map(
@@ -217,26 +231,30 @@ export const history = query({
       {
         codes: number;
         claimed: number;
-        attendees: Set<string>;
         eligible: number;
         requests: number;
         approved: number;
         denied: number;
+        inRangeClaims: number;
+        inRangeAttendees: Set<string>;
+        inRangeRequests: number;
         firstClaim: number | null;
         lastClaim: number | null;
       }
     >();
-    const forEvent = (eventId: (typeof events)[number]["_id"]) => {
+    const forEvent = (eventId: Id<"events">) => {
       let stats = perEvent.get(eventId);
       if (!stats) {
         stats = {
           codes: 0,
           claimed: 0,
-          attendees: new Set<string>(),
           eligible: 0,
           requests: 0,
           approved: 0,
           denied: 0,
+          inRangeClaims: 0,
+          inRangeAttendees: new Set<string>(),
+          inRangeRequests: 0,
           firstClaim: null,
           lastClaim: null,
         };
@@ -248,26 +266,33 @@ export const history = query({
     for (const code of codes) {
       const stats = forEvent(code.eventId);
       stats.codes++;
-      if (!code.claimedBy) continue;
-      stats.claimed++;
-      stats.attendees.add(code.claimedBy);
-      const at = code.claimedAt ?? code._creationTime;
-      stats.firstClaim =
-        stats.firstClaim === null ? at : Math.min(stats.firstClaim, at);
-      stats.lastClaim =
-        stats.lastClaim === null ? at : Math.max(stats.lastClaim, at);
-      if (at >= since && at < until) {
-        const day = new Date(at).toISOString().slice(0, 10);
-        daily.set(day, (daily.get(day) ?? 0) + 1);
-      }
+      if (code.claimedBy) stats.claimed++;
     }
-
     for (const row of emails) forEvent(row.eventId).eligible++;
     for (const request of requests) {
       const stats = forEvent(request.eventId);
       stats.requests++;
       if (request.status === "approved") stats.approved++;
       if (request.status === "denied") stats.denied++;
+      const at = request.decidedAt ?? request._creationTime;
+      if (at >= since && at < until) stats.inRangeRequests++;
+    }
+    const claimants = new Set<string>();
+    for (const claim of claimsInRange) {
+      const stats = forEvent(claim.eventId);
+      stats.inRangeClaims++;
+      stats.inRangeAttendees.add(claim.email);
+      claimants.add(claim.email);
+      stats.firstClaim =
+        stats.firstClaim === null
+          ? claim.claimedAt
+          : Math.min(stats.firstClaim, claim.claimedAt);
+      stats.lastClaim =
+        stats.lastClaim === null
+          ? claim.claimedAt
+          : Math.max(stats.lastClaim, claim.claimedAt);
+      const day = new Date(claim.claimedAt).toISOString().slice(0, 10);
+      daily.set(day, (daily.get(day) ?? 0) + 1);
     }
 
     return {
@@ -290,10 +315,16 @@ export const history = query({
             codes: stats.codes,
             claimed: stats.claimed,
             eligible: stats.eligible,
-            attendees: stats.attendees.size,
+            attendees: stats.inRangeAttendees.size,
             requests: stats.requests,
             approved: stats.approved,
             denied: stats.denied,
+            // Whether this event had any activity inside the selected window:
+            // claims, requests, or an event date that falls in it.
+            activeInRange:
+              stats.inRangeClaims > 0 ||
+              stats.inRangeRequests > 0 ||
+              anchor >= since,
             firstClaim: stats.firstClaim,
             lastClaim: stats.lastClaim,
             claimRate: stats.codes === 0 ? 0 : stats.claimed / stats.codes,
@@ -304,9 +335,7 @@ export const history = query({
         events: events.length,
         codes: codes.length,
         claimed: codes.filter((code) => code.claimedBy).length,
-        attendees: new Set(
-          codes.filter((code) => code.claimedBy).map((code) => code.claimedBy)
-        ).size,
+        claimants: claimants.size,
         requests: requests.length,
       },
     };

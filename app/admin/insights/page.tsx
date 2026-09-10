@@ -80,20 +80,13 @@ export default function InsightsPage() {
               />
               <StatCard
                 label="Active events"
-                value={
-                  history.events.filter(
-                    (event) =>
-                      event.claimed > 0 ||
-                      event.anchor >= history.since ||
-                      event.requests > 0,
-                  ).length
-                }
-                hint="With activity in view"
+                value={history.events.filter((event) => event.activeInRange).length}
+                hint="Claims, requests, or dates in range"
               />
               <StatCard
-                label="Attendees"
-                value={history.totals.attendees}
-                hint="Unique claimants, all time"
+                label="Unique claimants"
+                value={history.totals.claimants}
+                hint="In the selected range"
               />
             </div>
 
