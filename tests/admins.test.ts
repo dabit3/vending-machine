@@ -169,4 +169,14 @@ test("event history is global-admin only and aggregates claims per event and day
     claimants: 3,
     requests: 1,
   });
+
+  // Re-claiming a pre-ledger code preserves its dispense in claimEvents,
+  // so deleting the code row doesn't erase it from the calendar.
+  await member.mutation(api.claims.allowReclaim, {
+    eventId,
+    email: "legacy@example.com",
+  });
+  const after = await member.query(api.events.history, args);
+  expect(after.daily.reduce((sum, day) => sum + day.count, 0)).toBe(3);
+  expect(after.totals.claimants).toBe(3);
 });

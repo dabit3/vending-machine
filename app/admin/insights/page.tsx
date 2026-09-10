@@ -218,7 +218,9 @@ function ClaimCalendar({ history }: { history: Insights }) {
 }
 
 function EventScatter({ history }: { history: Insights }) {
-  const points = history.events.filter((event) => event.codes > 0);
+  const points = history.events.filter(
+    (event) => event.codes > 0 || event.dispensed > 0,
+  );
   if (points.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -298,7 +300,11 @@ function EventScatter({ history }: { history: Insights }) {
                 cx={x}
                 cy={y}
                 r={radius}
-                className="fill-foreground/15 stroke-foreground/50"
+                className={cn(
+                  "fill-foreground/15 stroke-foreground/50",
+                  point.deleted && "stroke-dasharray-[3_3]",
+                )}
+                strokeDasharray={point.deleted ? "3 3" : undefined}
               >
                 <title>{`${point.name} — ${point.claimed}/${point.codes} codes claimed`}</title>
               </circle>
@@ -331,6 +337,9 @@ function EventScatter({ history }: { history: Insights }) {
                   <Badge variant="outline">
                     {Math.round(point.claimRate * 100)}% claimed
                   </Badge>
+                  {point.deleted ? (
+                    <Badge variant="outline">Deleted</Badge>
+                  ) : null}
                   {point.requests > 0 ? (
                     <Badge variant="outline">
                       {point.approved}/{point.requests} requests approved

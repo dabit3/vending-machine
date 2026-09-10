@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
+import { preserveClaim } from "./claimEvents";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import {
@@ -198,7 +199,9 @@ export const history = query({
       now.getUTCMonth(),
       now.getUTCDate() + 1,
     );
-    const since = until - args.days * 24 * 60 * 60 * 1000;
+    // Bound the window: one day to roughly a year.
+    const days = Math.min(Math.max(Math.trunc(args.days), 1), 366);
+    const since = until - days * 24 * 60 * 60 * 1000;
 
     const [events, codes, emails, requests, claimsInRange] = await Promise.all([
       ctx.db.query("events").collect(),
@@ -319,6 +322,22 @@ export const history = query({
       recordClaim(code.eventId, code.claimedBy, code.claimedAt);
     }
 
+    // Deleted events lose their codes but keep their ledger rows. Count
+    // lifetime dispenses for them so the scatter can still plot them; a
+    // fully-dispensed, deleted event reads as 100% claimed.
+    const dispensedByEvent = new Map<Id<"events">, number>();
+    await Promise.all(
+      [...perEvent.entries()]
+        .filter(([, stats]) => stats.codes === 0 && stats.inRangeClaims > 0)
+        .map(async ([eventId]) => {
+          const rows = await ctx.db
+            .query("claimEvents")
+            .withIndex("by_event", (q) => q.eq("eventId", eventId))
+            .collect();
+          dispensedByEvent.set(eventId, rows.length);
+        }),
+    );
+
     return {
       since,
       until,
@@ -348,10 +367,15 @@ export const history = query({
             activeInRange:
               stats.inRangeClaims > 0 ||
               stats.inRangeRequests > 0 ||
-              anchor >= since,
+              (anchor >= since && anchor < until),
             firstClaim: stats.firstClaim,
             lastClaim: stats.lastClaim,
-            claimRate: stats.codes === 0 ? 0 : stats.claimed / stats.codes,
+            dispensed: dispensedByEvent.get(eventId) ?? stats.claimed,
+            deleted: !eventInfo.has(eventId),
+            claimRate:
+              stats.codes === 0
+                ? ((dispensedByEvent.get(eventId) ?? 0) > 0 ? 1 : 0)
+                : stats.claimed / stats.codes,
           };
         })
         .sort((a, b) => a.anchor - b.anchor),
@@ -470,7 +494,10 @@ export const remove = mutation({
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
-    for (const code of codes) await ctx.db.delete(code._id);
+    for (const code of codes) {
+      await preserveClaim(ctx, code);
+      await ctx.db.delete(code._id);
+    }
     const eventAdmins = await ctx.db
       .query("eventAdmins")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
