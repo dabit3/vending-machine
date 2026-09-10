@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
-import { preserveClaim } from "./claimEvents";
+import { preserveClaims } from "./claimEvents";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import {
@@ -326,6 +326,9 @@ export const history = query({
     // lifetime dispenses for them so the scatter can still plot them; a
     // fully-dispensed, deleted event reads as 100% claimed.
     const dispensedByEvent = new Map<Id<"events">, number>();
+    // Deleted events have no eventDate/creation time; their earliest
+    // ledger claim is the most truthful anchor available for the scatter.
+    const deletedAnchor = new Map<Id<"events">, number>();
     await Promise.all(
       [...perEvent.entries()]
         .filter(([, stats]) => stats.codes === 0 && stats.inRangeClaims > 0)
@@ -335,6 +338,12 @@ export const history = query({
             .withIndex("by_event", (q) => q.eq("eventId", eventId))
             .collect();
           dispensedByEvent.set(eventId, rows.length);
+          if (rows.length > 0) {
+            deletedAnchor.set(
+              eventId,
+              Math.min(...rows.map((row) => row.claimedAt)),
+            );
+          }
         }),
     );
 
@@ -349,7 +358,7 @@ export const history = query({
           const info = eventInfo.get(eventId);
           const anchor = info?.eventDate
             ? Date.parse(`${info.eventDate}T00:00:00Z`)
-            : (info?.createdAt ?? 0);
+            : (info?.createdAt ?? deletedAnchor.get(eventId) ?? 0);
           return {
             eventId,
             name: info?.name ?? "Deleted event",
@@ -380,11 +389,7 @@ export const history = query({
         })
         .sort((a, b) => a.anchor - b.anchor),
       totals: {
-        events: events.length,
-        codes: codes.length,
-        claimed: codes.filter((code) => code.claimedBy).length,
         claimants: claimants.size,
-        requests: requests.length,
       },
     };
   },
@@ -494,10 +499,8 @@ export const remove = mutation({
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
-    for (const code of codes) {
-      await preserveClaim(ctx, code);
-      await ctx.db.delete(code._id);
-    }
+    await preserveClaims(ctx, codes);
+    for (const code of codes) await ctx.db.delete(code._id);
     const eventAdmins = await ctx.db
       .query("eventAdmins")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))

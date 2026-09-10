@@ -306,7 +306,11 @@ function EventScatter({ history }: { history: Insights }) {
                 )}
                 strokeDasharray={point.deleted ? "3 3" : undefined}
               >
-                <title>{`${point.name} — ${point.claimed}/${point.codes} codes claimed`}</title>
+                <title>
+                  {point.deleted
+                    ? `${point.name} — ${point.dispensed} dispensed (event deleted)`
+                    : `${point.name} — ${point.claimed}/${point.codes} codes claimed`}
+                </title>
               </circle>
               <circle cx={x} cy={y} r={2.5} className="fill-foreground" />
             </g>
@@ -334,12 +338,13 @@ function EventScatter({ history }: { history: Insights }) {
                   <span className="truncate font-medium">{point.name}</span>
                 )}
                 <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                  <Badge variant="outline">
-                    {Math.round(point.claimRate * 100)}% claimed
-                  </Badge>
                   {point.deleted ? (
                     <Badge variant="outline">Deleted</Badge>
-                  ) : null}
+                  ) : (
+                    <Badge variant="outline">
+                      {Math.round(point.claimRate * 100)}% claimed
+                    </Badge>
+                  )}
                   {point.requests > 0 ? (
                     <Badge variant="outline">
                       {point.approved}/{point.requests} requests approved
@@ -348,7 +353,9 @@ function EventScatter({ history }: { history: Insights }) {
                 </div>
               </div>
               <div className="shrink-0 text-right font-mono text-xs text-muted-dim tabular-nums">
-                {point.claimed}/{point.codes}
+                {point.deleted
+                  ? `${point.dispensed} dispensed`
+                  : `${point.claimed}/${point.codes}`}
               </div>
             </div>
           ))}

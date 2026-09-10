@@ -8,7 +8,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
-import { preserveClaim } from "./claimEvents";
+import { preserveClaims } from "./claimEvents";
 import { isBlacklisted } from "./blacklist";
 import { blockValue } from "./blockValues";
 import { dropTypeIfEmpty } from "./codes";
@@ -139,8 +139,8 @@ export const allowReclaim = mutation({
     if (claimed.length === 0) {
       throw new Error(`${email} has not claimed a code for this event.`);
     }
+    await preserveClaims(ctx, claimed);
     for (const code of claimed) {
-      await preserveClaim(ctx, code);
       await ctx.db.delete(code._id);
       await logAudit(ctx, {
         eventId: args.eventId,
