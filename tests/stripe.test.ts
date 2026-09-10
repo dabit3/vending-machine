@@ -165,6 +165,72 @@ describe("Stripe authorization", () => {
 });
 
 describe("Stripe generation", () => {
+  test.each([undefined, 1, 2])("caps each code at %j redemptions with enough coupon capacity", async (redemptionsPerCode) => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, redemptionsPerCode });
+    await drain(t);
+    const expected = redemptionsPerCode ?? 1;
+    expect(stripe.coupon).toHaveBeenCalledWith(
+      expect.objectContaining({ max_redemptions: input.quantity * expected, duration: "once" }),
+      expect.anything(),
+    );
+    expect(stripe.promotion).toHaveBeenCalledTimes(input.quantity);
+    for (const [params] of stripe.promotion.mock.calls) expect(params.max_redemptions).toBe(expected);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({ redemptionsPerCode: expected, status: "complete" });
+    expect((await admin.query(api.stripeBatches.history, { paginationOpts: { cursor: null, numItems: 25 } })).page[0].redemptionsPerCode).toBe(expected);
+  });
+
+  test("deduplicates omitted and explicit single use, but rejects a changed redemption limit", async () => {
+    const { admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, input);
+    expect(await admin.mutation(api.stripeBatches.create, { ...input, redemptionsPerCode: 1 })).toBe(batchId);
+    await expect(admin.mutation(api.stripeBatches.create, { ...input, redemptionsPerCode: 2 })).rejects.toThrow("already used");
+  });
+
+  test.each([undefined, 2])("retry preserves the redemption limit, including legacy batches (%j)", async (redemptionsPerCode) => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, redemptionsPerCode });
+    if (redemptionsPerCode === undefined) {
+      await t.run((ctx) => ctx.db.patch(batchId, {
+        redemptionsPerCode: undefined,
+        requestFingerprint: JSON.stringify({ name: input.name, prefix: "DEMO", amountCents: input.amountCents, quantity: input.quantity, live: false }),
+      }));
+      expect(await admin.mutation(api.stripeBatches.create, { ...input, redemptionsPerCode: 1 })).toBe(batchId);
+    }
+    stripe.promotion
+      .mockImplementationOnce(async (params) => ({ id: "promo_first", code: params.code }))
+      .mockRejectedValueOnce(new Error("temporary failure"));
+    await drain(t);
+    const failedCall = stripe.promotion.mock.calls[1];
+    expect(failedCall[0].max_redemptions).toBe(redemptionsPerCode ?? 1);
+    await admin.mutation(api.stripeBatches.retry, { batchId, confirmLive: false });
+    await drain(t);
+    expect(stripe.promotion.mock.calls[2]).toEqual(failedCall);
+    expect(stripe.coupon).toHaveBeenCalledTimes(1);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({ redemptionsPerCode: redemptionsPerCode ?? 1, status: "complete" });
+  });
+
+  test.each([0, 3, -1, 1.5, NaN, Infinity])("rejects invalid redemption limit %j in both creation paths", async (redemptionsPerCode) => {
+    const { t, admin } = await setup();
+    const request = { ...input, redemptionsPerCode };
+    await expect(admin.mutation(api.stripeBatches.create, request)).rejects.toThrow();
+    await expect(admin.mutation(api.events.create, { name: "Invalid", stripeGeneration: request })).rejects.toThrow();
+    expect(await t.run((ctx) => ctx.db.query("stripeBatches").collect())).toHaveLength(0);
+    expect(await t.run((ctx) => ctx.db.query("events").collect())).toHaveLength(0);
+    expect(stripe.coupon).not.toHaveBeenCalled();
+  });
+
+  test("event generation preserves two redemptions while dispensing each code only once", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Two uses", dynamic: true, stripeGeneration: { ...input, quantity: 1, redemptionsPerCode: 2 } });
+    await drain(t);
+    expect((await admin.query(api.stripeBatches.list, { eventId: event.id }))[0].redemptionsPerCode).toBe(2);
+    const attendee = t.withIdentity({ subject: "attendee", email: "attendee@example.com", emailVerified: true });
+    expect(await attendee.mutation(api.claims.claim, { slug: event.slug })).toMatchObject({ ok: true, alreadyClaimed: false });
+    expect(await attendee.mutation(api.claims.claim, { slug: event.slug })).toMatchObject({ ok: true, alreadyClaimed: true });
+    expect(await t.run((ctx) => ctx.db.query("codes").collect())).toHaveLength(1);
+  });
+
   test.each([undefined, "", "   "])("generates and persists one four-letter prefix when the supplied prefix is %j", async (codePrefix) => {
     const { t, admin } = await setup();
     const request = { ...input, codePrefix };

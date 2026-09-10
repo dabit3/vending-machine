@@ -10,6 +10,7 @@ export const generationFields = {
   codePrefix: v.optional(v.string()),
   amountCents: v.number(),
   quantity: v.number(),
+  redemptionsPerCode: v.optional(v.number()),
   expiresAt: v.optional(v.number()),
   expectedLive: v.boolean(),
   confirmLive: v.boolean(),
@@ -21,6 +22,7 @@ export type GenerationInput = {
   codePrefix?: string;
   amountCents: number;
   quantity: number;
+  redemptionsPerCode?: number;
   expiresAt?: number;
   expectedLive: boolean;
   confirmLive: boolean;
@@ -55,6 +57,9 @@ export function validateGeneration(input: GenerationInput) {
   ) {
     throw new ConvexError("Generate between 1 and 500 codes per batch.");
   }
+  const redemptionsPerCode = input.redemptionsPerCode ?? 1;
+  if (redemptionsPerCode !== 1 && redemptionsPerCode !== 2)
+    throw new ConvexError("Each code can be redeemed once or twice only.");
   const prefix = normalizeStripeCodePrefix(input.codePrefix);
   if (prefix === null) throw new ConvexError(STRIPE_CODE_PREFIX_ERROR);
   if (
@@ -81,10 +86,11 @@ export function validateGeneration(input: GenerationInput) {
     prefix,
     amountCents: input.amountCents,
     quantity: input.quantity,
+    redemptionsPerCode,
     expiresAt:
       input.expiresAt === undefined
         ? undefined
         : Math.floor(input.expiresAt / 1000) * 1000,
     live: mode.live,
-  };
+  } as const;
 }

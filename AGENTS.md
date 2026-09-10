@@ -33,6 +33,9 @@ Important - do not test locally with chromium / playright unless I specifically 
 - Code prefixes use a shared four-letter limit in `lib/stripe-name.ts`. Accept only ASCII letters and store them uppercase.
 - Generate blank prefixes once in `startBatch`, after request deduplication. Keep generated prefixes out of request fingerprints.
 - Preserve stored prefixes on retries, including longer or empty legacy prefixes.
+- New Stripe batches allow one or two redemptions per code, defaulting to one. Missing legacy limits mean one. Keep the saved limit on retries and multiply the coupon cap and maximum discount by that limit.
+- Keep single-use request fingerprints compatible with legacy requests by omitting the default redemption limit. App claims still dispense each code to one attendee.
+- Render redemption instructions through `ClaimInstructions` for safe Markdown links and bare URLs. Exact legacy Pro/Max presets display the current wording without changing custom text.
 - `/admin/codes` is the saved code library. `/admin/codes/new` creates standalone Stripe blocks without events and saves them automatically.
 - Keep links from the event form to standalone code creation in a new tab, so the event draft stays open.
 - Stripe batches retain their history after event deletion. Event deletion does not revoke coupons or promotion codes in Stripe.

@@ -119,6 +119,7 @@ function savedBlock(): FunctionReturnType<
     prefix: "",
     amountCents: 5000,
     quantity: 2,
+    redemptionsPerCode: 1,
     expiresAt: undefined,
     live: false,
     createdBy: "admin@example.com",
@@ -326,6 +327,25 @@ test("new event form defaults to adding codes later", () => {
   expect(html).toContain("Add codes when you’re ready");
   expect(html).not.toContain("Review and create");
   expect(html).not.toContain("Value per code (USD)");
+});
+
+test.each(["1", "2"])("generation fields offer only once and twice, with %s selected", (redemptionsPerCode) => {
+  const html = renderToStaticMarkup(<StripeGenerationFields value={{ ...emptyStripeForm, redemptionsPerCode }} onChange={() => {}} />);
+  const toggles = [...html.matchAll(/<button\b[^>]*data-slot="toggle-group-item"[^>]*>([^<]*)<\/button>/g)];
+  expect(toggles.map((match) => match[1])).toEqual(["Once", "Twice"]);
+  const selected = toggles.filter((match) => match[0].includes('aria-pressed="true"'));
+  expect(selected.map((match) => match[1])).toEqual([redemptionsPerCode === "2" ? "Twice" : "Once"]);
+  expect(html).toContain(`Each code can be redeemed ${redemptionsPerCode === "2" ? "twice" : "once"} in total at checkout.`);
+});
+
+test.each([1, 2] as const)("saved details and library display the %i-redemption limit", (redemptionsPerCode) => {
+  const batch = { ...savedBlock(), redemptionsPerCode };
+  state.detail = { ...batch, codes: [] };
+  state.history = [batch];
+  const label = `Redeem ${redemptionsPerCode === 2 ? "twice" : "once"} per code`;
+  expect(renderToStaticMarkup(<CodeStudioPage batchId={batch._id} />)).toContain(label);
+  expect(renderToStaticMarkup(<CodeStudioPage />)).toContain(label);
+  expect(renderToStaticMarkup(<SavedBatchPicker value="" onChange={() => {}} />)).toContain(label);
 });
 
 test("generation fields cap quantity and batch name", () => {

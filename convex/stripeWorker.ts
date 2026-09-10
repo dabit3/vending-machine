@@ -63,7 +63,7 @@ export const generate = internalAction({
             amount_off: batch.amountCents,
             currency: "usd",
             duration: "once",
-            max_redemptions: batch.quantity,
+            max_redemptions: batch.quantity * (batch.redemptionsPerCode ?? 1),
             ...(batch.expiresAt !== undefined && {
               redeem_by: batch.expiresAt / 1000,
             }),
@@ -89,7 +89,7 @@ export const generate = internalAction({
               {
                 coupon: couponId,
                 code,
-                max_redemptions: 1,
+                max_redemptions: batch.redemptionsPerCode ?? 1,
                 ...(batch.expiresAt !== undefined && {
                   expires_at: batch.expiresAt / 1000,
                 }),

@@ -10,6 +10,7 @@ export type StripeForm = {
   name: string;
   amount: string;
   quantity: string;
+  redemptionsPerCode: string;
   prefix: string;
   expiration: string;
 };
@@ -17,6 +18,7 @@ export const emptyStripeForm: StripeForm = {
   name: "",
   amount: "50",
   quantity: "100",
+  redemptionsPerCode: "1",
   prefix: "",
   expiration: "",
 };
@@ -34,6 +36,9 @@ export function generationInput(
     throw new Error("Enter a USD amount with at most two decimal places.");
   const amountCents = Math.round(Number(form.amount) * 100);
   const quantity = Number(form.quantity);
+  const redemptionsPerCode = Number(form.redemptionsPerCode);
+  if (redemptionsPerCode !== 1 && redemptionsPerCode !== 2)
+    throw new Error("Each code can be redeemed once or twice only.");
   if (
     !Number.isSafeInteger(amountCents) ||
     amountCents < 1 ||
@@ -58,6 +63,7 @@ export function generationInput(
     name,
     amountCents,
     quantity,
+    redemptionsPerCode,
     codePrefix: prefix,
     expiresAt,
     expectedLive: live,

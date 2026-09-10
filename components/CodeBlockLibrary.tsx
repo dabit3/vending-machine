@@ -172,7 +172,7 @@ function CodeBlockRow({ batch }: { batch: LibraryBatch }) {
         <ItemTitle>{batch.name}</ItemTitle>
         <ItemDescription>
           {batch.generatedCount} / {batch.quantity} codes saved ·{" "}
-          {usd(batch.amountCents)} each ·{" "}
+          {usd(batch.amountCents)} per redemption · Redeem {batch.redemptionsPerCode === 2 ? "twice" : "once"} per code ·{" "}
           {batch.expiresAt
             ? `Expires ${new Date(batch.expiresAt).toLocaleDateString()}`
             : "No expiration"}

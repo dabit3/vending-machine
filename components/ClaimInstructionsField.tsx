@@ -9,6 +9,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { ClaimInstructions } from "@/components/ClaimInstructions";
 
 const MODES: { value: ClaimInstructionsMode; label: string }[] = [
   { value: "none", label: "None" },
@@ -60,21 +61,32 @@ export function ClaimInstructionsField({
         </TabsList>
       </Tabs>
       {mode === "custom" ? (
-        <Textarea
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="How to redeem the code after claiming"
-          rows={4}
-          className="resize-y"
-        />
+        <>
+          <Textarea
+            id={id}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="How to redeem the code after claiming"
+            rows={4}
+            className="resize-y"
+            aria-describedby={`${id}-markdown-help`}
+          />
+          <FieldDescription id={`${id}-markdown-help`}>
+            Markdown is supported. Use [link text](https://app.devin.ai/) for a link, or paste a URL. Add a blank line between paragraphs.
+          </FieldDescription>
+          {value.trim() && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Preview</p>
+              <ClaimInstructions value={value} className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground" />
+            </div>
+          )}
+        </>
       ) : mode !== "none" ? (
-        <p
+        <ClaimInstructions
           id={id}
-          className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
-        >
-          {CLAIM_INSTRUCTION_PRESETS[mode].text}
-        </p>
+          value={CLAIM_INSTRUCTION_PRESETS[mode].text}
+          className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground"
+        />
       ) : null}
       <FieldDescription>{description}</FieldDescription>
     </Field>

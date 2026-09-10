@@ -1,11 +1,13 @@
 export const CLAIM_INSTRUCTION_PRESETS = {
   pro: {
     label: "Pro",
-    text: "Redeem at checkout for a free Devin Pro plan. If you had a previous Windsurf account and your code does not work, try using a new email address.",
+    text: "Redeem at checkout for a free Devin Pro plan at https://app.devin.ai/.\n\nIf you had a previous Windsurf account and your code does not work, try using a new email address.",
+    legacyText: "Redeem at checkout for a free Devin Pro plan. If you had a previous Windsurf account and your code does not work, try using a new email address.",
   },
   max: {
     label: "Max",
-    text: "Redeem at checkout for a free Devin Max plan. If you had a previous Windsurf account and your code does not work, try using a new email address.",
+    text: "Redeem at checkout for a free Devin Max plan at https://app.devin.ai/.\n\nIf you had a previous Windsurf account and your code does not work, try using a new email address.",
+    legacyText: "Redeem at checkout for a free Devin Max plan. If you had a previous Windsurf account and your code does not work, try using a new email address.",
   },
 } as const;
 
@@ -18,7 +20,8 @@ export function claimInstructionsMode(
 ): ClaimInstructionsMode {
   if (!instructions.trim()) return "none";
   for (const [key, preset] of Object.entries(CLAIM_INSTRUCTION_PRESETS)) {
-    if (preset.text === instructions) return key as ClaimInstructionPreset;
+    if (preset.text === instructions || preset.legacyText === instructions)
+      return key as ClaimInstructionPreset;
   }
   return "custom";
 }

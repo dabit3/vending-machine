@@ -14,6 +14,16 @@ test("converts decimal USD input to integer cents and preserves the reviewed mod
   });
 });
 
+test("defaults to one redemption and accepts two", () => {
+  expect(emptyStripeForm.redemptionsPerCode).toBe("1");
+  expect(generationInput(form, false, requestId).redemptionsPerCode).toBe(1);
+  expect(generationInput({ ...form, redemptionsPerCode: "2" }, false, requestId).redemptionsPerCode).toBe(2);
+});
+
+test.each(["", "0", "3", "1.5", "NaN", "Infinity"])("rejects invalid redemptions per code %j", (redemptionsPerCode) => {
+  expect(() => generationInput({ ...form, redemptionsPerCode }, false, requestId)).toThrow("once or twice");
+});
+
 test.each([39, 40, 41, 80, 81, 120])(
   "silently limits a %i-character batch name to 40 characters",
   (length) => {

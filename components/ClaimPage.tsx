@@ -30,6 +30,7 @@ import {
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { ClaimInstructions } from "@/components/ClaimInstructions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -433,9 +434,7 @@ export default function ClaimPage({
                             Redemption instructions for {event.name}
                           </DialogDescription>
                         </DialogHeader>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere">
-                          {event.claimInstructions}
-                        </p>
+                        <ClaimInstructions value={event.claimInstructions ?? ""} />
                         <Button
                           variant="brand"
                           size="lg"
@@ -598,9 +597,7 @@ function RedeemInstructionsDialog({
             Redemption instructions for {eventName}
           </DialogDescription>
         </DialogHeader>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere">
-          {instructions}
-        </p>
+        <ClaimInstructions value={instructions} />
       </DialogContent>
     </Dialog>
   );

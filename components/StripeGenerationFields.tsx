@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 export function StripeModeBadge({ live }: { live: boolean }) {
   return (
@@ -143,6 +144,23 @@ export function StripeGenerationFields({
         </Field>
       </FieldGroup>
       <Field>
+        <FieldLabel id={`${id}-redemptions-label`}>Redemptions per code</FieldLabel>
+        <ToggleGroup
+          aria-labelledby={`${id}-redemptions-label`}
+          aria-describedby={`${id}-redemptions-description`}
+          value={[value.redemptionsPerCode]}
+          onValueChange={(next) => {
+            if (next[0] === "1" || next[0] === "2") set("redemptionsPerCode", next[0]);
+          }}
+        >
+          <ToggleGroupItem value="1" variant="outline">Once</ToggleGroupItem>
+          <ToggleGroupItem value="2" variant="outline">Twice</ToggleGroupItem>
+        </ToggleGroup>
+        <FieldDescription id={`${id}-redemptions-description`}>
+          Each code can be redeemed {value.redemptionsPerCode === "2" ? "twice" : "once"} in total at checkout. Each redemption discounts one invoice.
+        </FieldDescription>
+      </Field>
+      <Field>
         <FieldLabel htmlFor={`${id}-expiration`}>Expiration date</FieldLabel>
         <Input
           id={`${id}-expiration`}
@@ -155,8 +173,7 @@ export function StripeGenerationFields({
         </FieldDescription>
       </Field>
       <p className="text-sm text-muted-foreground">
-        Each code can be redeemed once and discounts one invoice. Codes are
-        saved automatically.
+        Codes are saved automatically.
       </p>
     </FieldGroup>
   );
@@ -209,9 +226,11 @@ export function ConfirmStripeGeneration({
               <dd>
                 {input.quantity} × {usd(input.amountCents)}
               </dd>
+              <dt className="text-muted-foreground">Redemptions per code</dt>
+              <dd>{input.redemptionsPerCode === 2 ? "Twice" : "Once"}</dd>
               <dt className="text-muted-foreground">Maximum total discount</dt>
               <dd className="font-medium">
-                {usd(input.quantity * input.amountCents)}
+                {usd(input.quantity * input.amountCents * (input.redemptionsPerCode ?? 1))}
               </dd>
               <dt className="text-muted-foreground">Expires</dt>
               <dd>

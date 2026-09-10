@@ -11,6 +11,7 @@ export default defineSchema({
     prefix: v.string(),
     amountCents: v.number(),
     quantity: v.number(),
+    redemptionsPerCode: v.optional(v.union(v.literal(1), v.literal(2))),
     expiresAt: v.optional(v.number()),
     live: v.boolean(),
     createdBy: v.string(),
