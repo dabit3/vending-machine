@@ -278,21 +278,45 @@ export const history = query({
       if (at >= since && at < until) stats.inRangeRequests++;
     }
     const claimants = new Set<string>();
-    for (const claim of claimsInRange) {
-      const stats = forEvent(claim.eventId);
+    // Records a dispense into the daily/per-event aggregates. Legacy claims
+    // made before `claimEvents` existed are folded in from the code row's
+    // own `claimedAt`, deduped on (event, email, claimedAt) so a claim
+    // recorded in both places counts once.
+    const recordClaim = (
+      eventId: Id<"events">,
+      email: string,
+      claimedAt: number,
+    ) => {
+      const stats = forEvent(eventId);
       stats.inRangeClaims++;
-      stats.inRangeAttendees.add(claim.email);
-      claimants.add(claim.email);
+      stats.inRangeAttendees.add(email);
+      claimants.add(email);
       stats.firstClaim =
         stats.firstClaim === null
-          ? claim.claimedAt
-          : Math.min(stats.firstClaim, claim.claimedAt);
+          ? claimedAt
+          : Math.min(stats.firstClaim, claimedAt);
       stats.lastClaim =
         stats.lastClaim === null
-          ? claim.claimedAt
-          : Math.max(stats.lastClaim, claim.claimedAt);
-      const day = new Date(claim.claimedAt).toISOString().slice(0, 10);
+          ? claimedAt
+          : Math.max(stats.lastClaim, claimedAt);
+      const day = new Date(claimedAt).toISOString().slice(0, 10);
       daily.set(day, (daily.get(day) ?? 0) + 1);
+    };
+    const ledgerKeys = new Set(
+      claimsInRange.map(
+        (claim) => `${claim.eventId}|${claim.email}|${claim.claimedAt}`,
+      ),
+    );
+    for (const claim of claimsInRange) {
+      recordClaim(claim.eventId, claim.email, claim.claimedAt);
+    }
+    for (const code of codes) {
+      if (!code.claimedBy || code.claimedAt === undefined) continue;
+      if (code.claimedAt < since || code.claimedAt >= until) continue;
+      if (ledgerKeys.has(`${code.eventId}|${code.claimedBy}|${code.claimedAt}`)) {
+        continue;
+      }
+      recordClaim(code.eventId, code.claimedBy, code.claimedAt);
     }
 
     return {

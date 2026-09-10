@@ -80,24 +80,26 @@ test("event history is global-admin only and aggregates claims per event and day
       slug: "event",
       eventDate: "2026-08-01",
     });
-    await ctx.db.insert("codes", {
-      eventId,
-      code: "ONE",
-      claimedBy: "a@example.com",
-      claimedAt: Date.UTC(2026, 7, 5),
-    });
-    await ctx.db.insert("codes", {
-      eventId,
-      code: "TWO",
-      claimedBy: "b@example.com",
-      claimedAt: Date.UTC(2026, 7, 5),
-    });
     const now = new Date();
     const yesterday = Date.UTC(
       now.getUTCFullYear(),
       now.getUTCMonth(),
       now.getUTCDate() - 1,
     );
+    // ONE and TWO have matching claimEvents rows (post-ledger claims);
+    // LEGACY is claimed on a code with no ledger row (pre-ledger claim).
+    await ctx.db.insert("codes", {
+      eventId,
+      code: "ONE",
+      claimedBy: "a@example.com",
+      claimedAt: yesterday,
+    });
+    await ctx.db.insert("codes", {
+      eventId,
+      code: "TWO",
+      claimedBy: "b@example.com",
+      claimedAt: yesterday,
+    });
     await ctx.db.insert("claimEvents", {
       eventId,
       email: "a@example.com",
@@ -106,6 +108,12 @@ test("event history is global-admin only and aggregates claims per event and day
     await ctx.db.insert("claimEvents", {
       eventId,
       email: "b@example.com",
+      claimedAt: yesterday,
+    });
+    await ctx.db.insert("codes", {
+      eventId,
+      code: "LEGACY",
+      claimedBy: "legacy@example.com",
       claimedAt: yesterday,
     });
     await ctx.db.insert("codes", { eventId, code: "THREE" });
@@ -137,28 +145,28 @@ test("event history is global-admin only and aggregates claims per event and day
       )
         .toISOString()
         .slice(0, 10),
-      count: 2,
+      count: 3,
     },
   ]);
   expect(result.events).toHaveLength(1);
   expect(result.events[0]).toMatchObject({
     eventId,
     name: "Event",
-    codes: 3,
-    claimed: 2,
-    attendees: 2,
+    codes: 4,
+    claimed: 3,
+    attendees: 3,
     activeInRange: true,
     eligible: 1,
     requests: 1,
     approved: 1,
     denied: 0,
-    claimRate: 2 / 3,
+    claimRate: 3 / 4,
   });
   expect(result.totals).toMatchObject({
     events: 1,
-    codes: 3,
-    claimed: 2,
-    claimants: 2,
+    codes: 4,
+    claimed: 3,
+    claimants: 3,
     requests: 1,
   });
 });
