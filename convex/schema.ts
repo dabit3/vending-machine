@@ -116,6 +116,18 @@ export default defineSchema({
     .index("by_event_reservedFor", ["eventId", "reservedFor"])
     .index("by_claimedBy", ["claimedBy"]),
 
+  // Immutable dispense history: one row per code handed out. Unlike `codes`
+  // (current inventory), these survive re-claims and event deletion so the
+  // insights dashboard reports real activity over time.
+  claimEvents: defineTable({
+    eventId: v.id("events"),
+    email: v.string(),
+    codeType: v.optional(v.string()),
+    claimedAt: v.number(),
+  })
+    .index("by_event", ["eventId"])
+    .index("by_claimedAt", ["claimedAt"]),
+
   accessRequests: defineTable({
     eventId: v.id("events"),
     email: v.string(),

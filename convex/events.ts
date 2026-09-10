@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
+import { preserveClaims } from "./claimEvents";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import {
@@ -180,6 +182,219 @@ export const listManaged = query({
   },
 });
 
+
+// Aggregates for the global-admin history dashboard. Dispense activity comes
+// from the immutable `claimEvents` table (survives re-claims and event
+// deletion) and the daily calendar reads only rows inside the selected UTC
+// window via the `by_claimedAt` index.
+export const history = query({
+  args: { days: v.number() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    // Exact UTC buckets matching the calendar's ISO date keys: `until` is the
+    // next UTC midnight, so `days` covers complete calendar days.
+    const now = new Date();
+    const until = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+    );
+    // Bound the window: one day to roughly a year.
+    const days = Math.min(Math.max(Math.trunc(args.days), 1), 366);
+    const since = until - days * 24 * 60 * 60 * 1000;
+
+    const [events, codes, emails, requests, claimsInRange] = await Promise.all([
+      ctx.db.query("events").collect(),
+      ctx.db.query("codes").collect(),
+      ctx.db.query("emails").collect(),
+      ctx.db.query("accessRequests").collect(),
+      ctx.db
+        .query("claimEvents")
+        .withIndex("by_claimedAt", (q) =>
+          q.gte("claimedAt", since).lt("claimedAt", until)
+        )
+        .collect(),
+    ]);
+
+    const eventInfo = new Map(
+      events.map((event) => [
+        event._id,
+        {
+          name: event.name,
+          slug: event.slug,
+          eventDate: event.eventDate,
+          createdAt: event._creationTime,
+        },
+      ]),
+    );
+
+    const daily = new Map<string, number>();
+    const perEvent = new Map<
+      Id<"events">,
+      {
+        codes: number;
+        claimed: number;
+        eligible: number;
+        requests: number;
+        approved: number;
+        denied: number;
+        inRangeClaims: number;
+        inRangeAttendees: Set<string>;
+        inRangeRequests: number;
+        firstClaim: number | null;
+        lastClaim: number | null;
+      }
+    >();
+    const forEvent = (eventId: Id<"events">) => {
+      let stats = perEvent.get(eventId);
+      if (!stats) {
+        stats = {
+          codes: 0,
+          claimed: 0,
+          eligible: 0,
+          requests: 0,
+          approved: 0,
+          denied: 0,
+          inRangeClaims: 0,
+          inRangeAttendees: new Set<string>(),
+          inRangeRequests: 0,
+          firstClaim: null,
+          lastClaim: null,
+        };
+        perEvent.set(eventId, stats);
+      }
+      return stats;
+    };
+
+    for (const code of codes) {
+      const stats = forEvent(code.eventId);
+      stats.codes++;
+      if (code.claimedBy) stats.claimed++;
+    }
+    for (const row of emails) forEvent(row.eventId).eligible++;
+    for (const request of requests) {
+      const stats = forEvent(request.eventId);
+      stats.requests++;
+      if (request.status === "approved") stats.approved++;
+      if (request.status === "denied") stats.denied++;
+      const at = request.decidedAt ?? request._creationTime;
+      if (at >= since && at < until) stats.inRangeRequests++;
+    }
+    const claimants = new Set<string>();
+    // Records a dispense into the daily/per-event aggregates. Legacy claims
+    // made before `claimEvents` existed are folded in from the code row's
+    // own `claimedAt`, deduped on (event, email, claimedAt) so a claim
+    // recorded in both places counts once.
+    const recordClaim = (
+      eventId: Id<"events">,
+      email: string,
+      claimedAt: number,
+    ) => {
+      const stats = forEvent(eventId);
+      stats.inRangeClaims++;
+      stats.inRangeAttendees.add(email);
+      claimants.add(email);
+      stats.firstClaim =
+        stats.firstClaim === null
+          ? claimedAt
+          : Math.min(stats.firstClaim, claimedAt);
+      stats.lastClaim =
+        stats.lastClaim === null
+          ? claimedAt
+          : Math.max(stats.lastClaim, claimedAt);
+      const day = new Date(claimedAt).toISOString().slice(0, 10);
+      daily.set(day, (daily.get(day) ?? 0) + 1);
+    };
+    const ledgerKeys = new Set(
+      claimsInRange.map(
+        (claim) => `${claim.eventId}|${claim.email}|${claim.claimedAt}`,
+      ),
+    );
+    for (const claim of claimsInRange) {
+      recordClaim(claim.eventId, claim.email, claim.claimedAt);
+    }
+    for (const code of codes) {
+      if (!code.claimedBy || code.claimedAt === undefined) continue;
+      if (code.claimedAt < since || code.claimedAt >= until) continue;
+      if (ledgerKeys.has(`${code.eventId}|${code.claimedBy}|${code.claimedAt}`)) {
+        continue;
+      }
+      recordClaim(code.eventId, code.claimedBy, code.claimedAt);
+    }
+
+    // Deleted events lose their codes but keep their ledger rows. Count
+    // lifetime dispenses for them so the scatter can still plot them; a
+    // fully-dispensed, deleted event reads as 100% claimed.
+    const dispensedByEvent = new Map<Id<"events">, number>();
+    // Deleted events have no eventDate/creation time; their earliest
+    // ledger claim is the most truthful anchor available for the scatter.
+    const deletedAnchor = new Map<Id<"events">, number>();
+    await Promise.all(
+      [...perEvent.entries()]
+        .filter(([, stats]) => stats.codes === 0 && stats.inRangeClaims > 0)
+        .map(async ([eventId]) => {
+          const rows = await ctx.db
+            .query("claimEvents")
+            .withIndex("by_event", (q) => q.eq("eventId", eventId))
+            .collect();
+          dispensedByEvent.set(eventId, rows.length);
+          if (rows.length > 0) {
+            deletedAnchor.set(
+              eventId,
+              Math.min(...rows.map((row) => row.claimedAt)),
+            );
+          }
+        }),
+    );
+
+    return {
+      since,
+      until,
+      daily: [...daily.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, count]) => ({ date, count })),
+      events: [...perEvent.entries()]
+        .map(([eventId, stats]) => {
+          const info = eventInfo.get(eventId);
+          const anchor = info?.eventDate
+            ? Date.parse(`${info.eventDate}T00:00:00Z`)
+            : (info?.createdAt ?? deletedAnchor.get(eventId) ?? 0);
+          return {
+            eventId,
+            name: info?.name ?? "Deleted event",
+            slug: info?.slug,
+            anchor,
+            codes: stats.codes,
+            claimed: stats.claimed,
+            eligible: stats.eligible,
+            attendees: stats.inRangeAttendees.size,
+            requests: stats.requests,
+            approved: stats.approved,
+            denied: stats.denied,
+            // Whether this event had any activity inside the selected window:
+            // claims, requests, or an event date that falls in it.
+            activeInRange:
+              stats.inRangeClaims > 0 ||
+              stats.inRangeRequests > 0 ||
+              (anchor >= since && anchor < until),
+            firstClaim: stats.firstClaim,
+            lastClaim: stats.lastClaim,
+            dispensed: dispensedByEvent.get(eventId) ?? stats.claimed,
+            deleted: !eventInfo.has(eventId),
+            claimRate:
+              stats.codes === 0
+                ? ((dispensedByEvent.get(eventId) ?? 0) > 0 ? 1 : 0)
+                : stats.claimed / stats.codes,
+          };
+        })
+        .sort((a, b) => a.anchor - b.anchor),
+      totals: {
+        claimants: claimants.size,
+      },
+    };
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -284,6 +499,7 @@ export const remove = mutation({
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
+    await preserveClaims(ctx, codes);
     for (const code of codes) await ctx.db.delete(code._id);
     const eventAdmins = await ctx.db
       .query("eventAdmins")
