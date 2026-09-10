@@ -30,10 +30,16 @@ type Insights = FunctionReturnType<typeof api.events.history>;
 
 export default function InsightsPage() {
   const { isAuthenticated } = useConvexAuth();
+  const access = useQuery(
+    api.admins.accessLevel,
+    isAuthenticated ? {} : "skip",
+  );
   const [days, setDays] = useState(90);
+  // Skip the privileged query until global-admin access is confirmed, so
+  // event admins hitting this page get the gate instead of a thrown error.
   const history = useQuery(
     api.events.history,
-    isAuthenticated ? { days } : "skip",
+    access?.isGlobalAdmin ? { days } : "skip",
   );
 
   return (
