@@ -878,7 +878,6 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   prev === `existing:${from ?? ""}` ? `existing:${to}` : prev
                 );
               }}
-              canDelete={(event.codeTypes ?? []).length === 2}
               onDelete={async (codeType) => {
                 const res = await removeCodeType({ eventId: id, codeType });
                 setBlockTarget((prev) =>
@@ -1035,7 +1034,6 @@ function CodeBlocks({
   values,
   onRename,
   onSetValue,
-  canDelete,
   onDelete,
 }: {
   codes: Doc<"codes">[] | undefined;
@@ -1045,7 +1043,6 @@ function CodeBlocks({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
-  canDelete: boolean;
   onDelete: (
     codeType: string | undefined
   ) => Promise<{ removed: number; kept: number }>;
@@ -1070,7 +1067,6 @@ function CodeBlocks({
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
-            canDelete={canDelete}
             onDelete={onDelete}
           />
         ))}
@@ -1084,7 +1080,6 @@ function CodeBlockRow({
   value,
   onRename,
   onSetValue,
-  canDelete,
   onDelete,
 }: {
   type: string;
@@ -1095,7 +1090,6 @@ function CodeBlockRow({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
-  canDelete: boolean;
   onDelete: (
     codeType: string | undefined
   ) => Promise<{ removed: number; kept: number }>;
@@ -1203,57 +1197,55 @@ function CodeBlockRow({
           >
             Edit
           </Button>
-          {canDelete ? (
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="shrink-0 text-muted-foreground"
-                    aria-label={`Delete block ${type || "Unnamed"}`}
-                  />
-                }
-              >
-                <Trash2 />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes the block and all of its unclaimed codes.
-                    Codes already dispensed are kept, so attendees keep their
-                    claim status and can still see their code. This does not
-                    revoke Stripe promotion codes.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      onDelete(type || undefined)
-                        .then(({ removed, kept }) =>
-                          toast.success(
-                            `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
-                          )
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="shrink-0 text-muted-foreground"
+                  aria-label={`Delete block ${type || "Unnamed"}`}
+                />
+              }
+            >
+              <Trash2 />
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes the block and all of its unclaimed codes.
+                  Codes already dispensed are kept, so attendees keep their
+                  claim status and can still see their code. This does not
+                  revoke Stripe promotion codes.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    onDelete(type || undefined)
+                      .then(({ removed, kept }) =>
+                        toast.success(
+                          `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
                         )
-                        .catch((err) =>
-                          toast.error(
-                            err instanceof Error
-                              ? err.message
-                              : "Failed to delete code block"
-                          )
-                        );
-                    }}
-                  >
-                    Delete block
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : null}
+                      )
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to delete code block"
+                        )
+                      );
+                  }}
+                >
+                  Delete block
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>
