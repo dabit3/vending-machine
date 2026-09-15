@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
-import { blockKey } from "../convex/blockValues";
+import { activeCodeTypes, blockKey } from "../convex/blockValues";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 const identity = {
@@ -64,6 +64,53 @@ test("deleting the only unnamed block keeps claimed codes and their value", asyn
   expect(updated.codeTypeValues?.[blockKey("")]).toBe("25");
   const remaining = await admin.query(api.codes.list, { eventId: event.id });
   expect(remaining.map((c) => c.claimedBy)).toEqual(["attendee@example.com"]);
+});
+
+test("a deleted block's kept claimed codes do not count toward the two-block limit", async () => {
+  const { t, admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Credits",
+  });
+  await t.run(async (ctx) => {
+    const code = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", event.id))
+      .first();
+    await ctx.db.patch(code!._id, {
+      claimedBy: "attendee@example.com",
+      claimedAt: Date.now(),
+    });
+  });
+  await admin.mutation(api.codes.removeType, {
+    eventId: event.id,
+    codeType: "Credits",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["B"],
+    codeType: "Gold",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["C"],
+    codeType: "Silver",
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.codeTypes).toEqual(["Gold", "Silver"]);
+  expect(activeCodeTypes(updated, await admin.query(api.codes.list, { eventId: event.id })))
+    .toEqual(["Gold", "Silver"]);
+});
+
+test("legacy events derive their active blocks from codes", () => {
+  const codes = [
+    { codeType: "B", _creationTime: 2 },
+    { codeType: undefined, _creationTime: 1 },
+    { codeType: "B", _creationTime: 3 },
+  ];
+  expect(activeCodeTypes({}, codes)).toEqual(["", "B"]);
+  expect(activeCodeTypes({ codeTypes: [] }, codes)).toEqual([]);
 });
 
 test("deleting a block the event does not have is rejected", async () => {

@@ -3,7 +3,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requireAdmin } from "./admins";
-import { blockKey } from "./blockValues";
+import { activeCodeTypes, blockKey } from "./blockValues";
 import { logAudit } from "./auditLog";
 import { validateGeneration, type GenerationInput } from "./stripeValidation";
 import { generateStripeCodePrefix } from "../lib/stripe-name";
@@ -124,7 +124,7 @@ async function resolveDestination(
     .query("codes")
     .withIndex("by_event", (q) => q.eq("eventId", eventId))
     .collect();
-  const types = [...new Set(existing.map((code) => code.codeType ?? ""))];
+  const types = [...activeCodeTypes(event, existing)];
   if (!types.includes(codeType)) types.push(codeType);
   if (types.length > 2)
     return {

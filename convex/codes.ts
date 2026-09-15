@@ -3,7 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
-import { blockKey, blockValue } from "./blockValues";
+import { activeCodeTypes, blockKey, blockValue } from "./blockValues";
 
 // Drop the type from the event's denormalized list when its last code is
 // removed.
@@ -52,6 +52,8 @@ export const add = mutation({
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
     const codeType = args.codeType?.trim() || undefined;
     const existing = await ctx.db
       .query("codes")
@@ -59,7 +61,8 @@ export const add = mutation({
       .collect();
     // Events support at most two code types, and both must be named so
     // attendees can tell them apart on the claim page.
-    const resultingTypes = new Set(existing.map((c) => c.codeType ?? ""));
+    const ordered = [...activeCodeTypes(event, existing)];
+    const resultingTypes = new Set(ordered);
     resultingTypes.add(codeType ?? "");
     if (resultingTypes.size > 2) {
       throw new Error("An event can have at most two code types.");
@@ -86,21 +89,13 @@ export const add = mutation({
     // can probe per type instead of scanning the pool. Types are ordered by
     // when each block was first created, not alphabetically.
     if (added > 0) {
-      const ordered = [
-        ...new Set(
-          [...existing]
-            .sort((a, b) => a._creationTime - b._creationTime)
-            .map((c) => c.codeType ?? "")
-        ),
-      ];
       if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
       await ctx.db.patch(args.eventId, { codeTypes: ordered });
       const value = args.value?.trim();
       if (value) {
-        const event = await ctx.db.get(args.eventId);
         await ctx.db.patch(args.eventId, {
           codeTypeValues: {
-            ...(event?.codeTypeValues ?? {}),
+            ...(event.codeTypeValues ?? {}),
             [blockKey(codeType)]: value,
           },
         });

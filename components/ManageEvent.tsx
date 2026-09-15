@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { blockKey } from "@/convex/blockValues";
+import { activeCodeTypes, blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
@@ -120,13 +120,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
   // Blocks are ordered by when each was first created, not alphabetically.
-  const blockTypes = [
-    ...new Set(
-      [...(codes ?? [])]
-        .sort((a, b) => a._creationTime - b._creationTime)
-        .map((c) => c.codeType ?? "")
-    ),
-  ];
+  const blockTypes = event ? activeCodeTypes(event, codes ?? []) : [];
   // Target values are namespaced ("existing:<type>" / "new") so a block
   // whose name matches a sentinel can't be confused with new-block creation.
   const targetOptions = [
@@ -865,6 +859,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-4">
             {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
             <CodeBlocks
+              types={blockTypes}
               codes={codes}
               values={event.codeTypeValues}
               onSetValue={(codeType, value) =>
@@ -1030,12 +1025,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 }
 
 function CodeBlocks({
+  types,
   codes,
   values,
   onRename,
   onSetValue,
   onDelete,
 }: {
+  types: string[];
   codes: Doc<"codes">[] | undefined;
   values: Record<string, string> | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
@@ -1047,23 +1044,16 @@ function CodeBlocks({
     codeType: string | undefined
   ) => Promise<{ removed: number; kept: number }>;
 }) {
-  // Map insertion order follows creation time, so blocks list in the order
-  // they were first created rather than alphabetically.
-  const blocks = new Map<string, number>();
-  for (const c of [...(codes ?? [])].sort(
-    (a, b) => a._creationTime - b._creationTime
-  )) {
-    const key = c.codeType ?? "";
-    blocks.set(key, (blocks.get(key) ?? 0) + 1);
-  }
-  if (blocks.size === 0) return null;
+  if (types.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {[...blocks.entries()].map(([type, count]) => (
+      {types.map((type) => (
           <CodeBlockRow
             key={type || "__unnamed"}
             type={type}
-            count={count}
+            count={
+              codes?.filter((c) => (c.codeType ?? "") === type).length ?? 0
+            }
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}

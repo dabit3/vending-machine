@@ -15,6 +15,24 @@ export function blockKey(codeType: string | undefined): string {
   return /^[$_]/.test(key) ? ` ${key}` : key;
 }
 
+// The event's active code blocks ("" = unnamed), in creation order. The
+// stored list is authoritative once present: deleting a block drops it from
+// the list while its claimed codes stay behind for attendee receipts. Legacy
+// events without a stored list derive their blocks from the codes themselves.
+export function activeCodeTypes(
+  event: { codeTypes?: string[] },
+  codes: { codeType?: string; _creationTime: number }[]
+): string[] {
+  if (event.codeTypes) return event.codeTypes;
+  return [
+    ...new Set(
+      [...codes]
+        .sort((a, b) => a._creationTime - b._creationTime)
+        .map((c) => c.codeType ?? "")
+    ),
+  ];
+}
+
 // The value shown for a code is its block's value, falling back to the
 // legacy event-wide creditAmount for events created before per-block values.
 export function blockValue(
