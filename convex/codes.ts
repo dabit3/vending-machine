@@ -3,7 +3,7 @@ import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
-import { blockKey, blockValue } from "./blockValues";
+import { activeCodeTypes, blockKey, blockValue } from "./blockValues";
 
 // Drop the type from the event's denormalized list when its last code is
 // removed.
@@ -52,6 +52,8 @@ export const add = mutation({
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
     const codeType = args.codeType?.trim() || undefined;
     const existing = await ctx.db
       .query("codes")
@@ -59,7 +61,8 @@ export const add = mutation({
       .collect();
     // Events support at most two code types, and both must be named so
     // attendees can tell them apart on the claim page.
-    const resultingTypes = new Set(existing.map((c) => c.codeType ?? ""));
+    const ordered = [...activeCodeTypes(event, existing)];
+    const resultingTypes = new Set(ordered);
     resultingTypes.add(codeType ?? "");
     if (resultingTypes.size > 2) {
       throw new Error("An event can have at most two code types.");
@@ -86,21 +89,13 @@ export const add = mutation({
     // can probe per type instead of scanning the pool. Types are ordered by
     // when each block was first created, not alphabetically.
     if (added > 0) {
-      const ordered = [
-        ...new Set(
-          [...existing]
-            .sort((a, b) => a._creationTime - b._creationTime)
-            .map((c) => c.codeType ?? "")
-        ),
-      ];
       if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
       await ctx.db.patch(args.eventId, { codeTypes: ordered });
       const value = args.value?.trim();
       if (value) {
-        const event = await ctx.db.get(args.eventId);
         await ctx.db.patch(args.eventId, {
           codeTypeValues: {
-            ...(event?.codeTypeValues ?? {}),
+            ...(event.codeTypeValues ?? {}),
             [blockKey(codeType)]: value,
           },
         });
@@ -180,30 +175,27 @@ export const renameType = mutation({
 // Deletes an entire code block: its unclaimed codes plus the block's name
 // on the event. Claimed codes are kept so attendees keep their claim status
 // and receipts; the block's stored value also stays so those receipts keep
-// showing it. Only allowed while the event has two blocks, so the claim page
-// always has at least one block left.
+// showing it. Deleting the last block leaves the event with no codes, like a
+// freshly created event.
 export const removeType = mutation({
   args: { eventId: v.id("events"), codeType: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const actorEmail = await requireEventAdmin(ctx, args.eventId);
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
-    if ((event.codeTypes ?? []).length !== 2) {
-      throw new Error(
-        "A code block can only be deleted while the event has two blocks."
-      );
-    }
     const codeType = args.codeType?.trim() || undefined;
     const typeKey = codeType ?? "";
-    if (!event.codeTypes?.includes(typeKey)) {
-      throw new Error("This event has no such code block.");
-    }
     const codes = await ctx.db
       .query("codes")
       .withIndex("by_event_codeType_claimedBy", (q) =>
         q.eq("eventId", args.eventId).eq("codeType", codeType)
       )
       .collect();
+    // Legacy events may lack the denormalized type list, so a block also
+    // counts as present when codes carry its type.
+    if (!event.codeTypes?.includes(typeKey) && codes.length === 0) {
+      throw new Error("This event has no such code block.");
+    }
     let removed = 0;
     let kept = 0;
     for (const code of codes) {
@@ -217,7 +209,7 @@ export const removeType = mutation({
     const values = { ...(event.codeTypeValues ?? {}) };
     if (kept === 0) delete values[blockKey(typeKey)];
     await ctx.db.patch(args.eventId, {
-      codeTypes: event.codeTypes.filter((t) => t !== typeKey),
+      codeTypes: (event.codeTypes ?? []).filter((t) => t !== typeKey),
       codeTypeValues: values,
     });
     await logAudit(ctx, {

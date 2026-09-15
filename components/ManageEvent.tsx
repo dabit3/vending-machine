@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
-import { blockKey } from "@/convex/blockValues";
+import { activeCodeTypes, blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
 import { fileToItems } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
@@ -120,13 +120,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
   // Blocks are ordered by when each was first created, not alphabetically.
-  const blockTypes = [
-    ...new Set(
-      [...(codes ?? [])]
-        .sort((a, b) => a._creationTime - b._creationTime)
-        .map((c) => c.codeType ?? "")
-    ),
-  ];
+  const blockTypes = event ? activeCodeTypes(event, codes ?? []) : [];
   // Target values are namespaced ("existing:<type>" / "new") so a block
   // whose name matches a sentinel can't be confused with new-block creation.
   const targetOptions = [
@@ -865,6 +859,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardContent className="flex flex-col gap-4">
             {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
             <CodeBlocks
+              types={blockTypes}
               codes={codes}
               values={event.codeTypeValues}
               onSetValue={(codeType, value) =>
@@ -878,7 +873,6 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   prev === `existing:${from ?? ""}` ? `existing:${to}` : prev
                 );
               }}
-              canDelete={(event.codeTypes ?? []).length === 2}
               onDelete={async (codeType) => {
                 const res = await removeCodeType({ eventId: id, codeType });
                 setBlockTarget((prev) =>
@@ -1031,13 +1025,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 }
 
 function CodeBlocks({
+  types,
   codes,
   values,
   onRename,
   onSetValue,
-  canDelete,
   onDelete,
 }: {
+  types: string[];
   codes: Doc<"codes">[] | undefined;
   values: Record<string, string> | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
@@ -1045,32 +1040,23 @@ function CodeBlocks({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
-  canDelete: boolean;
   onDelete: (
     codeType: string | undefined
   ) => Promise<{ removed: number; kept: number }>;
 }) {
-  // Map insertion order follows creation time, so blocks list in the order
-  // they were first created rather than alphabetically.
-  const blocks = new Map<string, number>();
-  for (const c of [...(codes ?? [])].sort(
-    (a, b) => a._creationTime - b._creationTime
-  )) {
-    const key = c.codeType ?? "";
-    blocks.set(key, (blocks.get(key) ?? 0) + 1);
-  }
-  if (blocks.size === 0) return null;
+  if (types.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {[...blocks.entries()].map(([type, count]) => (
+      {types.map((type) => (
           <CodeBlockRow
             key={type || "__unnamed"}
             type={type}
-            count={count}
+            count={
+              codes?.filter((c) => (c.codeType ?? "") === type).length ?? 0
+            }
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
-            canDelete={canDelete}
             onDelete={onDelete}
           />
         ))}
@@ -1084,7 +1070,6 @@ function CodeBlockRow({
   value,
   onRename,
   onSetValue,
-  canDelete,
   onDelete,
 }: {
   type: string;
@@ -1095,7 +1080,6 @@ function CodeBlockRow({
     codeType: string | undefined,
     value: string | undefined
   ) => Promise<unknown>;
-  canDelete: boolean;
   onDelete: (
     codeType: string | undefined
   ) => Promise<{ removed: number; kept: number }>;
@@ -1203,57 +1187,55 @@ function CodeBlockRow({
           >
             Edit
           </Button>
-          {canDelete ? (
-            <AlertDialog>
-              <AlertDialogTrigger
-                render={
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="shrink-0 text-muted-foreground"
-                    aria-label={`Delete block ${type || "Unnamed"}`}
-                  />
-                }
-              >
-                <Trash2 />
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>
-                    Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This removes the block and all of its unclaimed codes.
-                    Codes already dispensed are kept, so attendees keep their
-                    claim status and can still see their code. This does not
-                    revoke Stripe promotion codes.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      onDelete(type || undefined)
-                        .then(({ removed, kept }) =>
-                          toast.success(
-                            `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
-                          )
+          <AlertDialog>
+            <AlertDialogTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="shrink-0 text-muted-foreground"
+                  aria-label={`Delete block ${type || "Unnamed"}`}
+                />
+              }
+            >
+              <Trash2 />
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes the block and all of its unclaimed codes.
+                  Codes already dispensed are kept, so attendees keep their
+                  claim status and can still see their code. This does not
+                  revoke Stripe promotion codes.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    onDelete(type || undefined)
+                      .then(({ removed, kept }) =>
+                        toast.success(
+                          `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
                         )
-                        .catch((err) =>
-                          toast.error(
-                            err instanceof Error
-                              ? err.message
-                              : "Failed to delete code block"
-                          )
-                        );
-                    }}
-                  >
-                    Delete block
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          ) : null}
+                      )
+                      .catch((err) =>
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Failed to delete code block"
+                        )
+                      );
+                  }}
+                >
+                  Delete block
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
     </div>
