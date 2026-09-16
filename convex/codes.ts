@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { requireEventAdmin } from "./admins";
+import { requireAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 import { activeCodeTypes, blockKey, blockValue } from "./blockValues";
 
@@ -43,6 +43,8 @@ export const list = query({
   },
 });
 
+// Only system admins can add codes to an event. Event admins manage the
+// codes they were given (rename, revalue, delete) but cannot mint new ones.
 export const add = mutation({
   args: {
     eventId: v.id("events"),
@@ -51,7 +53,7 @@ export const add = mutation({
     value: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireEventAdmin(ctx, args.eventId);
+    await requireAdmin(ctx);
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
     const codeType = args.codeType?.trim() || undefined;

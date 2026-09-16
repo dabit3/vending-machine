@@ -136,6 +136,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     ? null
     : effectiveTarget.slice("existing:".length);
   const hasBlocks = blockTypes.length > 0;
+  // Event admins manage the codes they were given; only system admins can
+  // add more (paste, upload, or Stripe).
+  const canAddCodes = access?.isGlobalAdmin ?? false;
   // A second block requires both blocks to be named, so creating one next to
   // an unnamed block also asks for the existing block's name.
   const needsFirstBlockName =
@@ -853,11 +856,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   Export
                 </Button>
               ) : null}
-              <UploadButton busy={codeBusy} onFile={handleCodeFile} />
+              {canAddCodes ? (
+                <UploadButton busy={codeBusy} onFile={handleCodeFile} />
+              ) : null}
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
+            {canAddCodes && <EventStripeCodes eventId={id} />}
             <CodeBlocks
               types={blockTypes}
               codes={codes}
@@ -881,130 +886,132 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 return res;
               }}
             />
-            <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
-              {hasBlocks ? (
-                <Field>
-                  <FieldLabel>Add codes to</FieldLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {blockTypes.map((t) => (
-                      <Button
-                        key={t || "__unnamed"}
-                        type="button"
-                        size="sm"
-                        variant={
-                          !isNewBlock && selectedType === t
-                            ? "secondary"
-                            : "outline"
-                        }
-                        onClick={() => setBlockTarget(`existing:${t}`)}
-                      >
-                        {t || "Unnamed block"}
-                      </Button>
-                    ))}
-                    {blockTypes.length < 2 ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={isNewBlock ? "secondary" : "outline"}
-                        onClick={() => setBlockTarget("new")}
-                      >
-                        <Plus data-icon="inline-start" />
-                        Second code block
-                      </Button>
-                    ) : null}
-                  </div>
-                  <FieldDescription>
-                    {blockTypes.length < 2
-                      ? "Events can have up to two code blocks — attendees pick one by name when there are two."
-                      : "This event has both code blocks — pasted and uploaded codes go into the selected one."}
-                  </FieldDescription>
-                </Field>
-              ) : null}
-              {!hasBlocks || isNewBlock ? (
-                <Field>
-                  <FieldLabel htmlFor="new-block-name">
-                    {hasBlocks ? "Second block name" : "Code name"}
-                  </FieldLabel>
-                  <Input
-                    id="new-block-name"
-                    value={newBlockName}
-                    onChange={(e) => setNewBlockName(e.target.value)}
-                    placeholder="e.g. $50 credits"
-                    className="text-sm"
-                  />
-                  <FieldDescription>
-                    {hasBlocks
-                      ? "Required — attendees choose between the two blocks by name."
-                      : "Optional with a single code block. Applies to pasted and uploaded codes."}
-                  </FieldDescription>
-                </Field>
-              ) : null}
-              {!hasBlocks || isNewBlock ? (
-                <Field>
-                  <FieldLabel htmlFor="new-block-value">Value</FieldLabel>
-                  <Input
-                    id="new-block-value"
-                    value={newBlockValue}
-                    onChange={(e) => setNewBlockValue(e.target.value)}
-                    placeholder="e.g. 100 or Team plan"
-                    className="text-sm"
-                  />
-                  <FieldDescription>
-                    Optional — shown on the claim page. Numbers get a
-                    &ldquo;$&rdquo; prefix; anything else is shown as-is.
-                  </FieldDescription>
-                </Field>
-              ) : null}
-              {needsFirstBlockName ? (
-                <Field>
-                  <FieldLabel htmlFor="first-block-name">
-                    Name the existing block
-                  </FieldLabel>
-                  <Input
-                    id="first-block-name"
-                    value={firstBlockName}
-                    onChange={(e) => setFirstBlockName(e.target.value)}
-                    placeholder="e.g. $25 credits"
-                    className="text-sm"
-                  />
-                  <FieldDescription>
-                    Your current codes are unnamed — give them a name so
-                    attendees can tell the two blocks apart.
-                  </FieldDescription>
-                </Field>
-              ) : null}
-              <Textarea
-                aria-label="Credit codes to add"
-                value={codeInput}
-                onChange={(e) => setCodeInput(e.target.value)}
-                rows={4}
-                placeholder={"CODE-001\nCODE-002"}
-                className="max-h-48 resize-y overflow-y-auto font-mono text-sm"
-              />
-              <div className="flex flex-wrap items-center gap-3">
-                <Button
-                  type="submit"
-                  variant="secondary"
-                  disabled={codeBusy || !codeInput.trim() || !codeFormReady}
-                  aria-busy={codeBusy}
-                >
-                  {codeBusy ? (
-                    <>
-                      <Spinner data-icon="inline-start" />
-                      Adding...
-                    </>
-                  ) : (
-                    "Add codes"
-                  )}
-                </Button>
-                {pendingCodeCount > 0 ? (
-                  <span className="text-xs text-muted-dim tabular-nums">
-                    {pendingCodeCount} code{pendingCodeCount === 1 ? "" : "s"} pasted
-                  </span>
+            {canAddCodes ? (
+              <form onSubmit={handleAddCodes} className="flex flex-col gap-3">
+                {hasBlocks ? (
+                  <Field>
+                    <FieldLabel>Add codes to</FieldLabel>
+                    <div className="flex flex-wrap gap-2">
+                      {blockTypes.map((t) => (
+                        <Button
+                          key={t || "__unnamed"}
+                          type="button"
+                          size="sm"
+                          variant={
+                            !isNewBlock && selectedType === t
+                              ? "secondary"
+                              : "outline"
+                          }
+                          onClick={() => setBlockTarget(`existing:${t}`)}
+                        >
+                          {t || "Unnamed block"}
+                        </Button>
+                      ))}
+                      {blockTypes.length < 2 ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={isNewBlock ? "secondary" : "outline"}
+                          onClick={() => setBlockTarget("new")}
+                        >
+                          <Plus data-icon="inline-start" />
+                          Second code block
+                        </Button>
+                      ) : null}
+                    </div>
+                    <FieldDescription>
+                      {blockTypes.length < 2
+                        ? "Events can have up to two code blocks — attendees pick one by name when there are two."
+                        : "This event has both code blocks — pasted and uploaded codes go into the selected one."}
+                    </FieldDescription>
+                  </Field>
                 ) : null}
-              </div>
-            </form>
-            {blockTypes.length > 1 ? (
+                {!hasBlocks || isNewBlock ? (
+                  <Field>
+                    <FieldLabel htmlFor="new-block-name">
+                      {hasBlocks ? "Second block name" : "Code name"}
+                    </FieldLabel>
+                    <Input
+                      id="new-block-name"
+                      value={newBlockName}
+                      onChange={(e) => setNewBlockName(e.target.value)}
+                      placeholder="e.g. $50 credits"
+                      className="text-sm"
+                    />
+                    <FieldDescription>
+                      {hasBlocks
+                        ? "Required — attendees choose between the two blocks by name."
+                        : "Optional with a single code block. Applies to pasted and uploaded codes."}
+                    </FieldDescription>
+                  </Field>
+                ) : null}
+                {!hasBlocks || isNewBlock ? (
+                  <Field>
+                    <FieldLabel htmlFor="new-block-value">Value</FieldLabel>
+                    <Input
+                      id="new-block-value"
+                      value={newBlockValue}
+                      onChange={(e) => setNewBlockValue(e.target.value)}
+                      placeholder="e.g. 100 or Team plan"
+                      className="text-sm"
+                    />
+                    <FieldDescription>
+                      Optional — shown on the claim page. Numbers get a
+                      &ldquo;$&rdquo; prefix; anything else is shown as-is.
+                    </FieldDescription>
+                  </Field>
+                ) : null}
+                {needsFirstBlockName ? (
+                  <Field>
+                    <FieldLabel htmlFor="first-block-name">
+                      Name the existing block
+                    </FieldLabel>
+                    <Input
+                      id="first-block-name"
+                      value={firstBlockName}
+                      onChange={(e) => setFirstBlockName(e.target.value)}
+                      placeholder="e.g. $25 credits"
+                      className="text-sm"
+                    />
+                    <FieldDescription>
+                      Your current codes are unnamed — give them a name so
+                      attendees can tell the two blocks apart.
+                    </FieldDescription>
+                  </Field>
+                ) : null}
+                <Textarea
+                  aria-label="Credit codes to add"
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value)}
+                  rows={4}
+                  placeholder={"CODE-001\nCODE-002"}
+                  className="max-h-48 resize-y overflow-y-auto font-mono text-sm"
+                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={codeBusy || !codeInput.trim() || !codeFormReady}
+                    aria-busy={codeBusy}
+                  >
+                    {codeBusy ? (
+                      <>
+                        <Spinner data-icon="inline-start" />
+                        Adding...
+                      </>
+                    ) : (
+                      "Add codes"
+                    )}
+                  </Button>
+                  {pendingCodeCount > 0 ? (
+                    <span className="text-xs text-muted-dim tabular-nums">
+                      {pendingCodeCount} code{pendingCodeCount === 1 ? "" : "s"} pasted
+                    </span>
+                  ) : null}
+                </div>
+              </form>
+            ) : null}
+            {canAddCodes && blockTypes.length > 1 ? (
               // The "Add codes to" selection doubles as the list filter, so
               // one toggle controls both where codes go and which are shown.
               <RowList

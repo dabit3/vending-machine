@@ -113,6 +113,51 @@ test("legacy events derive their active blocks from codes", () => {
   expect(activeCodeTypes({ codeTypes: [] }, codes)).toEqual([]);
 });
 
+test("event admins can rename, revalue and delete codes but not add them", async () => {
+  const { t, admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A", "B"],
+    codeType: "Credits",
+    value: "50",
+  });
+  const eventAdminEmail = "organizer@example.com";
+  await t.run((ctx) =>
+    ctx.db.insert("eventAdmins", { eventId: event.id, email: eventAdminEmail }),
+  );
+  const organizer = t.withIdentity({
+    subject: "organizer",
+    email: eventAdminEmail,
+    emailVerified: true,
+  });
+  await expect(
+    organizer.mutation(api.codes.add, {
+      eventId: event.id,
+      codes: ["C"],
+      codeType: "Credits",
+    }),
+  ).rejects.toThrow("Not an admin");
+  await organizer.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Credits",
+    to: "Gold",
+  });
+  await organizer.mutation(api.codes.setTypeValue, {
+    eventId: event.id,
+    codeType: "Gold",
+    value: "75",
+  });
+  const [first] = await organizer.query(api.codes.list, { eventId: event.id });
+  await organizer.mutation(api.codes.remove, { id: first._id });
+  expect(
+    await organizer.mutation(api.codes.removeType, {
+      eventId: event.id,
+      codeType: "Gold",
+    }),
+  ).toEqual({ removed: 1, kept: 0 });
+  expect(await organizer.query(api.codes.list, { eventId: event.id })).toEqual([]);
+});
+
 test("deleting a block the event does not have is rejected", async () => {
   const { admin, event } = await setup();
   await expect(
