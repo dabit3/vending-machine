@@ -84,6 +84,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
+  const removeAllEmails = useMutation(api.emails.removeAll);
   const approveFlagged = useMutation(api.emails.approveFlagged);
   const rejectFlagged = useMutation(api.emails.rejectFlagged);
   const addCodes = useMutation(api.codes.add);
@@ -723,6 +724,58 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               {isDynamic ? null : (
                 <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
               )}
+              {!isDynamic && emails && emails.length > 0 ? (
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="shrink-0 text-muted-foreground"
+                        aria-label="Remove all emails"
+                      />
+                    }
+                  >
+                    <Trash2 />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Remove all {emails.length} email
+                        {emails.length === 1 ? "" : "s"}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This clears the eligible list, so no one can claim until
+                        emails are added again. Codes already dispensed are
+                        kept, and codes reserved for these emails return to the
+                        pool.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          removeAllEmails({ eventId: id })
+                            .then(({ removed }) =>
+                              toast.success(
+                                `Removed ${removed} email${removed === 1 ? "" : "s"}`
+                              )
+                            )
+                            .catch((err) =>
+                              toast.error(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Failed to remove emails"
+                              )
+                            );
+                        }}
+                      >
+                        Remove all
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : null}
             </CardAction>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow">
