@@ -788,7 +788,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleRemoveAllEmails}>
+                      <AlertDialogAction
+                        disabled={emailBusy}
+                        onClick={handleRemoveAllEmails}
+                      >
                         Remove all
                       </AlertDialogAction>
                     </AlertDialogFooter>
