@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
@@ -382,35 +382,62 @@ export const searchAttendees = query({
   },
 });
 
+async function deleteEmail(ctx: MutationCtx, email: Doc<"emails">) {
+  await ctx.db.delete(email._id);
+  // Release any unclaimed code reserved for this email so it returns to
+  // the general pool instead of staying locked away.
+  const reserved = await ctx.db
+    .query("codes")
+    .withIndex("by_event_reservedFor", (q) =>
+      q.eq("eventId", email.eventId).eq("reservedFor", email.email)
+    )
+    .filter((q) => q.eq(q.field("claimedBy"), undefined))
+    .collect();
+  for (const code of reserved) {
+    await ctx.db.patch(code._id, { reservedFor: undefined });
+  }
+  // Drop an approved access request for this email so the attendee can
+  // request access again instead of being stuck showing "approved".
+  const request = await ctx.db
+    .query("accessRequests")
+    .withIndex("by_event_email", (q) =>
+      q.eq("eventId", email.eventId).eq("email", email.email)
+    )
+    .unique();
+  if (request && request.status === "approved") {
+    await ctx.db.delete(request._id);
+  }
+}
+
 export const remove = mutation({
   args: { id: v.id("emails") },
   handler: async (ctx, args) => {
     const email = await ctx.db.get(args.id);
     if (!email) return;
     await requireEventAdmin(ctx, email.eventId);
-    await ctx.db.delete(args.id);
-    // Release any unclaimed code reserved for this email so it returns to
-    // the general pool instead of staying locked away.
-    const reserved = await ctx.db
-      .query("codes")
-      .withIndex("by_event_reservedFor", (q) =>
-        q.eq("eventId", email.eventId).eq("reservedFor", email.email)
-      )
-      .filter((q) => q.eq(q.field("claimedBy"), undefined))
+    await deleteEmail(ctx, email);
+  },
+});
+
+export const removeAll = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const actorEmail = await requireEventAdmin(ctx, args.eventId);
+    const emails = await ctx.db
+      .query("emails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
-    for (const code of reserved) {
-      await ctx.db.patch(code._id, { reservedFor: undefined });
+    for (const email of emails) {
+      await deleteEmail(ctx, email);
     }
-    // Drop an approved access request for this email so the attendee can
-    // request access again instead of being stuck showing "approved".
-    const request = await ctx.db
-      .query("accessRequests")
-      .withIndex("by_event_email", (q) =>
-        q.eq("eventId", email.eventId).eq("email", email.email)
-      )
-      .unique();
-    if (request && request.status === "approved") {
-      await ctx.db.delete(request._id);
+    if (emails.length > 0) {
+      await logAudit(ctx, {
+        eventId: args.eventId,
+        action: "emails_removed_all",
+        actorEmail: actorEmail ?? undefined,
+        details: `Removed ${emails.length} email(s)`,
+      });
     }
+    return { removed: emails.length };
   },
 });
