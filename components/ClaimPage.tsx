@@ -168,9 +168,9 @@ export default function ClaimPage({
           "previewCodes" in eligibility &&
           eligibility.previewCodes) ||
         [];
-      const next = mustChoose
-        ? previewCodes.find((p) => p.codeType === type)
-        : previewCodes[0];
+      const next =
+        previewCodes.find((p) => p.codeType === type) ??
+        (mustChoose ? undefined : previewCodes[0]);
       setResult({
         ok: true,
         code: "PREVIEW-CODE",
