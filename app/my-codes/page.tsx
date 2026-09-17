@@ -14,6 +14,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
+import { codeExpiry } from "@/lib/code-expiry";
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -165,6 +166,7 @@ export default function MyCodesPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {codes.map((item) => {
                 const meta = item.event ? eventMeta(item.event) : null;
+                const expiry = codeExpiry(item.expiresAt);
                 return (
                   <Card key={item._id}>
                     <CardHeader>
@@ -195,6 +197,17 @@ export default function MyCodesPage() {
                     <div className="font-mono text-xl font-medium tracking-[0.04em] break-all select-all">
                       {item.code}
                     </div>
+                    {expiry ? (
+                      <div
+                        className={
+                          expiry.expired
+                            ? "mt-2 text-sm font-medium text-destructive"
+                            : "mt-2 text-sm font-medium"
+                        }
+                      >
+                        {expiry.label}
+                      </div>
+                    ) : null}
                   </CardContent>
                   <CardFooter className="justify-end">
                     <Button

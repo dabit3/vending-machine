@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
+import { codeExpiry } from "../lib/code-expiry";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 const attendee = {
@@ -73,3 +74,42 @@ test.each([undefined, Date.now() + 86_400_000])(
     ).toMatchObject({ ok: true, code: "VALID" });
   },
 );
+
+test("claim responses carry the code's expiry so attendees can see it", async () => {
+  const { t, eventId, user } = await setup();
+  const expiresAt = Date.now() + 86_400_000;
+  await t.run(async (ctx) => {
+    await ctx.db.insert("codes", {
+      eventId,
+      code: "VALID",
+      codeType: "Credits",
+      expiresAt,
+    });
+  });
+  expect(
+    await user.mutation(api.claims.claim, { slug: "expiry", codeType: "Credits" }),
+  ).toMatchObject({ ok: true, alreadyClaimed: false, expiresAt });
+  expect(
+    await user.query(api.claims.eligibility, { slug: "expiry" }),
+  ).toMatchObject({ claimed: { code: "VALID", expiresAt } });
+  expect(await user.mutation(api.claims.claim, { slug: "expiry" })).toMatchObject({
+    alreadyClaimed: true,
+    expiresAt,
+  });
+  expect(await user.query(api.codes.mine, {})).toMatchObject([
+    { code: "VALID", expiresAt },
+  ]);
+});
+
+test("codeExpiry tells attendees when to redeem by, or that the code expired", () => {
+  const now = new Date(2026, 8, 17).getTime();
+  expect(codeExpiry(undefined, now)).toBeNull();
+  expect(codeExpiry(new Date(2026, 9, 31, 23, 59, 59).getTime(), now)).toEqual({
+    label: "Redeem by October 31, 2026",
+    expired: false,
+  });
+  expect(codeExpiry(new Date(2026, 0, 5).getTime(), now)).toEqual({
+    label: "Expired January 5, 2026",
+    expired: true,
+  });
+});

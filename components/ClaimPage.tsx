@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowUpRight,
   BookOpen,
+  CalendarClock,
   CalendarDays,
   Check,
   Copy,
@@ -59,6 +60,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import { codeExpiry } from "@/lib/code-expiry";
 
 type ClaimResult =
   | {
@@ -67,6 +69,7 @@ type ClaimResult =
       codeType?: string;
       alreadyClaimed: boolean;
       creditAmount?: string;
+      expiresAt?: number;
     }
   | { ok: false; error: string };
 
@@ -253,6 +256,7 @@ export default function ClaimPage({
               creditAmount={result.creditAmount}
               code={result.code}
               codeType={result.codeType}
+              expiresAt={result.expiresAt}
               alreadyClaimed={result.alreadyClaimed}
               copied={copied}
               onCopy={copyCode}
@@ -264,6 +268,7 @@ export default function ClaimPage({
               creditAmount={eligibility.claimed.creditAmount}
               code={eligibility.claimed.code}
               codeType={eligibility.claimed.codeType}
+              expiresAt={eligibility.claimed.expiresAt}
               alreadyClaimed
               copied={copied}
               onCopy={copyCode}
@@ -677,6 +682,7 @@ function Receipt({
   creditAmount,
   code,
   codeType,
+  expiresAt,
   alreadyClaimed,
   copied,
   onCopy,
@@ -686,10 +692,12 @@ function Receipt({
   creditAmount?: string;
   code: string;
   codeType?: string;
+  expiresAt?: number;
   alreadyClaimed: boolean;
   copied: boolean;
   onCopy: (code: string) => void;
 }) {
+  const expiry = codeExpiry(expiresAt);
   return (
     <div
       className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
@@ -733,6 +741,17 @@ function Receipt({
           <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
             {code}
           </div>
+          {expiry ? (
+            <div
+              className={cn(
+                "mt-4 flex items-center gap-2 text-lg font-medium",
+                expiry.expired ? "text-destructive" : "text-foreground"
+              )}
+            >
+              <CalendarClock className="size-5 shrink-0" aria-hidden />
+              <span>{expiry.label}</span>
+            </div>
+          ) : null}
         </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-[450ms] flex flex-col gap-2 motion-reduce:animate-none">

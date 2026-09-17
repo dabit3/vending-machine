@@ -242,6 +242,7 @@ export const mine = query({
           code: c.code,
           codeType: c.codeType,
           claimedAt: c.claimedAt,
+          expiresAt: c.expiresAt,
           event: event
             ? {
                 _id: event._id,

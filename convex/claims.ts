@@ -93,6 +93,7 @@ export const eligibility = query({
           code: claimed.code,
           codeType: claimed.codeType,
           creditAmount: blockValue(event, claimed.codeType),
+          expiresAt: claimed.expiresAt,
         },
       };
     }
@@ -204,6 +205,7 @@ export const claim = mutation({
         codeType: alreadyClaimed.codeType,
         alreadyClaimed: true,
         creditAmount: blockValue(event, alreadyClaimed.codeType),
+        expiresAt: alreadyClaimed.expiresAt,
       };
     }
 
@@ -270,6 +272,7 @@ export const claim = mutation({
       codeType: available.codeType,
       alreadyClaimed: false,
       creditAmount: blockValue(event, available.codeType),
+      expiresAt: available.expiresAt,
     };
   },
 });
