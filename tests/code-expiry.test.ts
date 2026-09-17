@@ -101,6 +101,34 @@ test("claim responses carry the code's expiry so attendees can see it", async ()
   ]);
 });
 
+test("admin preview reports the expiry of the next code an attendee would get", async () => {
+  const { t, eventId } = await setup();
+  const expiresAt = Date.now() + 86_400_000;
+  await t.run(async (ctx) => {
+    await ctx.db.insert("admins", { email: "admin@example.com" });
+    await ctx.db.patch(eventId, { codeTypes: ["Credits", "Team"] });
+    await ctx.db.insert("codes", {
+      eventId,
+      code: "VALID",
+      codeType: "Credits",
+      expiresAt,
+    });
+    await ctx.db.insert("codes", { eventId, code: "TEAM", codeType: "Team" });
+  });
+  const admin = t.withIdentity({
+    subject: "admin",
+    email: "admin@example.com",
+    emailVerified: true,
+  });
+  expect(
+    await admin.query(api.claims.eligibility, { slug: "expiry", preview: true }),
+  ).toMatchObject({
+    preview: true,
+    previewCodes: [{ codeType: "Credits", expiresAt }, { codeType: "Team" }],
+  });
+  expect(await t.run((ctx) => ctx.db.query("codes").collect())).toHaveLength(4);
+});
+
 test("codeExpiry tells attendees when to redeem by, or that the code expired", () => {
   const now = new Date(2026, 8, 17).getTime();
   expect(codeExpiry(undefined, now)).toBeNull();
