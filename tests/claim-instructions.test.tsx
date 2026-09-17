@@ -4,28 +4,37 @@ import { ClaimInstructions } from "../components/ClaimInstructions";
 import { ClaimInstructionsField } from "../components/ClaimInstructionsField";
 import { CLAIM_INSTRUCTION_PRESETS, claimInstructionsMode } from "../lib/claim-instructions";
 
+const cancelNote = "If you already have a Devin subscription, please cancel your subscription first before using the coupon in order to not be charged. Go to Settings -> Plans -> Manage billing -> Cancel subscription.";
+const cancelNoteHtml = cancelNote.replaceAll(">", "&gt;");
 const note = "If you had a previous Windsurf account and your code does not work, try using a new email address.";
 
-test.each(["pro", "max"] as const)("renders the updated %s preset with a checkout link and two paragraphs", (plan) => {
+test.each(["pro", "max"] as const)("renders the updated %s preset with a checkout link and three paragraphs", (plan) => {
   const preset = CLAIM_INSTRUCTION_PRESETS[plan];
-  expect(preset.text).toBe(`Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${note}`);
+  expect(preset.text).toBe(`Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelNote}\n\n${note}`);
   expect(claimInstructionsMode(preset.text)).toBe(plan);
   const html = renderToStaticMarkup(<ClaimInstructions value={preset.text} />);
   expect(html).toContain('href="https://app.devin.ai/"');
   expect(html).toContain('target="_blank"');
   expect(html).toContain('rel="noopener noreferrer"');
-  expect(html).toContain(`>${note}</p>`);
-  expect(html.match(/<p\b/g)).toHaveLength(2);
+  expect(html).toContain(`>${cancelNoteHtml}</p>\n<p>${note}</p>`);
+  expect(html.match(/<p\b/g)).toHaveLength(3);
 });
 
 test.each(["pro", "max"] as const)("recognizes and displays legacy %s presets without rewriting custom instructions", (plan) => {
   const preset = CLAIM_INSTRUCTION_PRESETS[plan];
   const legacy = `Redeem at checkout for a free Devin ${preset.label} plan. ${note}`;
-  expect(claimInstructionsMode(legacy)).toBe(plan);
-  expect(renderToStaticMarkup(<ClaimInstructions value={legacy} />)).toContain('href="https://app.devin.ai/"');
+  const previous = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${note}`;
+  for (const stored of [legacy, previous]) {
+    expect(claimInstructionsMode(stored)).toBe(plan);
+    const html = renderToStaticMarkup(<ClaimInstructions value={stored} />);
+    expect(html).toContain('href="https://app.devin.ai/"');
+    expect(html).toContain(cancelNoteHtml);
+  }
   const custom = `${legacy} Contact your event host.`;
   expect(claimInstructionsMode(custom)).toBe("custom");
-  expect(renderToStaticMarkup(<ClaimInstructions value={custom} />)).not.toContain("<a ");
+  const customHtml = renderToStaticMarkup(<ClaimInstructions value={custom} />);
+  expect(customHtml).not.toContain("<a ");
+  expect(customHtml).not.toContain(cancelNoteHtml);
 });
 
 test("supports Markdown links, bare URLs, emphasis, lists, and existing line breaks", () => {
