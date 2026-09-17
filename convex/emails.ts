@@ -419,14 +419,19 @@ export const remove = mutation({
   },
 });
 
+// Removes up to one chunk of the event's eligible emails per call so a large
+// list stays within a single transaction's limits. Callers repeat while
+// `hasMore` is true.
 export const removeAll = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
     const actorEmail = await requireEventAdmin(ctx, args.eventId);
-    const emails = await ctx.db
+    const page = await ctx.db
       .query("emails")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .collect();
+      .take(UPLOAD_CHUNK_SIZE + 1);
+    const hasMore = page.length > UPLOAD_CHUNK_SIZE;
+    const emails = hasMore ? page.slice(0, UPLOAD_CHUNK_SIZE) : page;
     for (const email of emails) {
       await deleteEmail(ctx, email);
     }
@@ -435,9 +440,9 @@ export const removeAll = mutation({
         eventId: args.eventId,
         action: "emails_removed_all",
         actorEmail: actorEmail ?? undefined,
-        details: `Removed ${emails.length} email(s)`,
+        details: `Removed ${emails.length} email(s)${hasMore ? " (more remaining)" : ""}`,
       });
     }
-    return { removed: emails.length };
+    return { removed: emails.length, hasMore };
   },
 });

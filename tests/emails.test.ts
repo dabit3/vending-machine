@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
+import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 const identity = {
@@ -49,7 +50,7 @@ test("removeAll clears the eligible list, releases reservations and approvals, k
 
   expect(
     await admin.mutation(api.emails.removeAll, { eventId: event.id }),
-  ).toEqual({ removed: 3 });
+  ).toEqual({ removed: 3, hasMore: false });
 
   expect(await admin.query(api.emails.list, { eventId: event.id })).toEqual([]);
   const codes = await admin.query(api.codes.list, { eventId: event.id });
@@ -74,7 +75,28 @@ test("removeAll clears the eligible list, releases reservations and approvals, k
 
   expect(
     await admin.mutation(api.emails.removeAll, { eventId: event.id }),
-  ).toEqual({ removed: 0 });
+  ).toEqual({ removed: 0, hasMore: false });
+});
+
+test("removeAll clears large lists one chunk per call", async () => {
+  const { t, admin, event } = await setup();
+  const total = UPLOAD_CHUNK_SIZE + 2;
+  await t.run(async (ctx) => {
+    for (let i = 0; i < total; i++) {
+      await ctx.db.insert("emails", {
+        eventId: event.id,
+        email: `user${i}@example.com`,
+      });
+    }
+  });
+  expect(
+    await admin.mutation(api.emails.removeAll, { eventId: event.id }),
+  ).toEqual({ removed: UPLOAD_CHUNK_SIZE, hasMore: true });
+  expect(await admin.query(api.emails.list, { eventId: event.id })).toHaveLength(2);
+  expect(
+    await admin.mutation(api.emails.removeAll, { eventId: event.id }),
+  ).toEqual({ removed: 2, hasMore: false });
+  expect(await admin.query(api.emails.list, { eventId: event.id })).toEqual([]);
 });
 
 test("removeAll is scoped to the event and requires event admin access", async () => {
@@ -107,6 +129,6 @@ test("removeAll is scoped to the event and requires event admin access", async (
   ).rejects.toThrow();
   expect(
     await organizer.mutation(api.emails.removeAll, { eventId: event.id }),
-  ).toEqual({ removed: 1 });
+  ).toEqual({ removed: 1, hasMore: false });
   expect(await admin.query(api.emails.list, { eventId: other.id })).toHaveLength(1);
 });

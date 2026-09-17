@@ -212,6 +212,40 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     );
   }
 
+  // The backend clears one chunk per call; keep calling until it reports the
+  // list is empty. Shares the email busy flag so adds can't race the clear.
+  async function handleRemoveAllEmails() {
+    const total = emails?.length ?? 0;
+    setEmailBusy(true);
+    const toastId = toast.loading("Removing emails...");
+    let removed = 0;
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const res = await removeAllEmails({ eventId: id });
+        removed += res.removed;
+        hasMore = res.hasMore;
+        if (hasMore) {
+          toast.loading(`Removing ${removed} / ${total}...`, { id: toastId });
+        }
+      }
+      toast.success(`Removed ${removed} email${removed === 1 ? "" : "s"}`, {
+        id: toastId,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to remove emails",
+        {
+          id: toastId,
+          description:
+            removed > 0 ? `${removed} removed before the error.` : undefined,
+        }
+      );
+    } finally {
+      setEmailBusy(false);
+    }
+  }
+
   // Shares the busy flag with the file upload so the two ways of adding to the
   // same list can't run at once. Large pastes go up in chunks; on failure the
   // textarea keeps only the addresses not yet sent, so a retry doesn't
@@ -733,6 +767,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         variant="ghost"
                         className="shrink-0 text-muted-foreground"
                         aria-label="Remove all emails"
+                        disabled={emailBusy}
                       />
                     }
                   >
@@ -754,21 +789,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
-                        onClick={() => {
-                          removeAllEmails({ eventId: id })
-                            .then(({ removed }) =>
-                              toast.success(
-                                `Removed ${removed} email${removed === 1 ? "" : "s"}`
-                              )
-                            )
-                            .catch((err) =>
-                              toast.error(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Failed to remove emails"
-                              )
-                            );
-                        }}
+                        disabled={emailBusy}
+                        onClick={handleRemoveAllEmails}
                       >
                         Remove all
                       </AlertDialogAction>
