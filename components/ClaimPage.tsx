@@ -163,6 +163,14 @@ export default function ClaimPage({
       const type =
         (mustChoose && selectedType ? selectedType : event.codeTypes[0]) ||
         undefined;
+      const previewCodes =
+        (eligibility &&
+          "previewCodes" in eligibility &&
+          eligibility.previewCodes) ||
+        [];
+      const next =
+        previewCodes.find((p) => p.codeType === type) ??
+        (mustChoose ? undefined : previewCodes[0]);
       setResult({
         ok: true,
         code: "PREVIEW-CODE",
@@ -170,6 +178,7 @@ export default function ClaimPage({
         alreadyClaimed: false,
         creditAmount:
           event.codeTypeValues?.[blockKey(type)] ?? event.creditAmount,
+        expiresAt: next?.expiresAt,
       });
       return;
     }

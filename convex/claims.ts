@@ -26,6 +26,34 @@ async function findParticipant(
     .unique();
 }
 
+// The unclaimed, unreserved, unexpired code an attendee would receive next,
+// optionally restricted to one block.
+async function nextAvailable(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  requestedType: string | undefined
+) {
+  const codes =
+    requestedType !== undefined
+      ? ctx.db
+          .query("codes")
+          .withIndex("by_event_codeType_claimedBy", (q) =>
+            q
+              .eq("eventId", event._id)
+              .eq("codeType", requestedType)
+              .eq("claimedBy", undefined)
+          )
+      : ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", event._id).eq("claimedBy", undefined)
+          );
+  return await codes
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .first();
+}
+
 // Dynamic events have no pre-uploaded participant list: the first time a
 // signed-in verified email interacts with the event it is enrolled on the
 // spot, so the usual per-email claim and instructions tracking applies.
@@ -66,11 +94,20 @@ export const eligibility = query({
     }
     const allowed = await findParticipant(ctx, event, email);
     if (args.preview && (await isEventAdmin(ctx, event._id))) {
+      const codeTypes = event.codeTypes ?? [];
+      const options = codeTypes.length > 1 ? codeTypes : [undefined];
+      const previewCodes = await Promise.all(
+        options.map(async (codeType) => ({
+          codeType,
+          expiresAt: (await nextAvailable(ctx, event, codeType))?.expiresAt,
+        }))
+      );
       return {
         eligible: true as const,
         email,
         instructionsViewed: false,
         preview: true as const,
+        previewCodes,
       };
     }
     const walkUpEligible = event.dynamic && !(await isBlacklisted(ctx, email));
@@ -228,29 +265,8 @@ export const claim = mutation({
       .filter(notExpired)
       .filter((q) => q.eq(q.field("claimedBy"), undefined))
       .first();
-    const unclaimed = reserved
-      ? null
-      : requestedType !== undefined
-        ? await ctx.db
-            .query("codes")
-            .withIndex("by_event_codeType_claimedBy", (q) =>
-              q
-                .eq("eventId", event._id)
-                .eq("codeType", requestedType)
-                .eq("claimedBy", undefined)
-            )
-            .filter(notExpired)
-            .filter((q) => q.eq(q.field("reservedFor"), undefined))
-            .first()
-        : await ctx.db
-            .query("codes")
-            .withIndex("by_event_claimedBy", (q) =>
-              q.eq("eventId", event._id).eq("claimedBy", undefined)
-            )
-            .filter(notExpired)
-            .filter((q) => q.eq(q.field("reservedFor"), undefined))
-            .first();
-    const available = reserved ?? unclaimed;
+    const available =
+      reserved ?? (await nextAvailable(ctx, event, requestedType));
     if (!available) {
       return {
         ok: false as const,
