@@ -15,6 +15,7 @@ import {
   Plus,
   QrCode,
   RotateCcw,
+  Search,
   ShieldCheck,
   Ticket,
   Trash2,
@@ -28,6 +29,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { activeCodeTypes, blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
+import { filterEmails } from "@/lib/email-search";
 import { fileToItems } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
@@ -95,6 +97,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const setTypeValue = useMutation(api.codes.setTypeValue);
 
   const [emailInput, setEmailInput] = useState("");
+  const [emailSearch, setEmailSearch] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [blockTarget, setBlockTarget] = useState<string | null>(null);
   const [newBlockName, setNewBlockName] = useState("");
@@ -159,6 +162,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     isDynamic
       ? codes && [...claimedCodesByEmail.keys()].map((email) => ({ email }))
       : emails?.map((e) => ({ email: e.email, id: e._id }));
+  const visibleEmails =
+    listedEmails && filterEmails(listedEmails, emailSearch);
   const unclaimedCodeCount = codeCount - claimedCount;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
@@ -836,9 +841,24 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </div>
               </form>
             )}
+            {listedEmails && listedEmails.length > 0 ? (
+              <InputGroup>
+                <InputGroupAddon>
+                  <Search aria-hidden />
+                </InputGroupAddon>
+                <InputGroupInput
+                  type="search"
+                  aria-label="Search emails"
+                  placeholder="Search emails"
+                  value={emailSearch}
+                  onChange={(e) => setEmailSearch(e.target.value)}
+                  className="text-sm"
+                />
+              </InputGroup>
+            ) : null}
             <RowList
               fill
-              items={listedEmails?.map((e) => {
+              items={visibleEmails?.map((e) => {
                 const emailId = e.id;
                 return {
                   key: emailId ?? e.email,
@@ -859,7 +879,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                           ),
                 };
               })}
-              emptyText={isDynamic ? "No one has claimed yet." : "No emails yet."}
+              emptyText={
+                listedEmails && listedEmails.length > 0
+                  ? `No emails match "${emailSearch.trim()}".`
+                  : isDynamic
+                    ? "No one has claimed yet."
+                    : "No emails yet."
+              }
             />
             <AlertDialog
               open={reclaimTarget !== null}
