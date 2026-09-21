@@ -122,6 +122,28 @@ test("blacklisted emails cannot claim from dynamic events", async () => {
   });
 });
 
+test("events record the normalized email of the admin who created them", async () => {
+  const t = convexTest(schema, modules);
+  await t.run(async (ctx) => {
+    await ctx.db.insert("admins", { email: walkUpEmail });
+  });
+  const admin = t.withIdentity(walkUp);
+
+  const { id } = await admin.mutation(api.events.create, { name: "Made by me" });
+  expect(await admin.query(api.events.get, { id })).toMatchObject({
+    createdBy: walkUpEmail,
+  });
+  expect(await admin.query(api.events.listManaged, {})).toMatchObject([
+    { createdBy: walkUpEmail },
+  ]);
+
+  // Events created before the field existed report no creator.
+  await t.run(async (ctx) => {
+    await ctx.db.patch(id, { createdBy: undefined });
+  });
+  expect((await admin.query(api.events.get, { id }))?.createdBy).toBeUndefined();
+});
+
 test("dynamic events are always hidden from the home page", async () => {
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {

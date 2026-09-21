@@ -247,6 +247,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     eventDate,
     hidden: undefined,
     dynamic: undefined,
+    createdBy: undefined,
   });
   try {
     state.events = [
@@ -271,6 +272,26 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
   } finally {
     vi.useRealTimers();
   }
+});
+
+test("the dashboard shows who created an event when it is known", () => {
+  const event = (id: string, createdBy?: string) => ({
+    _id: id as Id<"events">,
+    _creationTime: 0,
+    name: `Event ${id}`,
+    slug: id,
+    description: undefined,
+    eventDate: undefined,
+    hidden: undefined,
+    dynamic: undefined,
+    createdBy,
+  });
+  state.events = [event("tagged", "organizer@example.com")];
+  expect(renderToStaticMarkup(<AdminDashboard />)).toContain(
+    "Created by organizer@example.com",
+  );
+  state.events = [event("legacy")];
+  expect(renderToStaticMarkup(<AdminDashboard />)).not.toContain("Created by");
 });
 
 test("the codes page opens a library with an explicit create action", () => {
