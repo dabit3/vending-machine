@@ -178,8 +178,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         id: e._id,
         claimed: claimedCodesByEmail.has(e.email),
       }));
+  // Dynamic lists are claimants only, so the status filter doesn't apply.
+  const activeEmailFilter: EmailStatusFilter = isDynamic ? "all" : emailFilter;
   const visibleEmails =
-    listedEmails && filterEmails(listedEmails, emailSearch, emailFilter);
+    listedEmails && filterEmails(listedEmails, emailSearch, activeEmailFilter);
   const unclaimedCodeCount = codeCount - claimedCount;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
@@ -925,8 +927,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               emptyText={
                 listedEmails && listedEmails.length > 0
                   ? emailSearch.trim()
-                    ? `No ${emailFilter === "all" ? "" : `${emailFilter} `}emails match "${emailSearch.trim()}".`
-                    : `No ${emailFilter} emails yet.`
+                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}emails match "${emailSearch.trim()}".`
+                    : `No ${activeEmailFilter} emails yet.`
                   : isDynamic
                     ? "No one has claimed yet."
                     : "No emails yet."
