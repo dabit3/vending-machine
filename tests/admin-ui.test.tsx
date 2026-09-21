@@ -6,6 +6,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import SystemAdminGate from "../components/SystemAdminGate";
 import AdminNav from "../components/AdminNav";
 import NewEventForm from "../components/NewEventForm";
+import { DynamicEventWarning } from "../components/DynamicEventWarning";
 import AdminDashboard from "../app/admin/page";
 import CodeStudioPage from "../components/CodeStudioPage";
 import { SavedBatchPicker } from "../components/StripeBatchDetails";
@@ -315,6 +316,17 @@ test("new event form exposes all three code sources and keeps page settings opti
     expect(html).toContain(label);
   expect(html).toContain('maxLength="120"');
   expect(html).not.toContain("STRIPE_API_KEY");
+});
+
+test("dynamic warning is hidden until the box is ticked and spells out the consequences", () => {
+  const form = renderToStaticMarkup(<NewEventForm />);
+  expect(form).toContain("Dynamic — anyone can claim");
+  expect(form).not.toContain("Anyone with the link can take a code");
+  const warning = renderToStaticMarkup(<DynamicEventWarning />);
+  expect(warning).toContain('role="alert"');
+  expect(warning).toContain("Anyone with the link can take a code");
+  expect(warning).toContain("skip the eligible-email list");
+  expect(warning).toContain("hidden from the home page");
 });
 
 test("new event form defaults to adding codes later", () => {
