@@ -25,6 +25,7 @@ import {
   StripeSetupNotice,
 } from "@/components/StripeGenerationFields";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -268,6 +269,7 @@ export default function NewEventForm({
                       claim URL or QR code gets a code, and their email is
                       recorded so each address can only claim once.
                     </FieldDescription>
+                    {dynamic ? <DynamicEventWarning /> : null}
                   </FieldGroup>
                 </details>
               </FieldGroup>

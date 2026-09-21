@@ -29,7 +29,13 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { activeCodeTypes, blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
-import { filterEmails } from "@/lib/email-search";
+import {
+  EMAIL_STATUS_FILTERS,
+  filterEmails,
+  type EmailStatusFilter,
+} from "@/lib/email-search";
+import { DynamicEventWarning } from "@/components/DynamicEventWarning";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
@@ -98,6 +104,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   const [emailInput, setEmailInput] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
+  const [emailFilter, setEmailFilter] = useState<EmailStatusFilter>("all");
   const [codeInput, setCodeInput] = useState("");
   const [blockTarget, setBlockTarget] = useState<string | null>(null);
   const [newBlockName, setNewBlockName] = useState("");
@@ -158,12 +165,23 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Dynamic events have no participant list to manage; the emails card only
   // shows who has actually claimed a code.
   const isDynamic = event?.dynamic === true;
-  const listedEmails: { email: string; id?: Id<"emails"> }[] | undefined =
-    isDynamic
-      ? codes && [...claimedCodesByEmail.keys()].map((email) => ({ email }))
-      : emails?.map((e) => ({ email: e.email, id: e._id }));
+  const listedEmails:
+    | { email: string; id?: Id<"emails">; claimed: boolean }[]
+    | undefined = isDynamic
+    ? codes &&
+      [...claimedCodesByEmail.keys()].map((email) => ({
+        email,
+        claimed: true,
+      }))
+    : emails?.map((e) => ({
+        email: e.email,
+        id: e._id,
+        claimed: claimedCodesByEmail.has(e.email),
+      }));
+  // Dynamic lists are claimants only, so the status filter doesn't apply.
+  const activeEmailFilter: EmailStatusFilter = isDynamic ? "all" : emailFilter;
   const visibleEmails =
-    listedEmails && filterEmails(listedEmails, emailSearch);
+    listedEmails && filterEmails(listedEmails, emailSearch, activeEmailFilter);
   const unclaimedCodeCount = codeCount - claimedCount;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
@@ -842,19 +860,45 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </form>
             )}
             {listedEmails && listedEmails.length > 0 ? (
-              <InputGroup>
-                <InputGroupAddon>
-                  <Search aria-hidden />
-                </InputGroupAddon>
-                <InputGroupInput
-                  type="search"
-                  aria-label="Search emails"
-                  placeholder="Search emails"
-                  value={emailSearch}
-                  onChange={(e) => setEmailSearch(e.target.value)}
-                  className="text-sm"
-                />
-              </InputGroup>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <InputGroup className="sm:flex-1">
+                  <InputGroupAddon>
+                    <Search aria-hidden />
+                  </InputGroupAddon>
+                  <InputGroupInput
+                    type="search"
+                    aria-label="Search emails"
+                    placeholder="Search emails"
+                    value={emailSearch}
+                    onChange={(e) => setEmailSearch(e.target.value)}
+                    className="text-sm"
+                  />
+                </InputGroup>
+                {isDynamic ? null : (
+                  <ToggleGroup
+                    aria-label="Filter emails by claim status"
+                    value={[emailFilter]}
+                    onValueChange={(next) => {
+                      const picked = EMAIL_STATUS_FILTERS.find(
+                        (f) => f.value === next[0]
+                      );
+                      if (picked) setEmailFilter(picked.value);
+                    }}
+                    className="gap-1"
+                  >
+                    {EMAIL_STATUS_FILTERS.map((f) => (
+                      <ToggleGroupItem
+                        key={f.value}
+                        value={f.value}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {f.label}
+                      </ToggleGroupItem>
+                    ))}
+                  </ToggleGroup>
+                )}
+              </div>
             ) : null}
             <RowList
               fill
@@ -863,7 +907,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 return {
                   key: emailId ?? e.email,
                   label: e.email,
-                  onReclaim: claimedCodesByEmail.has(e.email)
+                  claimed: e.claimed && !isDynamic,
+                  onReclaim: e.claimed
                     ? () =>
                         setReclaimTarget({
                           email: e.email,
@@ -881,7 +926,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               })}
               emptyText={
                 listedEmails && listedEmails.length > 0
-                  ? `No emails match "${emailSearch.trim()}".`
+                  ? emailSearch.trim()
+                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}emails match "${emailSearch.trim()}".`
+                    : `No ${activeEmailFilter} emails yet.`
                   : isDynamic
                     ? "No one has claimed yet."
                     : "No emails yet."
@@ -1505,6 +1552,7 @@ function RowList({
     key: string;
     label: string;
     tag?: string;
+    claimed?: boolean;
     claimedBy?: string;
     onReclaim?: () => void;
     onRemove?: () => void;
@@ -1565,6 +1613,12 @@ function RowList({
             ) : null}
           </span>
           <span className="flex shrink-0 items-center gap-1">
+            {item.claimed ? (
+              <Badge variant="secondary" className="text-[10px]">
+                <Check data-icon="inline-start" />
+                Claimed
+              </Badge>
+            ) : null}
             {item.onReclaim ? (
               <Button
                 variant="ghost"
@@ -1736,6 +1790,7 @@ function EventDetailsForm({
                 needed (one code per email)
               </FieldLabel>
             </Field>
+            {dynamic ? <DynamicEventWarning className="sm:col-span-2" /> : null}
           </FieldGroup>
           <div className="flex items-center justify-between gap-4">
             <Button type="submit" disabled={saving} aria-busy={saving}>
