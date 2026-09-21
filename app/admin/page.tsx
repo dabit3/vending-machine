@@ -38,6 +38,7 @@ interface ManagedEventItem {
   eventDate?: string;
   hidden?: boolean;
   dynamic?: boolean;
+  createdBy?: string;
 }
 
 function AdminEventRow({
@@ -62,6 +63,11 @@ function AdminEventRow({
             {event.hidden ? <Badge variant="outline">Hidden</Badge> : null}
             {event.dynamic ? <Badge variant="outline">Dynamic</Badge> : null}
           </div>
+          {event.createdBy ? (
+            <div className="truncate text-xs text-muted-dim">
+              Created by {event.createdBy}
+            </div>
+          ) : null}
         </div>
         <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
           {event.eventDate

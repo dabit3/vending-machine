@@ -60,6 +60,9 @@ export default defineSchema({
     // can claim, and is recorded in `emails` on first contact so it can only
     // claim once.
     dynamic: v.optional(v.boolean()),
+    // Normalized email of the admin who created the event; absent on events
+    // created before it was recorded.
+    createdBy: v.optional(v.string()),
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),

@@ -142,6 +142,7 @@ export const get = query({
       claimInstructions: event.claimInstructions,
       hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
+      createdBy: event.createdBy,
     };
   },
 });
@@ -176,6 +177,7 @@ export const listManaged = query({
       eventDate: event.eventDate,
       hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
+      createdBy: event.createdBy,
     }));
   },
 });
@@ -194,6 +196,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
+    const creator = identity.email!.trim().toLowerCase();
     if (args.stripeGeneration && args.stripeBatchId) throw new ConvexError("Choose one code source.");
     const base = slugify(args.slug?.trim() || args.name);
     if (!base) throw new Error("Event name must contain letters or numbers");
@@ -214,12 +217,13 @@ export const create = mutation({
       claimInstructions: args.claimInstructions?.trim() || undefined,
       hidden: isHidden(args) || undefined,
       dynamic: args.dynamic || undefined,
+      createdBy: creator,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
     if (args.stripeBatchId) {
       const batch = await ctx.db.get(args.stripeBatchId);
       if (!batch) throw new ConvexError("Batch not found.");
-      const error = await attachBatchToEvent(ctx, batch, id, identity.email!.trim().toLowerCase());
+      const error = await attachBatchToEvent(ctx, batch, id, creator);
       if (error) throw new ConvexError(error);
     }
     return { id, slug };
