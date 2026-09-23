@@ -15,12 +15,14 @@ const state = vi.hoisted(() => ({
   mine: [] as MineItem[] | null | undefined,
   authenticated: true,
   authLoading: false,
+  // Convex lags Clerk: it reports signed-out while validating a fresh token.
+  convexAuthenticated: true,
 }));
 
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({
-    isAuthenticated: state.authenticated,
-    isLoading: state.authLoading,
+    isAuthenticated: state.authenticated && state.convexAuthenticated,
+    isLoading: false,
   }),
   useQuery: (_ref: unknown, args: unknown) => {
     if (args === "skip") return undefined;
@@ -29,6 +31,10 @@ vi.mock("convex/react", () => ({
 }));
 vi.mock("@clerk/nextjs", () => ({
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useAuth: () => ({
+    isLoaded: !state.authLoading,
+    isSignedIn: state.authLoading ? undefined : state.authenticated,
+  }),
 }));
 vi.mock("../components/SiteHeader", () => ({ default: () => <header /> }));
 
@@ -44,6 +50,7 @@ beforeEach(() => {
     ],
     authenticated: true,
     authLoading: false,
+    convexAuthenticated: true,
   });
 });
 
@@ -92,10 +99,22 @@ test("loading, unverified, and empty states while signed in", () => {
   expect(html).not.toContain("Scan to claim");
 });
 
-test("while auth is resolving the right panel holds a placeholder instead of the QR card", () => {
+test("while auth is resolving both panels hold placeholders instead of signed-out copy", () => {
   state.authenticated = false;
   state.authLoading = true;
   const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain('aria-label="Checking sign-in"');
   expect(html).toContain('aria-label="Loading your events"');
+  expect(html).not.toContain("Scan to claim");
+  expect(html).not.toContain("Sign in to claim your credits.");
+  expect(html).not.toContain("Welcome back");
+});
+
+test("right after signing in, the signed-in layout shows while Convex is still validating the token", () => {
+  state.convexAuthenticated = false;
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("Welcome back");
+  expect(html).toContain('aria-label="Loading your events"');
+  expect(html).not.toContain("Sign in to claim your credits.");
   expect(html).not.toContain("Scan to claim");
 });
