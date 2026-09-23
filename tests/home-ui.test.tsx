@@ -64,6 +64,8 @@ test("signed-out visitors see the intro and a QR card, never an event list", () 
   expect(html).not.toContain("Free credits");
   expect(html).toContain("Scan to claim");
   expect(html).toContain("QR code linking to https://trydevin.ai");
+  // The QR card is desktop-only; phones get just the centered intro.
+  expect(html).toMatch(/<section class="[^"]*\bhidden lg:flex\b[^"]*" aria-label="How to claim"/);
   expect(html).not.toContain("listed publicly");
   expect(html).not.toContain("Your events");
   expect(html).not.toContain('href="/today"');
@@ -77,6 +79,7 @@ test("signed-in visitors see every event they are eligible for, in server order"
   expect(html).toMatch(/<h2\b[^>]*>Your events<\/h2>/);
   expect(html).toContain('href="/my-codes"');
   expect(html).not.toContain("Scan to claim");
+  expect(html).toMatch(/<section class="(?:(?!\bhidden lg:flex\b)[^"])*" aria-label="Your events"/);
   for (const slug of ["today", "upcoming", "open", "old"]) {
     expect(html).toContain(`href="/${slug}"`);
   }

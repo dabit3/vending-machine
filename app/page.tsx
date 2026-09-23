@@ -53,7 +53,7 @@ export default function Home() {
         id="main-content"
         className="mx-auto grid w-full max-w-6xl flex-1 lg:grid-cols-2"
       >
-        <section className="flex flex-col justify-center px-4 py-14 sm:px-6 lg:py-20 lg:pr-12">
+        <section className="flex flex-col items-center justify-center px-4 py-14 text-center sm:px-6 lg:items-start lg:py-20 lg:pr-12 lg:text-left">
           <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-muted-foreground motion-reduce:animate-none">
             {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
             distribution
@@ -63,7 +63,7 @@ export default function Home() {
           </h1>
           {!authReady ? (
             <div
-              className="mt-5 flex max-w-md flex-col gap-2.5"
+              className="mt-5 flex w-full max-w-md flex-col items-center gap-2.5 lg:items-start"
               role="status"
               aria-label="Checking sign-in"
             >
@@ -78,7 +78,7 @@ export default function Home() {
                 Open one to claim, or revisit anything you&apos;ve already
                 claimed.
               </p>
-              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
+              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex w-full max-w-md flex-wrap items-center justify-center gap-2.5 motion-reduce:animate-none lg:justify-start">
                 <Link
                   href="/my-codes"
                   className={cn(
@@ -99,7 +99,7 @@ export default function Home() {
               <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
                 Sign in to claim your credits.
               </p>
-              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
+              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex w-full max-w-md flex-wrap items-center justify-center gap-2.5 motion-reduce:animate-none lg:justify-start">
                 <SignInButton mode="modal">
                   <Button variant="brand" size="lg" className={HERO_BUTTON}>
                     <LogIn data-icon="inline-start" />
@@ -112,7 +112,12 @@ export default function Home() {
         </section>
 
         <section
-          className="relative flex items-center justify-center overflow-hidden border-t border-border/65 px-4 py-12 sm:px-6 lg:border-t-0 lg:border-l lg:py-16"
+          className={cn(
+            "relative flex items-center justify-center overflow-hidden border-t border-border/65 px-4 py-12 sm:px-6 lg:border-t-0 lg:border-l lg:py-16",
+            // A phone can't scan a QR code shown on its own screen, so the
+            // signed-out card only appears alongside the intro on desktop.
+            !signedIn && "hidden lg:flex",
+          )}
           aria-label={signedIn ? "Your events" : "How to claim"}
         >
           <div
