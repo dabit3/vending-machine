@@ -66,7 +66,7 @@ test("signed-out visitors see the intro and a QR card, never an event list", () 
 test("signed-in visitors see every event they are eligible for, in server order", () => {
   const html = renderToStaticMarkup(<Home />);
   expect(html).toContain("Welcome back");
-  expect(html).toContain("Your events");
+  expect(html).toMatch(/<h2\b[^>]*>Your events<\/h2>/);
   expect(html).toContain('href="/my-codes"');
   expect(html).not.toContain("Scan to claim");
   for (const slug of ["today", "upcoming", "open", "old"]) {
