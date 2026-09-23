@@ -11,7 +11,9 @@ import {
   Copy,
   Eye,
   LogIn,
+  Mail,
   OctagonX,
+  PackageOpen,
   QrCode,
   ShieldCheck,
   SearchX,
@@ -350,23 +352,36 @@ export default function ClaimPage({
                   </div>
                 ) : !isAuthenticated ? (
                   <div className="flex flex-col gap-4">
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      {event.dynamic
-                        ? "Sign in to claim your code — one per verified email address."
-                        : "Sign in with the email you registered with — codes are only dispensed to verified addresses."}
-                    </p>
+                    {event.soldOut ? (
+                      <SoldOutNotice eventName={event.name} signedOut />
+                    ) : null}
+                    {event.dynamic ? (
+                      <p className="text-sm leading-relaxed text-muted-foreground">
+                        Sign in to claim your code — one per verified email
+                        address.
+                      </p>
+                    ) : (
+                      <Alert>
+                        <Mail />
+                        <AlertTitle>
+                          Sign in with the email you registered for this event
+                          with
+                        </AlertTitle>
+                        <AlertDescription>
+                          Codes are only dispensed to the addresses your
+                          organizer added. A different email won&apos;t be on
+                          the list, even if it&apos;s yours.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                     <SignInButton mode="modal">
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />
-                        Sign in to claim
+                        {event.soldOut
+                          ? "Sign in to see your code"
+                          : "Sign in to claim"}
                       </Button>
                     </SignInButton>
-                    {event.soldOut ? (
-                      <p className="text-center text-xs text-muted-foreground">
-                        All codes have been dispensed — if you already claimed,
-                        yours is still here.
-                      </p>
-                    ) : null}
                   </div>
                 ) : eligibility === undefined ? (
                   <div className="flex flex-col gap-3">
@@ -405,6 +420,27 @@ export default function ClaimPage({
                         )}
                       </AlertDescription>
                     </Alert>
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInEmail ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={`/${slug}`}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
+                  </div>
+                ) : event.soldOut ? (
+                  <div className="flex flex-col gap-5">
+                    <SoldOutNotice eventName={event.name} />
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
@@ -545,12 +581,6 @@ export default function ClaimPage({
                         instructions={event.claimInstructions}
                       />
                     ) : null}
-                    {event.soldOut ? (
-                      <p className="text-center text-xs text-muted-foreground">
-                        All codes have been dispensed — if you already claimed,
-                        yours is still here.
-                      </p>
-                    ) : null}
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
@@ -586,6 +616,27 @@ export default function ClaimPage({
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function SoldOutNotice({
+  eventName,
+  signedOut = false,
+}: {
+  eventName: string;
+  signedOut?: boolean;
+}) {
+  return (
+    <Alert>
+      <PackageOpen />
+      <AlertTitle>All codes for this event have been claimed</AlertTitle>
+      <AlertDescription>
+        Sorry — every code for {eventName} has already been picked up.{" "}
+        {signedOut
+          ? "If you already claimed one, sign in with the same email and it will still be here."
+          : "If you already claimed one with a different email, switch accounts and it will still be here."}
+      </AlertDescription>
+    </Alert>
   );
 }
 
