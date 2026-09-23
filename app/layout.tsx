@@ -19,6 +19,17 @@ export const metadata: Metadata = {
   applicationName: getAppName(),
   title: getAppName(),
   description: "Claim credits for hackathons, conferences, and meetups.",
+  openGraph: {
+    type: "website",
+    siteName: getAppName(),
+    title: getAppName(),
+    description: "Sign in to claim your credits.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: getAppName(),
+    description: "Sign in to claim your credits.",
+  },
 };
 
 // Clerk appearance: brand color + minimal overrides; Clerk adapts to the
