@@ -15,9 +15,10 @@ export async function fetchEventMeta(slug: string): Promise<EventMeta | null> {
   try {
     const event = await fetchQuery(api.events.getBySlug, { slug });
     if (!event) return null;
-    const description = event.description?.trim()
-      ? truncate(markdownToPlainText(event.description), 160)
-      : undefined;
+    const plain = event.description
+      ? markdownToPlainText(event.description).replace(/\s+/g, " ").trim()
+      : "";
+    const description = plain ? truncate(plain, 160) : undefined;
     return { name: event.name, description, eventDate: event.eventDate };
   } catch {
     return null;
@@ -25,7 +26,6 @@ export async function fetchEventMeta(slug: string): Promise<EventMeta | null> {
 }
 
 function truncate(text: string, max: number) {
-  const oneLine = text.replace(/\s+/g, " ").trim();
-  if (oneLine.length <= max) return oneLine;
-  return `${oneLine.slice(0, max - 1).trimEnd()}…`;
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
 }
