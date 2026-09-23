@@ -1,95 +1,100 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import Home from "../app/page";
 
+interface MineItem {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  eventDate?: string;
+  claimed: boolean;
+}
+
 const state = vi.hoisted(() => ({
-  events: [] as { _id: string; name: string; slug: string; eventDate?: string }[] | undefined,
-  claimed: [] as { event: { _id: string } }[],
-  theme: "light",
+  mine: [] as MineItem[] | null | undefined,
   authenticated: true,
+  authLoading: false,
 }));
 
 vi.mock("convex/react", () => ({
-  useConvexAuth: () => ({ isAuthenticated: state.authenticated }),
-  useQuery: (ref: Parameters<typeof getFunctionName>[0], args: unknown) => {
+  useConvexAuth: () => ({
+    isAuthenticated: state.authenticated,
+    isLoading: state.authLoading,
+  }),
+  useQuery: (_ref: unknown, args: unknown) => {
     if (args === "skip") return undefined;
-    return getFunctionName(ref) === "events:list" ? state.events : state.claimed;
+    return state.mine;
   },
 }));
-vi.mock("next-themes", () => ({
-  useTheme: () => ({ resolvedTheme: state.theme }),
+vi.mock("@clerk/nextjs", () => ({
+  SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("../components/SiteHeader", () => ({ default: () => <header /> }));
-vi.mock("../components/UnicornSceneEmbed", () => ({ default: () => null }));
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-07T12:00:00Z"));
   Object.assign(state, {
-    events: [
-      { _id: "upcoming", name: "Upcoming event", slug: "upcoming", eventDate: "2026-09-10" },
-      { _id: "today", name: "Today's event", slug: "today", eventDate: "2026-09-07" },
-      { _id: "undated", name: "Open event", slug: "open" },
-      { _id: "past", name: "Recent event", slug: "recent", eventDate: "2026-09-01" },
-      { _id: "old", name: "Old event", slug: "old", eventDate: "2026-07-01" },
+    mine: [
+      { _id: "today", name: "Today's event", slug: "today", eventDate: "2026-09-07", claimed: true },
+      { _id: "upcoming", name: "Upcoming event", slug: "upcoming", eventDate: "2026-09-10", claimed: false },
+      { _id: "undated", name: "Open event", slug: "open", description: "Walk-up", claimed: false },
+      { _id: "old", name: "Old event", slug: "old", eventDate: "2026-07-01", claimed: false },
     ],
-    claimed: [{ event: { _id: "today" } }],
-    theme: "light",
     authenticated: true,
+    authLoading: false,
   });
 });
 
 afterEach(() => vi.useRealTimers());
 
-test.each(["light", "dark"])("the %s homepage preserves event links, grouping, and claimed status", (theme) => {
-  state.theme = theme;
-  const html = renderToStaticMarkup(<Home />);
-  expect(html).toMatch(/<h1\b[^>]*>Try Devin<\/h1>/);
-  expect(html).not.toContain("Claim your credits.");
-  expect(html).toContain("h-[520px]");
-  expect(html).toContain("sm:h-[486px]");
-  expect(html).toContain("max-w-5xl");
-  expect(html).toContain("text-5xl");
-  expect(html).toContain("sm:text-7xl");
-  expect(html).not.toContain("frame-rails");
-  expect(html).not.toContain("View event");
-  expect(html).toContain('href="/today"');
-  expect(html).toContain('href="/upcoming"');
-  expect(html).toContain('href="/open"');
-  expect(html).toContain('href="/recent"');
-  expect(html).not.toContain('href="/old"');
-  expect(html).toContain("Claimed");
-  expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/upcoming"'));
-  expect(html.indexOf('href="/upcoming"')).toBeLessThan(html.indexOf('href="/open"'));
-  expect(html.indexOf("Recent past events")).toBeLessThan(html.indexOf('href="/recent"'));
-  expect(html).not.toContain("text-black");
-  expect(html).not.toContain("text-white");
-});
-
-test.each([
-  { date: "2026-09-01", visible: true },
-  { date: "2026-08-31", visible: false },
-  { date: "2026-08-30", visible: false },
-  { date: "2026-08-24", visible: false },
-])("front page visibility for an event dated $date", ({ date, visible }) => {
-  vi.setSystemTime(new Date(2026, 8, 7, 12));
-  state.events = [{ _id: "boundary", name: "Boundary event", slug: "boundary", eventDate: date }];
-  const html = renderToStaticMarkup(<Home />);
-  expect(html.includes('href="/boundary"')).toBe(visible);
-  expect(html.includes("Recent past events")).toBe(visible);
-});
-
-test("anonymous visitors can browse without querying claimed codes", () => {
+test("signed-out visitors see the intro and a QR card, never an event list", () => {
   state.authenticated = false;
   const html = renderToStaticMarkup(<Home />);
-  expect(html).toContain('href="/today"');
-  expect(html).not.toContain("Claimed");
+  expect(html).toMatch(/<h1\b[^>]*>Try Devin<\/h1>/);
+  expect(html).toContain("Sign in");
+  expect(html).toContain("Scan to claim");
+  expect(html).toContain("QR code linking to https://trydevin.ai");
+  expect(html).toContain("aren&#x27;t listed publicly");
+  expect(html).not.toContain("Your events");
+  expect(html).not.toContain('href="/today"');
+  expect(html).not.toContain("Active events");
+  expect(html).not.toContain("Recent past events");
 });
 
-test("the loading and empty states remain available", () => {
-  state.events = undefined;
-  expect(renderToStaticMarkup(<Home />)).toContain('aria-label="Loading active events"');
-  state.events = [];
-  expect(renderToStaticMarkup(<Home />)).toContain("Nothing to dispense yet");
+test("signed-in visitors see every event they are eligible for, in server order", () => {
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("Welcome back");
+  expect(html).toContain("Your events");
+  expect(html).toContain('href="/my-codes"');
+  expect(html).not.toContain("Scan to claim");
+  for (const slug of ["today", "upcoming", "open", "old"]) {
+    expect(html).toContain(`href="/${slug}"`);
+  }
+  expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/upcoming"'));
+  expect(html.indexOf('href="/upcoming"')).toBeLessThan(html.indexOf('href="/open"'));
+  expect(html).toContain("Claimed");
+  expect(html).toContain("Walk-up");
+  // Past events stay listed but are dimmed.
+  expect(html.match(/opacity-70/g)).toHaveLength(1);
+});
+
+test("loading, unverified, and empty states while signed in", () => {
+  state.mine = undefined;
+  expect(renderToStaticMarkup(<Home />)).toContain('aria-label="Loading your events"');
+  state.mine = null;
+  expect(renderToStaticMarkup(<Home />)).toContain("verified email address");
+  state.mine = [];
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("No events yet");
+  expect(html).not.toContain("Scan to claim");
+});
+
+test("while auth is resolving the right panel holds a placeholder instead of the QR card", () => {
+  state.authenticated = false;
+  state.authLoading = true;
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain('aria-label="Loading your events"');
+  expect(html).not.toContain("Scan to claim");
 });

@@ -63,7 +63,6 @@ export default function NewEventForm({
   const [eventDate, setEventDate] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [hidden, setHidden] = useState(false);
   const [dynamic, setDynamic] = useState(false);
   const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
@@ -89,7 +88,6 @@ export default function NewEventForm({
         eventDate: eventDate || undefined,
         description: description || undefined,
         claimInstructions: instructions || undefined,
-        hidden,
         dynamic,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
@@ -234,24 +232,6 @@ export default function NewEventForm({
                       onChange={setInstructions}
                       description="Attendees must read these before claiming. They can also view them after claiming."
                     />
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id="event-hidden"
-                        checked={hidden || dynamic}
-                        disabled={dynamic}
-                        onCheckedChange={(checked) =>
-                          setHidden(checked === true)
-                        }
-                      />
-                      <FieldLabel htmlFor="event-hidden">
-                        Hide from the home page
-                      </FieldLabel>
-                    </Field>
-                    <FieldDescription>
-                      {dynamic
-                        ? "Dynamic events are always hidden and only reachable through their claim URL or QR code."
-                        : "Hidden events are still accessible through their claim URL."}
-                    </FieldDescription>
                     <Field orientation="horizontal">
                       <Checkbox
                         id="event-dynamic"

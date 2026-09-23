@@ -144,48 +144,70 @@ test("events record the normalized email of the admin who created them", async (
   expect((await admin.query(api.events.get, { id }))?.createdBy).toBeUndefined();
 });
 
-test("dynamic events are always hidden from the home page", async () => {
+test("the home page lists only the events the viewer is enrolled in or has claimed", async () => {
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
     await ctx.db.insert("admins", { email: walkUpEmail });
   });
   const admin = t.withIdentity(walkUp);
+  const user = t.withIdentity({ subject: "att", email: "Att@Example.com", emailVerified: true });
 
-  const { id } = await admin.mutation(api.events.create, {
-    name: "Dynamic",
-    dynamic: true,
+  // Signed-out and unverified viewers get nothing to list.
+  expect(await t.query(api.events.mine, {})).toBeNull();
+  expect(
+    await t
+      .withIdentity({ subject: "unverified", email: "att@example.com", emailVerified: false })
+      .query(api.events.mine, {}),
+  ).toBeNull();
+
+  // Older admin forms still send `hidden`; it is accepted and ignored, and
+  // the public listing they subscribe to is now always empty.
+  const { id: listed } = await admin.mutation(api.events.create, {
+    name: "Listed",
+    eventDate: "2026-10-01",
     hidden: false,
   });
-  expect(await admin.query(api.events.get, { id })).toMatchObject({
-    dynamic: true,
+  await admin.mutation(api.events.update, {
+    id: listed,
+    name: "Listed",
+    slug: "listed",
+    eventDate: "2026-10-01",
     hidden: true,
   });
   expect(await t.query(api.events.list, {})).toEqual([]);
-
-  // Legacy dynamic rows without the stored flag are still treated as hidden.
+  const { id: undated } = await admin.mutation(api.events.create, { name: "Undated" });
+  const { id: claimedOnly } = await admin.mutation(api.events.create, {
+    name: "Claimed only",
+    eventDate: "2026-09-01",
+  });
+  await admin.mutation(api.events.create, { name: "Not mine" });
+  await admin.mutation(api.events.create, { name: "Dynamic", dynamic: true });
+  expect(await admin.query(api.events.get, { id: listed })).not.toHaveProperty("hidden");
   await t.run(async (ctx) => {
-    await ctx.db.patch(id, { hidden: undefined });
+    expect((await ctx.db.get(listed))?.hidden).toBeUndefined();
   });
-  expect(await t.query(api.events.list, {})).toEqual([]);
-  expect(await admin.query(api.events.listManaged, {})).toMatchObject([
-    { dynamic: true, hidden: true },
+
+  await t.run(async (ctx) => {
+    await ctx.db.insert("emails", { eventId: listed, email: "att@example.com" });
+    await ctx.db.insert("emails", { eventId: undated, email: "att@example.com" });
+    // Claimed codes count even after the address left the participant list.
+    await ctx.db.insert("codes", {
+      eventId: claimedOnly,
+      code: "X",
+      claimedBy: "att@example.com",
+      claimedAt: 1,
+    });
+  });
+
+  expect(await user.query(api.events.mine, {})).toMatchObject([
+    { name: "Claimed only", claimed: true },
+    { name: "Listed", claimed: false },
+    { name: "Undated", claimed: false },
   ]);
+  expect(await admin.query(api.events.mine, {})).toEqual([]);
 
-  await admin.mutation(api.events.update, {
-    id,
-    name: "Dynamic",
-    slug: "dynamic",
-    dynamic: true,
-    hidden: false,
+  await t.run(async (ctx) => {
+    await ctx.db.insert("blacklistedEmails", { email: "att@example.com" });
   });
-  expect(await admin.query(api.events.get, { id })).toMatchObject({ hidden: true });
-
-  await admin.mutation(api.events.update, {
-    id,
-    name: "Dynamic",
-    slug: "dynamic",
-    dynamic: false,
-    hidden: false,
-  });
-  expect(await t.query(api.events.list, {})).toMatchObject([{ slug: "dynamic" }]);
+  expect(await user.query(api.events.mine, {})).toEqual([]);
 });

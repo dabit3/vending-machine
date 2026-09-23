@@ -53,8 +53,8 @@ export default defineSchema({
     eventDate: v.optional(v.string()),
     // Optional post-claim redemption instructions shown to attendees.
     claimInstructions: v.optional(v.string()),
-    // Hidden events are excluded from the public home page listing but
-    // remain reachable via their claim URL.
+    // Legacy: events used to be listed on the home page unless hidden. No
+    // event is listed publicly anymore, so this flag is no longer read.
     hidden: v.optional(v.boolean()),
     // Dynamic events skip the participant list: any signed-in verified email
     // can claim, and is recorded in `emails` on first contact so it can only
