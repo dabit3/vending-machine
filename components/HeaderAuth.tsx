@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useViewerAuth } from "@/lib/use-viewer-auth";
 import ProfileMenu from "@/components/ProfileMenu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,19 +15,16 @@ export default function HeaderAuth({
 }: {
   showSignIn?: boolean;
 }) {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const access = useQuery(
-    api.admins.accessLevel,
-    isAuthenticated ? {} : "skip"
-  );
+  const { authReady, signedIn, canQuery } = useViewerAuth();
+  const access = useQuery(api.admins.accessLevel, canQuery ? {} : "skip");
 
   // Hold the skeleton until `access` resolves too, otherwise the header renders
   // without the Admin button and then reflows once the query lands.
-  if (isLoading || (isAuthenticated && access === undefined)) {
+  if (!authReady || (signedIn && access === undefined)) {
     return <Skeleton className="h-7 w-20 rounded-md" />;
   }
 
-  if (!isAuthenticated) {
+  if (!signedIn) {
     if (!showSignIn) return null;
     return (
       <SignInButton mode="modal">

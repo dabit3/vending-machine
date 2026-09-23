@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { blockKey } from "@/convex/blockValues";
@@ -64,6 +64,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { codeExpiry } from "@/lib/code-expiry";
+import { useViewerAuth } from "@/lib/use-viewer-auth";
 
 type ClaimResult =
   | {
@@ -98,10 +99,10 @@ export default function ClaimPage({
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
   const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
-  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
+  const { authReady, signedIn, canQuery } = useViewerAuth();
   const eligibility = useQuery(
     api.claims.eligibility,
-    isAuthenticated ? { slug, preview: preview || undefined } : "skip",
+    canQuery ? { slug, preview: preview || undefined } : "skip",
   );
   const { user } = useUser();
   const [submitting, setSubmitting] = useState(false);
@@ -349,12 +350,12 @@ export default function ClaimPage({
                 ) : null}
               </CardHeader>
               <CardContent className="py-(--card-spacing)">
-                {authLoading ? (
+                {!authReady ? (
                   <div className="flex flex-col gap-3">
                     <Skeleton className="h-12 rounded-md" />
                     <Skeleton className="h-10 rounded-lg" />
                   </div>
-                ) : !isAuthenticated ? (
+                ) : !signedIn ? (
                   <div className="flex flex-col gap-4">
                     {event.soldOut ? (
                       <SoldOutNotice eventName={event.name} signedOut />

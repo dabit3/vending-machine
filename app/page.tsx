@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowUpRight, LogIn, Ticket } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SignInButton } from "@clerk/nextjs";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useViewerAuth } from "@/lib/use-viewer-auth";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
 import { markdownToPlainText } from "@/lib/markdown-plain";
 import SiteHeader from "@/components/SiteHeader";
@@ -42,9 +43,8 @@ interface EventItem {
 // QR code their organizer shares. The page introduces the app to visitors and,
 // once someone signs in, lists the events their email is eligible for.
 export default function Home() {
-  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
-  const mine = useQuery(api.events.mine, isAuthenticated ? {} : "skip");
-  const signedIn = !authLoading && isAuthenticated;
+  const { authReady, signedIn, canQuery } = useViewerAuth();
+  const mine = useQuery(api.events.mine, canQuery ? {} : "skip");
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -61,7 +61,17 @@ export default function Home() {
           <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 font-heading text-5xl leading-[0.98] font-semibold tracking-[-0.03em] text-balance motion-reduce:animate-none sm:text-6xl lg:text-7xl">
             {getAppName()}
           </h1>
-          {signedIn ? (
+          {!authReady ? (
+            <div
+              className="mt-5 flex max-w-md flex-col gap-2.5"
+              role="status"
+              aria-label="Checking sign-in"
+            >
+              <Skeleton className="h-4 w-full rounded" />
+              <Skeleton className="h-4 w-3/4 rounded" />
+              <Skeleton className="mt-4 h-12 w-full rounded-md sm:h-11 sm:w-32" />
+            </div>
+          ) : signedIn ? (
             <>
               <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
                 Welcome back. You&apos;re eligible for the events listed here.
@@ -91,12 +101,7 @@ export default function Home() {
               </p>
               <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
                 <SignInButton mode="modal">
-                  <Button
-                    variant="brand"
-                    size="lg"
-                    className={HERO_BUTTON}
-                    disabled={authLoading}
-                  >
+                  <Button variant="brand" size="lg" className={HERO_BUTTON}>
                     <LogIn data-icon="inline-start" />
                     Sign in
                   </Button>
@@ -114,8 +119,8 @@ export default function Home() {
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
           />
-          {signedIn || authLoading ? (
-            <YourEvents events={mine} />
+          {signedIn || !authReady ? (
+            <YourEvents events={signedIn ? mine : undefined} />
           ) : (
             <div className="relative w-[300px] max-w-full rounded-2xl bg-card p-6 text-center shadow-(--shadow-card) ring-1 ring-foreground/10">
               <div className="rounded-lg bg-white p-3">

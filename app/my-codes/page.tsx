@@ -11,7 +11,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { SignInButton } from "@clerk/nextjs";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import { useViewerAuth } from "@/lib/use-viewer-auth";
 import { api } from "@/convex/_generated/api";
 import { formatEventDate } from "@/lib/event-date";
 import { codeExpiry } from "@/lib/code-expiry";
@@ -86,11 +87,8 @@ function CodesSkeleton() {
 }
 
 export default function MyCodesPage() {
-  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
-  const codes = useQuery(
-    api.codes.mine,
-    isAuthenticated ? {} : "skip"
-  );
+  const { authReady, signedIn, canQuery } = useViewerAuth();
+  const codes = useQuery(api.codes.mine, canQuery ? {} : "skip");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleCopy(id: string, code: string) {
@@ -120,9 +118,9 @@ export default function MyCodesPage() {
             </p>
           </div>
 
-          {authLoading ? (
+          {!authReady ? (
             <CodesSkeleton />
-          ) : !isAuthenticated ? (
+          ) : !signedIn ? (
             <Card className="mx-auto max-w-md">
               <CardHeader>
                 <CardTitle>Sign in to see your codes</CardTitle>
