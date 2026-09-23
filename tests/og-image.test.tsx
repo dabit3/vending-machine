@@ -24,7 +24,6 @@ test("event card renders with a long name and description", async () => {
       title: "AI Engineer World's Fair Hackathon San Francisco 2026",
       subtitle:
         "Free Devin credits for every registered hacker. Sign in with the email you registered with and your code is yours.",
-      cta: "Claim your credits",
     }),
   );
   if (process.env.OG_DEBUG_OUT) await writeFile(process.env.OG_DEBUG_OUT, bytes);

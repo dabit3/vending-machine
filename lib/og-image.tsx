@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { APP_URL, getAppName } from "@/lib/app-name";
 
 // Social-card renderer shared by the opengraph-image routes. Mirrors the
-// dark home hero: mono eyebrow, large headline, one line of copy, and the
-// brand-blue call to action, over the site's dot grid.
+// dark home hero: mono eyebrow, large headline, and one line of copy over
+// the site's dot grid.
 
 export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_CONTENT_TYPE = "image/png";
@@ -15,7 +15,6 @@ const FG = "#f2f2f2";
 const MUTED = "#9b9b9b";
 const BORDER = "#333333";
 const BRAND = "#467bf7";
-const BRAND_FG = "#121212";
 
 const root = process.cwd();
 const [headingFont, bodyFont, monoFont, lockup] = await Promise.all([
@@ -31,7 +30,6 @@ export type OgCard = {
   eyebrow: string;
   title: string;
   subtitle: string;
-  cta: string;
 };
 
 export function homeCard(): OgCard {
@@ -39,7 +37,6 @@ export function homeCard(): OgCard {
     eyebrow: `${process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit distribution`,
     title: getAppName(),
     subtitle: "Sign in to claim your credits.",
-    cta: "Sign in",
   };
 }
 
@@ -135,24 +132,19 @@ export function renderOgImage(card: OgCard) {
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            gap: 20,
+            paddingTop: 28,
+            borderTop: `1px solid ${BORDER}`,
           }}
         >
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "0 36px",
-              height: 68,
-              borderRadius: 12,
+              width: 40,
+              height: 4,
+              borderRadius: 2,
               background: BRAND,
-              color: BRAND_FG,
-              fontSize: 26,
-              fontWeight: 600,
             }}
-          >
-            {card.cta}
-          </div>
+          />
           <div
             style={{
               fontFamily: "IBM Plex Mono",
