@@ -1,38 +1,53 @@
 import type { Nodes } from "mdast";
-import { toString } from "mdast-util-to-string";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
 
 const parser = unified().use(remarkParse).use(remarkGfm);
 
-// Containers whose children are blocks; anything else is flattened as one run
-// of text (a paragraph, heading, table cell, code block…).
-const BLOCK_CONTAINERS = new Set<Nodes["type"]>([
-  "root",
-  "blockquote",
-  "list",
-  "listItem",
-  "table",
-  "tableRow",
-  "footnoteDefinition",
+// Inline containers concatenate their children verbatim; block containers
+// (root, lists, quotes, tables) separate theirs with a space.
+const INLINE_CONTAINERS = new Set<Nodes["type"]>([
+  "paragraph",
+  "heading",
+  "tableCell",
+  "emphasis",
+  "strong",
+  "delete",
+  "link",
+  "linkReference",
 ]);
 
-function* runs(node: Nodes): Generator<string> {
-  if (BLOCK_CONTAINERS.has(node.type) && "children" in node) {
-    for (const child of node.children) yield* runs(child);
-  } else {
-    yield toString(node, { includeImageAlt: false, includeHtml: false });
+// Text as `MarkdownText` would show it: link labels and bare URLs kept,
+// images and raw HTML dropped, every break (soft, hard, or between blocks)
+// becoming a space.
+function text(node: Nodes): string {
+  switch (node.type) {
+    case "text":
+    case "inlineCode":
+    case "code":
+      return node.value;
+    case "break":
+      return " ";
+    case "image":
+    case "imageReference":
+    case "html":
+    case "yaml":
+    case "definition":
+    case "footnoteReference":
+    case "thematicBreak":
+      return "";
+    default:
+      if (!("children" in node)) return "";
+      return node.children
+        .map(text)
+        .join(INLINE_CONTAINERS.has(node.type) ? "" : " ");
   }
 }
 
 // One-line plain-text form of admin-authored Markdown, for summaries that
 // cannot hold markup (e.g. inside another link). Parsed with the same
-// pipeline `MarkdownText` renders with, so link labels, bare URLs and
-// escapes come out exactly as the claim page shows them; images are dropped.
+// pipeline `MarkdownText` renders with so the two never disagree.
 export function markdownToPlainText(markdown: string): string {
-  return [...runs(parser.parse(markdown))]
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return text(parser.parse(markdown)).replace(/\s+/g, " ").trim();
 }
