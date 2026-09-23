@@ -160,11 +160,21 @@ test("the home page lists only the events the viewer is enrolled in or has claim
       .query(api.events.mine, {}),
   ).toBeNull();
 
-  // The create/update mutations no longer accept a hidden flag.
+  // Older admin forms still send `hidden`; it is accepted and ignored, and
+  // the public listing they subscribe to is now always empty.
   const { id: listed } = await admin.mutation(api.events.create, {
     name: "Listed",
     eventDate: "2026-10-01",
+    hidden: false,
   });
+  await admin.mutation(api.events.update, {
+    id: listed,
+    name: "Listed",
+    slug: "listed",
+    eventDate: "2026-10-01",
+    hidden: true,
+  });
+  expect(await t.query(api.events.list, {})).toEqual([]);
   const { id: undated } = await admin.mutation(api.events.create, { name: "Undated" });
   const { id: claimedOnly } = await admin.mutation(api.events.create, {
     name: "Claimed only",
@@ -173,6 +183,9 @@ test("the home page lists only the events the viewer is enrolled in or has claim
   await admin.mutation(api.events.create, { name: "Not mine" });
   await admin.mutation(api.events.create, { name: "Dynamic", dynamic: true });
   expect(await admin.query(api.events.get, { id: listed })).not.toHaveProperty("hidden");
+  await t.run(async (ctx) => {
+    expect((await ctx.db.get(listed))?.hidden).toBeUndefined();
+  });
 
   await t.run(async (ctx) => {
     await ctx.db.insert("emails", { eventId: listed, email: "att@example.com" });

@@ -32,9 +32,21 @@ function normalizeEventDate(raw?: string): string | undefined {
 }
 
 // Events are never listed publicly; attendees reach them through the claim
-// URL / QR code their organizer shares. The home page only lists the events
-// the signed-in viewer is on the participant list for (which, for dynamic
-// events, means they have already interacted with it), soonest first.
+// URL / QR code their organizer shares. Clients built before the home page
+// stopped listing events still subscribe to this until they reload.
+export const list = query({
+  args: {},
+  handler: async () => [],
+});
+
+// Upper bound on the participant-list and claim rows read for one viewer.
+// Nobody is on anywhere near this many events; it exists so a single query
+// can never exceed Convex's per-request read limits.
+const MINE_ROWS = 200;
+
+// The home page only lists the events the signed-in viewer is on the
+// participant list for (which, for dynamic events, means they have already
+// interacted with it) or has claimed a code from, soonest first.
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -47,11 +59,11 @@ export const mine = query({
     const memberships = await ctx.db
       .query("emails")
       .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
+      .take(MINE_ROWS);
     const claimed = await ctx.db
       .query("codes")
       .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
-      .collect();
+      .take(MINE_ROWS);
     const claimedEventIds = new Set(claimed.map((c) => c.eventId));
     const eventIds = [
       ...new Set([...memberships.map((m) => m.eventId), ...claimedEventIds]),
@@ -212,6 +224,9 @@ export const create = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    // Accepted but ignored: sent by admin forms loaded before the Hidden
+    // option was removed.
+    hidden: v.optional(v.boolean()),
     stripeGeneration: v.optional(v.object(generationFields)),
     stripeBatchId: v.optional(v.id("stripeBatches")),
   },
@@ -259,6 +274,7 @@ export const update = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.id);
