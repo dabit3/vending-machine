@@ -53,7 +53,8 @@ test("signed-out visitors see the intro and a QR card, never an event list", () 
   state.authenticated = false;
   const html = renderToStaticMarkup(<Home />);
   expect(html).toMatch(/<h1\b[^>]*>Try Devin<\/h1>/);
-  expect(html).toContain("Sign in");
+  expect(html).toContain("Sign in to claim your credits.");
+  expect(html).not.toContain("Free credits");
   expect(html).toContain("Scan to claim");
   expect(html).toContain("QR code linking to https://trydevin.ai");
   expect(html).not.toContain("listed publicly");

@@ -23,6 +23,11 @@ import {
 import { cn } from "@/lib/utils";
 import { APP_URL, getAppName } from "@/lib/app-name";
 
+// Hero call-to-action: larger than the stock `lg` button, and full-width
+// with a taller tap target on phones.
+const HERO_BUTTON =
+  "h-12 w-full gap-2 px-5 text-base has-data-[icon=inline-start]:pl-4 sm:h-11 sm:w-auto sm:px-4.5 sm:text-[15px] sm:has-data-[icon=inline-start]:pl-3.5 [&_svg:not([class*='size-'])]:size-4.5";
+
 interface EventItem {
   _id: string;
   name: string;
@@ -65,7 +70,10 @@ export default function Home() {
               <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
                 <Link
                   href="/my-codes"
-                  className={buttonVariants({ variant: "outline", size: "lg" })}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "lg" }),
+                    HERO_BUTTON,
+                  )}
                 >
                   <Ticket data-icon="inline-start" />
                   My codes
@@ -78,13 +86,16 @@ export default function Home() {
           ) : (
             <>
               <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
-                Free credits, handed out at your event. Scan the QR code at
-                the venue or open your organizer&apos;s link, sign in, and your
-                code is yours.
+                Sign in to claim your credits.
               </p>
               <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
                 <SignInButton mode="modal">
-                  <Button variant="brand" size="lg" disabled={authLoading}>
+                  <Button
+                    variant="brand"
+                    size="lg"
+                    className={HERO_BUTTON}
+                    disabled={authLoading}
+                  >
                     <LogIn data-icon="inline-start" />
                     Sign in
                   </Button>
