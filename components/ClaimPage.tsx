@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
+  AtSign,
   BookOpen,
   CalendarClock,
   CalendarDays,
@@ -21,7 +22,7 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   SignInButton,
   SignOutButton,
@@ -94,6 +95,8 @@ function subscribeNoop() {
   return () => {};
 }
 
+type XSyncState = "pending" | "done" | "not_configured" | "failed";
+
 type ClaimPageProps = {
   slug: string;
   preview?: boolean;
@@ -117,6 +120,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
     canQuery ? { slug, preview: preview || undefined } : "skip",
   );
   const { user } = useUser();
+  const syncX = useAction(api.xAccounts.sync);
+  const [xSync, setXSync] = useState<XSyncState>("pending");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -142,7 +147,33 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
     wasShowingQr.current = showQr;
   }, [showQr]);
 
+  // Events keyed by X handle need the viewer's handle copied from Clerk into
+  // Convex (a server-to-server lookup, never taken from the browser) before
+  // eligibility can be judged; the claim UI waits for that round trip.
+  const byHandle = event?.identity === "x";
+  const needsXSync = byHandle && canQuery;
+  useEffect(() => {
+    if (!needsXSync) return;
+    let cancelled = false;
+    syncX({})
+      .then((res) => {
+        if (cancelled) return;
+        setXSync(res.ok ? "done" : res.reason === "not_configured" ? "not_configured" : "failed");
+      })
+      .catch(() => {
+        if (!cancelled) setXSync("failed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsXSync, syncX]);
+  const xPending = byHandle && xSync === "pending";
+
   const signedInEmail = user?.primaryEmailAddress?.emailAddress;
+  // The identity the event knows the viewer by: their @handle on X events,
+  // otherwise their email.
+  const signedInAs = eligibility?.identity || signedInEmail;
+  const identityNoun = byHandle ? "X account" : "email";
 
   // Admin preview simulates a fresh eligible attendee entirely client-side:
   // nothing is written, and no code leaves the pool.
@@ -370,13 +401,31 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                 ) : !signedIn ? (
                   <div className="flex flex-col gap-4">
                     {event.soldOut ? (
-                      <SoldOutNotice eventName={event.name} signedOut />
+                      <SoldOutNotice
+                        eventName={event.name}
+                        identityNoun={identityNoun}
+                        signedOut
+                      />
                     ) : null}
                     {event.dynamic ? (
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        Sign in to claim your code, one per verified email
-                        address.
+                        {byHandle
+                          ? "Sign in with X to claim your code, one per X account."
+                          : "Sign in to claim your code, one per verified email address."}
                       </p>
+                    ) : byHandle ? (
+                      <Alert>
+                        <AtSign />
+                        <AlertTitle>
+                          Sign in with the X account you registered for this
+                          event with
+                        </AlertTitle>
+                        <AlertDescription>
+                          Codes are only dispensed to the X handles your
+                          organizer added. Choose &ldquo;Continue with X&rdquo;
+                          when signing in.
+                        </AlertDescription>
+                      </Alert>
                     ) : (
                       <Alert>
                         <Mail />
@@ -396,11 +445,13 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         <LogIn data-icon="inline-start" />
                         {event.soldOut
                           ? "Sign in to see your code"
-                          : "Sign in to claim"}
+                          : byHandle
+                            ? "Sign in with X to claim"
+                            : "Sign in to claim"}
                       </Button>
                     </SignInButton>
                   </div>
-                ) : eligibility === undefined ? (
+                ) : eligibility === undefined || xPending ? (
                   <div className="flex flex-col gap-3">
                     <Skeleton className="h-12 rounded-md" />
                     <Skeleton className="h-10 rounded-lg" />
@@ -412,27 +463,37 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <AlertTitle>
                         {eligibility.reason === "unverified"
                           ? "No verified email on your account"
-                          : event.dynamic
-                            ? "You can't claim a code for this event"
-                            : "You're not on the list for this event"}
+                          : eligibility.reason === "no_x_account"
+                            ? xSync === "done"
+                              ? "No X account on your sign-in"
+                              : "Couldn't check your X account"
+                            : event.dynamic
+                              ? "You can't claim a code for this event"
+                              : "You're not on the list for this event"}
                       </AlertTitle>
                       <AlertDescription>
                         {eligibility.reason === "unverified" ? (
                           "Sign in with the email you registered with."
+                        ) : eligibility.reason === "no_x_account" ? (
+                          xSync === "done"
+                            ? "This event dispenses codes by X handle. Switch accounts and choose \u201cContinue with X\u201d when signing in."
+                            : xSync === "not_configured"
+                              ? "X sign-in isn't set up for this site yet. Ask your organizer."
+                              : "Something went wrong looking up your X handle. Reload to try again."
                         ) : event.dynamic ? (
                           <>
                             <span className="font-medium text-foreground">
-                              {eligibility.email ?? "This email"}
+                              {eligibility.identity ?? `This ${identityNoun}`}
                             </span>{" "}
                             isn&apos;t eligible for this event.
                           </>
                         ) : (
                           <>
                             <span className="font-medium text-foreground">
-                              {eligibility.email ?? "This email"}
+                              {eligibility.identity ?? `This ${identityNoun}`}
                             </span>{" "}
                             isn&apos;t on the participant list. Sign in with
-                            the email you registered with.
+                            the {identityNoun} you registered with.
                           </>
                         )}
                       </AlertDescription>
@@ -441,7 +502,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
                         <span className="text-foreground">
-                          {signedInEmail ?? "verified user"}
+                          {signedInAs ?? "verified user"}
                         </span>
                       </span>
                       <SignOutButton redirectUrl={`/${slug}`}>
@@ -457,12 +518,15 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                   </div>
                 ) : event.soldOut ? (
                   <div className="flex flex-col gap-5">
-                    <SoldOutNotice eventName={event.name} />
+                    <SoldOutNotice
+                      eventName={event.name}
+                      identityNoun={identityNoun}
+                    />
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
                         <span className="text-foreground">
-                          {signedInEmail ?? "verified user"}
+                          {signedInAs ?? "verified user"}
                         </span>
                       </span>
                       <SignOutButton redirectUrl={`/${slug}`}>
@@ -517,7 +581,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
                         <span className="text-foreground">
-                          {signedInEmail ?? "verified user"}
+                          {signedInAs ?? "verified user"}
                         </span>
                       </span>
                       <SignOutButton redirectUrl={`/${slug}`}>
@@ -602,7 +666,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
                         <span className="text-foreground">
-                          {signedInEmail ?? "verified user"}
+                          {signedInAs ?? "verified user"}
                         </span>
                       </span>
                       <SignOutButton redirectUrl={`/${slug}`}>
@@ -638,9 +702,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
 
 function SoldOutNotice({
   eventName,
+  identityNoun,
   signedOut = false,
 }: {
   eventName: string;
+  identityNoun: string;
   signedOut?: boolean;
 }) {
   return (
@@ -650,8 +716,8 @@ function SoldOutNotice({
       <AlertDescription>
         Sorry, every code for {eventName} has already been picked up.{" "}
         {signedOut
-          ? "If you already claimed one, sign in with the same email and it will still be here."
-          : "If you already claimed one with a different email, switch accounts and it will still be here."}
+          ? `If you already claimed one, sign in with the same ${identityNoun} and it will still be here.`
+          : `If you already claimed one with a different ${identityNoun}, switch accounts and it will still be here.`}
       </AlertDescription>
     </Alert>
   );

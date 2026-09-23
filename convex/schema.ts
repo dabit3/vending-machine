@@ -60,6 +60,10 @@ export default defineSchema({
     // can claim, and is recorded in `emails` on first contact so it can only
     // claim once.
     dynamic: v.optional(v.boolean()),
+    // How attendees are identified: verified email (default when absent) or
+    // the X handle linked to their account. Participant and claim rows for
+    // "x" events store "@handle" keys in the same fields emails use.
+    identity: v.optional(v.union(v.literal("email"), v.literal("x"))),
     // Normalized email of the admin who created the event; absent on events
     // created before it was recorded.
     createdBy: v.optional(v.string()),
@@ -70,6 +74,16 @@ export default defineSchema({
     // e.g. "100" or "Team plan". Rendered with a "$" prefix only when numeric.
     codeTypeValues: v.optional(v.record(v.string(), v.string())),
   }).index("by_slug", ["slug"]),
+
+  // The X handle Clerk reports for a user, copied server-side from Clerk's
+  // Backend API so a claim can never rely on a handle typed in the browser.
+  xAccounts: defineTable({
+    clerkUserId: v.string(),
+    handle: v.string(),
+    syncedAt: v.number(),
+  })
+    .index("by_clerkUserId", ["clerkUserId"])
+    .index("by_handle", ["handle"]),
 
   emails: defineTable({
     eventId: v.id("events"),

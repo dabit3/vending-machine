@@ -18,12 +18,14 @@ import type * as codes from "../codes.js";
 import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
+import type * as identity from "../identity.js";
 import type * as notifications from "../notifications.js";
 import type * as stripeBatchModel from "../stripeBatchModel.js";
 import type * as stripeBatches from "../stripeBatches.js";
 import type * as stripeValidation from "../stripeValidation.js";
 import type * as stripeWorker from "../stripeWorker.js";
 import type * as waitlist from "../waitlist.js";
+import type * as xAccounts from "../xAccounts.js";
 
 import type {
   ApiFromModules,
@@ -42,12 +44,14 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   eventAdmins: typeof eventAdmins;
   events: typeof events;
+  identity: typeof identity;
   notifications: typeof notifications;
   stripeBatchModel: typeof stripeBatchModel;
   stripeBatches: typeof stripeBatches;
   stripeValidation: typeof stripeValidation;
   stripeWorker: typeof stripeWorker;
   waitlist: typeof waitlist;
+  xAccounts: typeof xAccounts;
 }>;
 
 /**

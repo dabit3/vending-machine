@@ -20,6 +20,7 @@ import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { identityLabels, normalizeIdentityKey } from "@/lib/attendee-identity";
 import { cn } from "@/lib/utils";
 
 function subscribeNoop() {
@@ -70,11 +71,17 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
   }
 
   const claimUrl = origin ? `${origin}/${event.slug}` : "";
+  const identity = event.identity;
+  const byHandle = identity === "x";
+  const labels = identityLabels(identity);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = email.trim().toLowerCase();
-    if (!trimmed) return;
+    const trimmed = normalizeIdentityKey(identity, email);
+    if (!trimmed) {
+      toast.error(`Enter a valid ${labels.addressNoun}`);
+      return;
+    }
     setSubmitting(true);
     try {
       const { added, skipped, flagged, blacklisted } = await addEmails({
@@ -83,15 +90,13 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
       });
       if (blacklisted > 0) {
         toast.error(`${trimmed} is blacklisted`, {
-          description:
-            "This email is on the app-wide blacklist and cannot claim a code.",
+          description: `This ${labels.noun} is on the app-wide blacklist and cannot claim a code.`,
         });
         return;
       }
       if (flagged > 0) {
         toast.warning(`${trimmed} needs organizer approval`, {
-          description:
-            "This email signed up for a previous event. Approve it under Flagged for review on the manage event page.",
+          description: `This ${labels.noun} signed up for a previous event. Approve it under Flagged for review on the manage event page.`,
         });
         return;
       }
@@ -107,7 +112,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
       setShowQr(true);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to add email",
+        err instanceof Error ? err.message : `Failed to add ${labels.noun}`,
       );
     } finally {
       setSubmitting(false);
@@ -151,20 +156,21 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                 Add an attendee
               </CardTitle>
               <CardDescription className="text-sm leading-relaxed">
-                Enter the attendee&apos;s email to make them eligible, then
-                flip to the QR code so they can scan and claim.
+                Enter the attendee&apos;s {labels.addressNoun} to make them
+                eligible, then flip to the QR code so they can scan and claim.
+                {byHandle ? " They sign in with X to claim." : ""}
               </CardDescription>
             </CardHeader>
             <CardContent className="py-(--card-spacing)">
               <form onSubmit={handleAdd} className="flex flex-col gap-4">
                 <Input
                   ref={emailRef}
-                  type="email"
+                  type={byHandle ? "text" : "email"}
                   required
-                  aria-label="Attendee email"
+                  aria-label={`Attendee ${labels.noun}`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="attendee@example.com"
+                  placeholder={labels.inputPlaceholder}
                   className="h-12"
                   autoComplete="off"
                   autoCapitalize="none"

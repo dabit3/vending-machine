@@ -2,10 +2,11 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
+import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
 
 // App-wide blacklist managed exclusively by global admins. Blacklisted
-// addresses are rejected whenever they would be added to any event's
-// eligible list.
+// identities (email addresses or "@handle" X handles) are rejected whenever
+// they would be added to any event's eligible list.
 export async function isBlacklisted(
   ctx: QueryCtx | MutationCtx,
   email: string
@@ -47,9 +48,12 @@ export const add = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const email = args.email.trim().toLowerCase();
-    if (!email || !email.includes("@")) {
-      throw new Error("Enter a valid email address");
+    const raw = args.email.trim();
+    const email = raw.startsWith("@")
+      ? normalizeXHandle(raw)
+      : normalizeEmail(raw);
+    if (!email) {
+      throw new Error("Enter a valid email address or @handle");
     }
     const existing = await ctx.db
       .query("blacklistedEmails")

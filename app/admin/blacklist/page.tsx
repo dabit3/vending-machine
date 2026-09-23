@@ -186,15 +186,19 @@ export default function BlacklistPage() {
 
       <form onSubmit={handleAdd} className="mb-10">
         <Field>
-          <FieldLabel htmlFor="blacklist-email">Blacklist an email</FieldLabel>
+          <FieldLabel htmlFor="blacklist-email">
+            Blacklist an email or X handle
+          </FieldLabel>
           <InputGroup>
             <InputGroupInput
               id="blacklist-email"
-              type="email"
+              type="text"
               required
+              autoCapitalize="none"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="bad-actor@example.com"
+              placeholder="bad-actor@example.com or @handle"
               className="text-sm"
             />
             <InputGroupAddon align="inline-end">

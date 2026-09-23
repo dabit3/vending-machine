@@ -246,6 +246,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     description: undefined,
     eventDate,
     dynamic: undefined,
+    identity: "email" as const,
     createdBy: undefined,
   });
   try {
@@ -282,6 +283,7 @@ test("the dashboard shows who created an event when it is known", () => {
     description: undefined,
     eventDate: undefined,
     dynamic: undefined,
+    identity: "email" as const,
     createdBy,
   });
   state.events = [event("tagged", "organizer@example.com")];

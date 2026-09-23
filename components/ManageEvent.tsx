@@ -34,9 +34,18 @@ import {
   filterEmails,
   type EmailStatusFilter,
 } from "@/lib/email-search";
+import {
+  ATTENDEE_IDENTITIES,
+  identityLabels,
+  type AttendeeIdentity,
+} from "@/lib/attendee-identity";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { fileToItems } from "@/lib/spreadsheet";
+import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { cn } from "@/lib/utils";
@@ -165,6 +174,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // Dynamic events have no participant list to manage; the emails card only
   // shows who has actually claimed a code.
   const isDynamic = event?.dynamic === true;
+  const identity = event?.identity ?? "email";
+  const byHandle = identity === "x";
+  const labels = identityLabels(identity);
   const listedEmails:
     | { email: string; id?: Id<"emails">; claimed: boolean }[]
     | undefined = isDynamic
@@ -240,7 +252,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   async function handleRemoveAllEmails() {
     const total = emails?.length ?? 0;
     setEmailBusy(true);
-    const toastId = toast.loading("Removing emails...");
+    const toastId = toast.loading(`Removing ${labels.plural}...`);
     let removed = 0;
     try {
       let hasMore = true;
@@ -252,12 +264,15 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           toast.loading(`Removing ${removed} / ${total}...`, { id: toastId });
         }
       }
-      toast.success(`Removed ${removed} email${removed === 1 ? "" : "s"}`, {
-        id: toastId,
-      });
+      toast.success(
+        `Removed ${removed} ${removed === 1 ? labels.noun : labels.plural}`,
+        { id: toastId }
+      );
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to remove emails",
+        err instanceof Error
+          ? err.message
+          : `Failed to remove ${labels.plural}`,
         {
           id: toastId,
           description:
@@ -306,21 +321,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           .filter(Boolean)
           .join(" ") || undefined;
       if (added === 0 && blacklisted > 0 && flagged === 0) {
-        toast.warning(`${blacklisted} emails rejected (blacklisted)`, {
+        toast.warning(
+          `${blacklisted} ${labels.plural} rejected (blacklisted)`,
+          { description }
+        );
+      } else if (added === 0 && flagged > 0) {
+        toast.warning(`${flagged} ${labels.plural} awaiting review`, {
           description,
         });
-      } else if (added === 0 && flagged > 0) {
-        toast.warning(`${flagged} emails awaiting review`, { description });
       } else {
-        toast.success(`Added ${added} emails`, { description });
+        toast.success(`Added ${added} ${labels.plural}`, { description });
       }
       setEmailInput("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to add emails";
+      const message =
+        err instanceof Error ? err.message : `Failed to add ${labels.plural}`;
       if (sent > 0) {
         setEmailInput(list.slice(sent).join("\n"));
         toast.error(message, {
-          description: `${sent} of ${list.length} addresses were submitted before the error; the rest are still in the box.`,
+          description: `${sent} of ${list.length} ${labels.plural} were submitted before the error; the rest are still in the box.`,
         });
       } else {
         toast.error(message);
@@ -427,8 +446,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   function exportEmails() {
     if (!listedEmails || !event) return;
-    downloadCsv(`${event.slug}-emails.csv`, [
-      ["email"],
+    downloadCsv(`${event.slug}-${labels.exportName}.csv`, [
+      [byHandle ? "handle" : "email"],
       ...listedEmails.map((e) => [e.email]),
     ]);
   }
@@ -448,7 +467,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
   async function importFile(
     file: File,
-    kind: "emails" | "codes",
+    kind: ImportKind,
     send: (
       items: string[]
     ) => Promise<{
@@ -467,7 +486,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       // double-counted by the server.
       const items = [
         ...new Set(
-          rows.map((r) => (kind === "emails" ? r.trim().toLowerCase() : r.trim()))
+          rows.map((r) => (kind === "codes" ? r.trim() : r.trim().toLowerCase()))
         ),
       ];
       const dropped = rows.length - items.length;
@@ -606,7 +625,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <StatCard
-          label={isDynamic ? "Claimed emails" : "Eligible emails"}
+          label={
+            isDynamic ? `Claimed ${labels.plural}` : `Eligible ${labels.plural}`
+          }
           value={listedEmails?.length}
           sub={
             !isDynamic && emails && codes
@@ -662,7 +683,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <Badge variant="secondary">{blacklistHits.length}</Badge>
             </CardTitle>
             <CardDescription>
-              These uploaded emails are on the app-wide blacklist and were
+              These uploaded {labels.plural} are on the app-wide blacklist and were
               rejected. Only global admins can manage the blacklist.
             </CardDescription>
           </CardHeader>
@@ -693,7 +714,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </Badge>
             </CardTitle>
             <CardDescription>
-              These uploaded emails already signed up for previous events.
+              These uploaded {labels.plural} already signed up for previous events.
               Approve each one individually to add it to the eligible list, or
               reject it to discard it.
               {flagged.hasMore
@@ -768,15 +789,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Inbox className="size-4 text-muted-dim" aria-hidden />
-              {isDynamic ? "Claimed emails" : "Eligible emails"}
+              {isDynamic
+                ? `Claimed ${labels.plural}`
+                : `Eligible ${labels.plural}`}
               {listedEmails ? (
                 <Badge variant="secondary">{listedEmails.length}</Badge>
               ) : null}
             </CardTitle>
             <CardDescription>
               {isDynamic
-                ? "This event is dynamic: anyone who signs in can claim, so there's no participant list. These addresses have claimed a code."
-                : `Only these addresses can claim a code.${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
+                ? `This event is dynamic: anyone who signs in${byHandle ? " with X" : ""} can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
+                : `Only these ${labels.addressPlural} can claim a code.${byHandle ? " Attendees sign in with X." : ""}${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {listedEmails && listedEmails.length > 0 ? (
@@ -786,7 +809,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </Button>
               ) : null}
               {isDynamic ? null : (
-                <UploadButton busy={emailBusy} onFile={(f) => importFile(f, "emails", (items) => addEmails({ eventId: id, emails: items }), setEmailBusy)} />
+                <UploadButton
+                  busy={emailBusy}
+                  onFile={(f) =>
+                    importFile(
+                      f,
+                      byHandle ? "handles" : "emails",
+                      (items) => addEmails({ eventId: id, emails: items }),
+                      setEmailBusy
+                    )
+                  }
+                />
               )}
               {!isDynamic && emails && emails.length > 0 ? (
                 <AlertDialog>
@@ -796,7 +829,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         size="icon-sm"
                         variant="ghost"
                         className="shrink-0 text-muted-foreground"
-                        aria-label="Remove all emails"
+                        aria-label={`Remove all ${labels.plural}`}
                         disabled={emailBusy}
                       />
                     }
@@ -806,14 +839,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        Remove all {emails.length} email
-                        {emails.length === 1 ? "" : "s"}?
+                        Remove all {emails.length}{" "}
+                        {emails.length === 1 ? labels.noun : labels.plural}?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         This clears the eligible list, so no one can claim until
-                        emails are added again. Codes already dispensed are
-                        kept, and codes reserved for these emails return to the
-                        pool.
+                        {labels.plural} are added again. Codes already dispensed
+                        are kept, and codes reserved for these {labels.plural}{" "}
+                        return to the pool.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -834,12 +867,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             {isDynamic ? null : (
               <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
                 <Textarea
-                  aria-label="Email addresses to add"
+                  aria-label={`${labels.addressPlural} to add`}
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
                   disabled={emailBusy}
                   rows={4}
-                  placeholder={"one@example.com\ntwo@example.com"}
+                  placeholder={labels.placeholder}
                   className="max-h-48 resize-y overflow-y-auto text-sm"
                 />
                 <div className="flex flex-wrap items-center gap-3">
@@ -855,12 +888,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         Adding...
                       </>
                     ) : (
-                      "Add emails"
+                      `Add ${labels.plural}`
                     )}
                   </Button>
                   {pendingEmailCount > 0 ? (
                     <span className="text-xs text-muted-dim tabular-nums">
-                      {pendingEmailCount} email{pendingEmailCount === 1 ? "" : "s"} pasted
+                      {pendingEmailCount}{" "}
+                      {pendingEmailCount === 1 ? labels.noun : labels.plural}{" "}
+                      pasted
                     </span>
                   ) : null}
                 </div>
@@ -874,8 +909,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   </InputGroupAddon>
                   <InputGroupInput
                     type="search"
-                    aria-label="Search emails"
-                    placeholder="Search emails"
+                    aria-label={`Search ${labels.plural}`}
+                    placeholder={`Search ${labels.plural}`}
                     value={emailSearch}
                     onChange={(e) => setEmailSearch(e.target.value)}
                     className="text-sm"
@@ -883,7 +918,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </InputGroup>
                 {isDynamic ? null : (
                   <ToggleGroup
-                    aria-label="Filter emails by claim status"
+                    aria-label={`Filter ${labels.plural} by claim status`}
                     value={[emailFilter]}
                     onValueChange={(next) => {
                       const picked = EMAIL_STATUS_FILTERS.find(
@@ -927,18 +962,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                       ? undefined
                       : () =>
                           removeEmail({ id: emailId }).catch(() =>
-                            toast.error("Failed to remove email")
+                            toast.error(`Failed to remove ${labels.noun}`)
                           ),
                 };
               })}
               emptyText={
                 listedEmails && listedEmails.length > 0
                   ? emailSearch.trim()
-                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}emails match "${emailSearch.trim()}".`
-                    : `No ${activeEmailFilter} emails yet.`
+                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}${labels.plural} match "${emailSearch.trim()}".`
+                    : `No ${activeEmailFilter} ${labels.plural} yet.`
                   : isDynamic
                     ? "No one has claimed yet."
-                    : "No emails yet."
+                    : `No ${labels.plural} yet.`
               }
             />
             <AlertDialog
@@ -998,7 +1033,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               {codes ? <Badge variant="secondary">{codeCount}</Badge> : null}
             </CardTitle>
             <CardDescription>
-              Each email is assigned one unclaimed code.
+              Each {labels.noun} is assigned one unclaimed code.
               {codes ? ` ${unclaimedCodeCount} still available.` : ""}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
@@ -1683,6 +1718,9 @@ function EventDetailsForm({
     event.claimInstructions ?? ""
   );
   const [dynamic, setDynamic] = useState(event.dynamic ?? false);
+  const [identity, setIdentity] = useState<AttendeeIdentity>(
+    event.identity ?? "email"
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -1697,6 +1735,7 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
+        identity,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1775,6 +1814,30 @@ function EventDetailsForm({
               onChange={setClaimInstructions}
               description="Optional. When set, attendees see a “How to redeem” button after claiming their code."
             />
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="detail-identity">
+                Identify attendees by
+              </FieldLabel>
+              <NativeSelect
+                id="detail-identity"
+                className="w-full sm:w-64"
+                value={identity}
+                onChange={(e) =>
+                  setIdentity(e.target.value === "x" ? "x" : "email")
+                }
+              >
+                {ATTENDEE_IDENTITIES.map((option) => (
+                  <NativeSelectOption key={option.value} value={option.value}>
+                    {option.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+              <FieldDescription>
+                {identity === "x"
+                  ? "Attendees sign in with X; the list holds @handles. Can only be changed while the event has no participants or claims."
+                  : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."}
+              </FieldDescription>
+            </Field>
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-dynamic"
@@ -1783,7 +1846,7 @@ function EventDetailsForm({
               />
               <FieldLabel htmlFor="detail-dynamic" className="font-normal">
                 Dynamic: anyone who signs in can claim, no participant list
-                needed (one code per email)
+                needed (one code per {identity === "x" ? "X account" : "email"})
               </FieldLabel>
             </Field>
             {dynamic ? <DynamicEventWarning className="sm:col-span-2" /> : null}
@@ -1810,7 +1873,8 @@ function EventDetailsForm({
                     <AlertDialogTitle>Delete “{event.name}”?</AlertDialogTitle>
                     <AlertDialogDescription>
                       This permanently removes the event along with all of its
-                      eligible emails and codes. Attendees will no longer be
+                      eligible {event.identity === "x" ? "handles" : "emails"}{" "}
+                      and codes. Attendees will no longer be
                       able to claim or re-view their codes. This does not revoke
                       Stripe promotion codes. Code studio keeps their batch history.
                     </AlertDialogDescription>

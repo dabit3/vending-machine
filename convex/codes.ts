@@ -1,7 +1,8 @@
 import { mutation, query, type MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
+import { viewerIdentityKeys } from "./identity";
 import { logAudit } from "./auditLog";
 import { activeCodeTypes, blockKey, blockValue } from "./blockValues";
 
@@ -227,13 +228,18 @@ export const mine = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    const email = identity.email?.trim().toLowerCase();
-    if (!email || identity.emailVerified !== true) return null;
+    const keys = await viewerIdentityKeys(ctx);
+    if (keys.length === 0) return null;
 
-    const claimed = await ctx.db
-      .query("codes")
-      .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
-      .collect();
+    const claimed: Doc<"codes">[] = [];
+    for (const key of keys) {
+      claimed.push(
+        ...(await ctx.db
+          .query("codes")
+          .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
+          .collect())
+      );
+    }
     const items = await Promise.all(
       claimed.map(async (c) => {
         const event = await ctx.db.get(c.eventId);

@@ -45,7 +45,7 @@ test("dynamic events let any verified email claim once and record the email", as
   });
   expect(await user.query(api.claims.eligibility, { slug: "meetup" })).toMatchObject({
     eligible: true,
-    email: walkUpEmail,
+    identity: walkUpEmail,
     instructionsViewed: false,
   });
 

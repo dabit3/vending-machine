@@ -1,9 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
+import type { Doc } from "./_generated/dataModel";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import { isBlacklisted } from "./blacklist";
+import { eventIdentity, resolveViewer, viewerIdentityKeys } from "./identity";
 import {
   adminEmailStatus,
   isEventAdmin,
@@ -20,6 +22,8 @@ function slugify(name: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+const identityValidator = v.union(v.literal("email"), v.literal("x"));
 
 // Empty -> undefined; expects YYYY-MM-DD from the date input.
 function normalizeEventDate(raw?: string): string | undefined {
@@ -52,18 +56,27 @@ export const mine = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
-    const email = identity.email?.trim().toLowerCase();
-    if (!email || identity.emailVerified !== true) return null;
-    if (await isBlacklisted(ctx, email)) return [];
-
-    const memberships = await ctx.db
-      .query("emails")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .take(MINE_ROWS);
-    const claimed = await ctx.db
-      .query("codes")
-      .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
-      .take(MINE_ROWS);
+    // A viewer may be known by their email on some events and by their X
+    // handle on others; list both.
+    const keys = await viewerIdentityKeys(ctx);
+    if (keys.length === 0) return null;
+    const memberships: Doc<"emails">[] = [];
+    const claimed: Doc<"codes">[] = [];
+    for (const key of keys) {
+      if (await isBlacklisted(ctx, key)) continue;
+      memberships.push(
+        ...(await ctx.db
+          .query("emails")
+          .withIndex("by_email", (q) => q.eq("email", key))
+          .take(MINE_ROWS))
+      );
+      claimed.push(
+        ...(await ctx.db
+          .query("codes")
+          .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
+          .take(MINE_ROWS))
+      );
+    }
     const claimedEventIds = new Set(claimed.map((c) => c.eventId));
     const eventIds = [
       ...new Set([...memberships.map((m) => m.eventId), ...claimedEventIds]),
@@ -98,17 +111,14 @@ export const getBySlug = query({
       .unique();
     if (!event) return null;
     // A code counts as available for the viewer when it is unclaimed and
-    // either unreserved or reserved for the viewer's verified email, matching
-    // what claims.claim would actually hand out. The event carries its
-    // (at most two) distinct code types, so availability is one bounded probe
-    // per type instead of a scan of the pool. An unnamed pool is represented
-    // as ""; two pools are always both named. Events created before the type
-    // list existed have a single unnamed pool.
-    const identity = await ctx.auth.getUserIdentity();
-    const viewerEmail =
-      identity?.emailVerified === true
-        ? identity.email?.trim().toLowerCase()
-        : undefined;
+    // either unreserved or reserved for the viewer's identity, matching what
+    // claims.claim would actually hand out. The event carries its (at most
+    // two) distinct code types, so availability is one bounded probe per type
+    // instead of a scan of the pool. An unnamed pool is represented as ""; two
+    // pools are always both named. Events created before the type list existed
+    // have a single unnamed pool.
+    const viewer = await resolveViewer(ctx, event);
+    const viewerKey = viewer.ok ? viewer.key : undefined;
     const candidateTypes = event.codeTypes ?? [""];
     const availableTypes = new Set<string>();
     for (const typeKey of candidateTypes) {
@@ -125,11 +135,11 @@ export const getBySlug = query({
         .first();
       if (hit) availableTypes.add(typeKey);
     }
-    if (viewerEmail) {
+    if (viewerKey) {
       const reserved = await ctx.db
         .query("codes")
         .withIndex("by_event_reservedFor", (q) =>
-          q.eq("eventId", event._id).eq("reservedFor", viewerEmail)
+          q.eq("eventId", event._id).eq("reservedFor", viewerKey)
         )
         .filter(notExpired)
         .filter((q) => q.eq(q.field("claimedBy"), undefined))
@@ -147,6 +157,7 @@ export const getBySlug = query({
       creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
       dynamic: event.dynamic ?? false,
+      identity: eventIdentity(event),
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
       soldOut: availableTypes.size === 0,
@@ -177,6 +188,7 @@ export const get = query({
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
+      identity: eventIdentity(event),
       createdBy: event.createdBy,
     };
   },
@@ -211,6 +223,7 @@ export const listManaged = query({
       description: event.description,
       eventDate: event.eventDate,
       dynamic: event.dynamic,
+      identity: eventIdentity(event),
       createdBy: event.createdBy,
     }));
   },
@@ -224,6 +237,7 @@ export const create = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    identity: v.optional(identityValidator),
     // Accepted but ignored: sent by admin forms loaded before the Hidden
     // option was removed.
     hidden: v.optional(v.boolean()),
@@ -252,6 +266,7 @@ export const create = mutation({
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
+      identity: args.identity === "x" ? "x" : undefined,
       createdBy: creator,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
@@ -274,6 +289,7 @@ export const update = mutation({
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    identity: v.optional(identityValidator),
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -287,6 +303,42 @@ export const update = mutation({
     if (existing && existing._id !== args.id) {
       throw new Error(`Slug "${slug}" is already taken`);
     }
+    const current = await ctx.db.get(args.id);
+    if (!current) throw new Error("Event not found");
+    // Participant, flagged, access-request and claim rows are keyed by the
+    // identity in force when they were written, so the kind can only change
+    // while there are none.
+    if (args.identity !== undefined && args.identity !== eventIdentity(current)) {
+      const [participant, flagged, request, claimed] = await Promise.all([
+        ctx.db
+          .query("emails")
+          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .first(),
+        ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .first(),
+        // Approved requests are dropped with their participant row and denied
+        // ones are inert, so only pending ones still carry a live key.
+        ctx.db
+          .query("accessRequests")
+          .withIndex("by_event_status", (q) =>
+            q.eq("eventId", args.id).eq("status", "pending")
+          )
+          .first(),
+        ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.id).gt("claimedBy", "")
+          )
+          .first(),
+      ]);
+      if (participant || flagged || request || claimed) {
+        throw new ConvexError(
+          "Remove the participant list, resolve flagged entries and access requests, and reset any claims before changing how attendees are identified."
+        );
+      }
+    }
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       slug,
@@ -294,6 +346,11 @@ export const update = mutation({
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
+      // Older admin forms don't send `identity`; leave the setting untouched
+      // rather than resetting the event to email.
+      ...(args.identity !== undefined
+        ? { identity: args.identity === "x" ? ("x" as const) : undefined }
+        : {}),
     });
     return { slug };
   },

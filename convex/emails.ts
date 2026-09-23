@@ -4,7 +4,9 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { isBlacklisted, recordBlacklistHit } from "./blacklist";
 import { logAudit } from "./auditLog";
+import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
+import { normalizeIdentityKey } from "../lib/attendee-identity";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -17,23 +19,29 @@ export const list = query({
   },
 });
 
+// Adds attendees to the event's participant list. Entries are emails for
+// email events and X handles ("@handle", or a profile URL) for X events;
+// anything that doesn't parse as the event's identity kind is skipped.
 export const add = mutation({
   args: { eventId: v.id("events"), emails: v.array(v.string()) },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
     if (args.emails.length > UPLOAD_CHUNK_SIZE) {
       throw new Error(
-        `Add at most ${UPLOAD_CHUNK_SIZE} emails per request (got ${args.emails.length}).`
+        `Add at most ${UPLOAD_CHUNK_SIZE} entries per request (got ${args.emails.length}).`
       );
     }
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+    const identity = eventIdentity(event);
     let added = 0;
     let skipped = 0;
     let flagged = 0;
     let blacklisted = 0;
     const seen = new Set<string>();
     for (const raw of args.emails) {
-      const email = raw.trim().toLowerCase();
-      if (!email || !email.includes("@") || seen.has(email)) {
+      const email = normalizeIdentityKey(identity, raw);
+      if (!email || seen.has(email)) {
         skipped++;
         continue;
       }
