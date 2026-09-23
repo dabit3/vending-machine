@@ -330,12 +330,15 @@ test("the identity mode can only change while the event has no participants or c
   await expect(asAdmin.mutation(api.events.update, { ...base, identity: "x" })).rejects.toThrow(
     /before changing how attendees are identified/,
   );
-  // A denied request must not lock the mode, but it is still approvable, so
-  // the change retires it rather than leaving an email key on an X event.
+  // A denied request must not lock the mode, but its email key can't be
+  // approved onto the X event afterwards.
   await t.run((ctx) => ctx.db.patch(requestId, { status: "denied" }));
   await asAdmin.mutation(api.events.update, { ...base, identity: "x" });
   expect(await asAdmin.query(api.events.get, { id: event.id })).toMatchObject({ identity: "x" });
-  expect(await t.run((ctx) => ctx.db.get(requestId))).toBeNull();
+  await expect(asAdmin.mutation(api.waitlist.approve, { requestId })).rejects.toThrow(
+    /changed how attendees are identified/,
+  );
+  expect(await asAdmin.query(api.emails.list, { eventId: event.id })).toEqual([]);
 });
 
 test("the blacklist accepts @handles and blocks them from X events", async () => {

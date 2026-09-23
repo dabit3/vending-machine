@@ -5,7 +5,7 @@ import { notExpired } from "./codeExpiry";
 import { requireEventAdmin } from "./admins";
 import { isBlacklisted } from "./blacklist";
 import { logAudit } from "./auditLog";
-import { resolveViewer } from "./identity";
+import { eventIdentity, resolveViewer } from "./identity";
 import { isXHandleKey } from "../lib/attendee-identity";
 
 // Attendees not on an event's whitelist can request access. Requests are
@@ -178,6 +178,15 @@ export const approve = mutation({
         reserved: priorReservation !== null,
         alreadyClaimed: priorClaim !== null,
       };
+    }
+
+    // A request left over from before the event switched identity mode
+    // carries a key of the wrong kind; approving it would whitelist an
+    // identity nobody can sign in with.
+    if (isXHandleKey(request.email) !== (eventIdentity(event) === "x")) {
+      throw new Error(
+        `${request.email} was requested before this event changed how attendees are identified and cannot be approved`
+      );
     }
 
     if (await isBlacklisted(ctx, request.email)) {

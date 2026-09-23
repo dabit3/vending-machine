@@ -338,13 +338,6 @@ export const update = mutation({
           "Remove the participant list, resolve flagged entries and access requests, and reset any claims before changing how attendees are identified."
         );
       }
-      // Denied requests stay approvable, which would resurrect an old-mode key
-      // as a participant under the new mode, so retire them here.
-      const denied = await ctx.db
-        .query("accessRequests")
-        .withIndex("by_event", (q) => q.eq("eventId", args.id))
-        .collect();
-      for (const row of denied) await ctx.db.delete(row._id);
     }
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
