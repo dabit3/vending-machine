@@ -22,7 +22,12 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
-import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
+import {
+  SignInButton,
+  SignOutButton,
+  useAuth,
+  useUser,
+} from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { blockKey } from "@/convex/blockValues";
 import {
@@ -89,13 +94,20 @@ function subscribeNoop() {
   return () => {};
 }
 
-export default function ClaimPage({
-  slug,
-  preview = false,
-}: {
+type ClaimPageProps = {
   slug: string;
   preview?: boolean;
-}) {
+};
+
+// Remount on account change so a claimed code (and any other per-visit
+// state) never carries over from one signed-in user to the next, or to a
+// signed-out browser.
+export default function ClaimPage(props: ClaimPageProps) {
+  const { userId } = useAuth();
+  return <ClaimPageForViewer key={userId ?? ""} {...props} />;
+}
+
+function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
   const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
