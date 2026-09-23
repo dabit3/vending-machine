@@ -56,7 +56,7 @@ test("signed-out visitors see the intro and a QR card, never an event list", () 
   expect(html).toContain("Sign in");
   expect(html).toContain("Scan to claim");
   expect(html).toContain("QR code linking to https://trydevin.ai");
-  expect(html).toContain("aren&#x27;t listed publicly");
+  expect(html).not.toContain("listed publicly");
   expect(html).not.toContain("Your events");
   expect(html).not.toContain('href="/today"');
   expect(html).not.toContain("Active events");

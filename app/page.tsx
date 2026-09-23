@@ -91,10 +91,6 @@ export default function Home() {
                   </Button>
                 </SignInButton>
               </div>
-              <p className="mt-7 text-xs text-muted-dim">
-                Events aren&apos;t listed publicly — every event has its own
-                link. Already have a code? Sign in to see it.
-              </p>
             </>
           )}
         </section>
