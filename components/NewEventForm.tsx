@@ -11,6 +11,10 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
 import {
+  ATTENDEE_IDENTITIES,
+  type AttendeeIdentity,
+} from "@/lib/attendee-identity";
+import {
   emptyStripeForm,
   generationInput,
   mutationError,
@@ -44,6 +48,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -64,6 +72,7 @@ export default function NewEventForm({
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dynamic, setDynamic] = useState(false);
+  const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
@@ -89,6 +98,7 @@ export default function NewEventForm({
         description: description || undefined,
         claimInstructions: instructions || undefined,
         dynamic,
+        identity,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
       });
@@ -235,6 +245,33 @@ export default function NewEventForm({
                       onChange={setInstructions}
                       description="Attendees must read these before claiming. They can also view them after claiming."
                     />
+                    <Field>
+                      <FieldLabel htmlFor="event-identity">
+                        Identify attendees by
+                      </FieldLabel>
+                      <NativeSelect
+                        id="event-identity"
+                        className="w-full sm:w-64"
+                        value={identity}
+                        onChange={(e) =>
+                          setIdentity(e.target.value === "x" ? "x" : "email")
+                        }
+                      >
+                        {ATTENDEE_IDENTITIES.map((option) => (
+                          <NativeSelectOption
+                            key={option.value}
+                            value={option.value}
+                          >
+                            {option.label}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                      <FieldDescription>
+                        {identity === "x"
+                          ? "Attendees sign in with X and codes go to the @handles on your list. X sign-in must be enabled in Clerk."
+                          : "Attendees sign in with the email address on your list."}
+                      </FieldDescription>
+                    </Field>
                     <Field orientation="horizontal">
                       <Checkbox
                         id="event-dynamic"
@@ -249,8 +286,10 @@ export default function NewEventForm({
                     </Field>
                     <FieldDescription>
                       No participant list needed. Anyone who signs in from the
-                      claim URL or QR code gets a code, and their email is
-                      recorded so each address can only claim once.
+                      claim URL or QR code gets a code, and their{" "}
+                      {identity === "x" ? "X handle" : "email"} is recorded so
+                      each {identity === "x" ? "account" : "address"} can only
+                      claim once.
                     </FieldDescription>
                     {dynamic ? <DynamicEventWarning /> : null}
                   </FieldGroup>

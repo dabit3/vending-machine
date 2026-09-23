@@ -1,3 +1,7 @@
+import { normalizeXHandle } from "@/lib/attendee-identity";
+
+export type ImportKind = "emails" | "handles" | "codes";
+
 // Minimal RFC 4180-style CSV parser (quoted fields, escaped quotes, CRLF).
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -52,6 +56,38 @@ export function extractEmails(rows: string[][]): string[] {
   return emails;
 }
 
+const HANDLE_HEADER_RE = /^[\w\s]*(handles?|usernames?|twitter|x)$/i;
+const HANDLE_TOKEN_RE =
+  /(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\/@?[a-z0-9_]{1,15}(?!\w)|(?<![\w.])@[a-z0-9_]{1,15}(?!\w)/i;
+
+// X handles: use a column headed like "handle"/"username"/"x" when there is
+// one (its cells may omit the "@"); otherwise scan every cell for an
+// "@handle" or x.com/twitter.com profile URL.
+export function extractXHandles(rows: string[][]): string[] {
+  const seen = new Set<string>();
+  const handles: string[] = [];
+  const push = (raw: string) => {
+    const handle = normalizeXHandle(raw);
+    if (handle && !seen.has(handle)) {
+      seen.add(handle);
+      handles.push(handle);
+    }
+  };
+  const headerIndex =
+    rows[0]?.findIndex((cell) => HANDLE_HEADER_RE.test(cell.trim())) ?? -1;
+  if (headerIndex !== -1) {
+    for (const row of rows.slice(1)) push(row[headerIndex] ?? "");
+    return handles;
+  }
+  for (const row of rows) {
+    for (const cell of row) {
+      const match = cell.match(HANDLE_TOKEN_RE);
+      if (match) push(match[0]);
+    }
+  }
+  return handles;
+}
+
 // Prefer a column whose header is named like "code"; otherwise use the first
 // column. Single-column files without a header keep every row.
 export function extractCodes(rows: string[][]): string[] {
@@ -97,21 +133,22 @@ function toStringRows(data: SheetCell[][]): string[][] {
     .filter((row) => row.some((cell) => cell !== ""));
 }
 
-// Parse an uploaded CSV/TXT/XLSX file into emails or codes. For XLSX, emails
-// are scanned across every sheet; codes come from a sheet named like "codes"
-// if one exists, otherwise the first sheet.
+// Parse an uploaded CSV/TXT/XLSX file into emails, X handles or codes. For
+// XLSX, emails and handles are scanned across every sheet; codes come from a
+// sheet named like "codes" if one exists, otherwise the first sheet.
 export async function fileToItems(
   file: File,
-  kind: "emails" | "codes"
+  kind: ImportKind
 ): Promise<string[]> {
+  const extractAttendees = kind === "handles" ? extractXHandles : extractEmails;
   if (!isXlsx(file)) {
     const rows = parseCsv(await file.text());
-    return kind === "emails" ? extractEmails(rows) : extractCodes(rows);
+    return kind === "codes" ? extractCodes(rows) : extractAttendees(rows);
   }
   const { default: readXlsxFile } = await import("read-excel-file/browser");
   const sheets = await readXlsxFile(file);
-  if (kind === "emails") {
-    return extractEmails(
+  if (kind !== "codes") {
+    return extractAttendees(
       sheets.flatMap((sheet) => toStringRows(sheet.data as SheetCell[][]))
     );
   }

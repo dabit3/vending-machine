@@ -5,25 +5,15 @@ import { notExpired } from "./codeExpiry";
 import { requireEventAdmin } from "./admins";
 import { isBlacklisted } from "./blacklist";
 import { logAudit } from "./auditLog";
+import { resolveViewer } from "./identity";
+import { isXHandleKey } from "../lib/attendee-identity";
 
 // Attendees not on an event's whitelist can request access. Requests are
-// keyed on the signed-in user's verified email, mirroring claims.claim.
+// keyed on the signed-in user's identity for the event (verified email, or
+// X handle for X events), mirroring claims.claim.
 export const requestAccess = mutation({
   args: { slug: v.string(), note: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return { ok: false as const, error: "Sign in to request access." };
-    }
-    const email = identity.email?.trim().toLowerCase();
-    if (!email || identity.emailVerified !== true) {
-      return {
-        ok: false as const,
-        error:
-          "Your account has no verified email address. Sign in with a verified email to request access.",
-      };
-    }
-
     const event = await ctx.db
       .query("events")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
@@ -31,6 +21,19 @@ export const requestAccess = mutation({
     if (!event) {
       return { ok: false as const, error: "Event not found." };
     }
+    const viewer = await resolveViewer(ctx, event);
+    if (!viewer.ok) {
+      return {
+        ok: false as const,
+        error:
+          viewer.reason === "unauthenticated"
+            ? "Sign in to request access."
+            : viewer.reason === "no_x_account"
+              ? "This event identifies attendees by X handle. Sign in with X to request access."
+              : "Your account has no verified email address. Sign in with a verified email to request access.",
+      };
+    }
+    const email = viewer.key;
 
     const whitelisted = await ctx.db
       .query("emails")
@@ -77,14 +80,14 @@ export const requestAccess = mutation({
 export const myRequest = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    const email = identity?.email?.trim().toLowerCase();
-    if (!email || identity?.emailVerified !== true) return null;
     const event = await ctx.db
       .query("events")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .unique();
     if (!event) return null;
+    const viewer = await resolveViewer(ctx, event);
+    if (!viewer.ok) return null;
+    const email = viewer.key;
     const request = await ctx.db
       .query("accessRequests")
       .withIndex("by_event_email", (q) =>
@@ -253,13 +256,17 @@ export const approve = mutation({
           : "Whitelisted, no unreserved codes left to reserve",
     });
 
-    await ctx.scheduler.runAfter(0, internal.notifications.sendApprovalEmail, {
-      email: request.email,
-      eventName: event.name,
-      eventSlug: event.slug,
-      reserved: reservedCode !== undefined,
-      alreadyClaimed: priorClaim !== null,
-    });
+    // Requests keyed by X handle have no address to notify; the attendee sees
+    // the approval on the claim page instead.
+    if (!isXHandleKey(request.email)) {
+      await ctx.scheduler.runAfter(0, internal.notifications.sendApprovalEmail, {
+        email: request.email,
+        eventName: event.name,
+        eventSlug: event.slug,
+        reserved: reservedCode !== undefined,
+        alreadyClaimed: priorClaim !== null,
+      });
+    }
 
     return {
       reserved: reservedCode !== undefined,

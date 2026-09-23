@@ -37,6 +37,7 @@ interface ManagedEventItem {
   slug: string;
   eventDate?: string;
   dynamic?: boolean;
+  identity?: "email" | "x";
   createdBy?: string;
 }
 
@@ -60,6 +61,9 @@ function AdminEventRow({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading font-medium tracking-tight">
             {event.name}
             {event.dynamic ? <Badge variant="outline">Dynamic</Badge> : null}
+            {event.identity === "x" ? (
+              <Badge variant="outline">X handles</Badge>
+            ) : null}
           </div>
           {event.createdBy ? (
             <div className="truncate text-xs text-muted-dim">
