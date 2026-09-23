@@ -9,7 +9,11 @@ import ProfileMenu from "@/components/ProfileMenu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export default function HeaderAuth() {
+export default function HeaderAuth({
+  showSignIn = true,
+}: {
+  showSignIn?: boolean;
+}) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const access = useQuery(
     api.admins.accessLevel,
@@ -23,6 +27,7 @@ export default function HeaderAuth() {
   }
 
   if (!isAuthenticated) {
+    if (!showSignIn) return null;
     return (
       <SignInButton mode="modal">
         <Button

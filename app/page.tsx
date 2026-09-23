@@ -42,7 +42,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader width="wide" showSignIn={false} />
       <main
         id="main-content"
         className="mx-auto grid w-full max-w-6xl flex-1 lg:grid-cols-2"
@@ -130,7 +130,7 @@ export default function Home() {
           )}
         </section>
       </main>
-      <SiteFooter />
+      <SiteFooter width="wide" />
     </div>
   );
 }
