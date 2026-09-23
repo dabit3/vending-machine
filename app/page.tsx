@@ -7,6 +7,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import { markdownToPlainText } from "@/lib/markdown-plain";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -209,7 +210,7 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
                 </time>
               ) : null}
               {event.eventDate && event.description ? " · " : null}
-              {event.description}
+              {event.description ? markdownToPlainText(event.description) : null}
             </span>
           ) : null}
         </span>
