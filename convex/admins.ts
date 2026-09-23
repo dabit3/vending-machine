@@ -125,7 +125,7 @@ export const remove = mutation({
     const admins = await ctx.db.query("admins").collect();
     if (admins.length === 1) {
       throw new Error(
-        "Cannot remove the last admin — add another system admin first"
+        "Cannot remove the last admin. Add another system admin first"
       );
     }
     await ctx.db.delete(args.id);

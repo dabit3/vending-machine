@@ -267,7 +267,7 @@ export const remove = mutation({
     await requireEventAdmin(ctx, code.eventId);
     if (code.claimedBy) {
       throw new Error(
-        `Cannot remove ${code.code} — it was already dispensed to ${code.claimedBy}. Deleting it would let them claim a second code.`
+        `Cannot remove ${code.code}. It was already dispensed to ${code.claimedBy}. Deleting it would let them claim a second code.`
       );
     }
     await ctx.db.delete(args.id);

@@ -51,7 +51,7 @@ export default function AdminGate({ children }: { children: ReactNode }) {
             ) : (
               "Your account isn't an admin of anything."
             )}{" "}
-            Ask an existing admin to add your email — globally or to a
+            Ask an existing admin to add your email, globally or to a
             specific event.
           </EmptyDescription>
         </EmptyHeader>

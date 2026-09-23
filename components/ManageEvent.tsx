@@ -628,7 +628,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <span className="font-mono text-xs text-muted-dim tabular-nums">
                 {codeCount > 0
                   ? `${Math.round((claimedCount / codeCount) * 100)}%`
-                  : "—"}
+                  : "-"}
               </span>
             ) : null}
           </div>
@@ -775,7 +775,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardTitle>
             <CardDescription>
               {isDynamic
-                ? "This event is dynamic — anyone who signs in can claim, so there's no participant list. These addresses have claimed a code."
+                ? "This event is dynamic: anyone who signs in can claim, so there's no participant list. These addresses have claimed a code."
                 : `Only these addresses can claim a code.${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
@@ -955,8 +955,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   <AlertDialogDescription>
                     This deletes the code they already claimed (
                     {reclaimTarget?.codes.join(", ")}) so they can claim a
-                    fresh one. Use this when the dispensed code had an issue —
-                    the old code will not return to the pool.
+                    fresh one. Use this when the dispensed code had an issue.
+                    The old code will not return to the pool.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1070,8 +1070,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   </div>
                   <FieldDescription>
                     {blockTypes.length < 2
-                      ? "Events can have up to two code blocks — attendees pick one by name when there are two."
-                      : "This event has both code blocks — pasted and uploaded codes go into the selected one."}
+                      ? "Events can have up to two code blocks. Attendees pick one by name when there are two."
+                      : "This event has both code blocks. Pasted and uploaded codes go into the selected one."}
                   </FieldDescription>
                 </Field>
               ) : null}
@@ -1089,7 +1089,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   />
                   <FieldDescription>
                     {hasBlocks
-                      ? "Required — attendees choose between the two blocks by name."
+                      ? "Required: attendees choose between the two blocks by name."
                       : "Optional with a single code block. Applies to pasted and uploaded codes."}
                   </FieldDescription>
                 </Field>
@@ -1105,7 +1105,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     className="text-sm"
                   />
                   <FieldDescription>
-                    Optional — shown on the claim page. Numbers get a
+                    Optional, shown on the claim page. Numbers get a
                     &ldquo;$&rdquo; prefix; anything else is shown as-is.
                   </FieldDescription>
                 </Field>
@@ -1123,7 +1123,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     className="text-sm"
                   />
                   <FieldDescription>
-                    Your current codes are unnamed — give them a name so
+                    Your current codes are unnamed. Give them a name so
                     attendees can tell the two blocks apart.
                   </FieldDescription>
                 </Field>
@@ -1374,7 +1374,7 @@ function CodeBlockRow({
                     onDelete(type || undefined)
                       .then(({ removed, kept }) =>
                         toast.success(
-                          `Deleted block${type ? ` “${type}”` : ""} — ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
+                          `Deleted block${type ? ` “${type}”` : ""}: ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
                         )
                       )
                       .catch((err) =>
@@ -1429,7 +1429,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
           Event admins
         </CardTitle>
         <CardDescription>
-          These emails can manage this event — its details, emails, and codes.
+          These emails can manage this event: its details, emails, and codes.
           Global admins always have access.
         </CardDescription>
       </CardHeader>
@@ -1472,7 +1472,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
                 )
               ),
           }))}
-          emptyText="No event admins yet — only global admins can manage this event."
+          emptyText="No event admins yet. Only global admins can manage this event."
         />
       </CardContent>
     </Card>
@@ -1718,7 +1718,7 @@ function EventDetailsForm({
       <CardHeader>
         <CardTitle>Event details</CardTitle>
         <CardDescription>
-          The slug is the public claim URL — changing it moves the page.
+          The slug is the public claim URL. Changing it moves the page.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -1762,7 +1762,7 @@ function EventDetailsForm({
                 onChange={(e) => setEventDate(e.target.value)}
               />
               <FieldDescription>
-                Optional — shown on the claim page.
+                Optional, shown on the claim page.
               </FieldDescription>
             </Field>
             <ClaimInstructionsField
@@ -1770,7 +1770,7 @@ function EventDetailsForm({
               className="sm:col-span-2"
               value={claimInstructions}
               onChange={setClaimInstructions}
-              description="Optional — when set, attendees see a “How to redeem” button after claiming their code."
+              description="Optional. When set, attendees see a “How to redeem” button after claiming their code."
             />
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
@@ -1779,7 +1779,7 @@ function EventDetailsForm({
                 onCheckedChange={(checked) => setDynamic(checked === true)}
               />
               <FieldLabel htmlFor="detail-dynamic" className="font-normal">
-                Dynamic — anyone who signs in can claim, no participant list
+                Dynamic: anyone who signs in can claim, no participant list
                 needed (one code per email)
               </FieldLabel>
             </Field>

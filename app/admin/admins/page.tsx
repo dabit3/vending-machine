@@ -74,7 +74,7 @@ export default function AdminsPage() {
           <AlertTitle>Global admins only</AlertTitle>
           <AlertDescription>
             This page manages the global admin list. You have event-level
-            access — head back to your events.
+            access. Head back to your events.
           </AlertDescription>
         </Alert>
       </div>
