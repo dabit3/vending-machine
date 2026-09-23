@@ -171,14 +171,9 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
   }
   return (
     <div className="relative grid w-full max-w-md gap-3">
-      <div className="flex items-baseline justify-between px-1">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          Your events
-        </h2>
-        <span className="text-xs text-muted-dim tabular-nums">
-          {events.length}
-        </span>
-      </div>
+      <h2 className="px-1 text-sm font-medium text-muted-foreground">
+        Your events
+      </h2>
       <ul className="grid min-w-0 gap-3">
         {events.map((event, index) => (
           <EventCard key={event._id} event={event} index={index} />
