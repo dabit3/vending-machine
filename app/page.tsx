@@ -180,7 +180,7 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
           {events.length}
         </span>
       </div>
-      <ul className="grid gap-3">
+      <ul className="grid min-w-0 gap-3">
         {events.map((event, index) => (
           <EventCard key={event._id} event={event} index={index} />
         ))}
@@ -193,7 +193,7 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
   const past = event.eventDate ? daysUntilEvent(event.eventDate) < 0 : false;
   return (
     <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
+      className="min-w-0 animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link
