@@ -1752,6 +1752,9 @@ function EventDetailsForm({
                 rows={4}
                 className="resize-y"
               />
+              <FieldDescription>
+                Pasted links become clickable; Markdown works too.
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="detail-date">Event date</FieldLabel>

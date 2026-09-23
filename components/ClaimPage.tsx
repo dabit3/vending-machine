@@ -34,6 +34,7 @@ import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { ClaimInstructions } from "@/components/ClaimInstructions";
+import { MarkdownText } from "@/components/MarkdownText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -314,8 +315,11 @@ export default function ClaimPage({
                   </Button>
                 </div>
                 {event.description ? (
-                  <CardDescription className="text-sm leading-relaxed">
-                    {event.description}
+                  <CardDescription>
+                    <MarkdownText
+                      value={event.description}
+                      className="gap-2 text-muted-foreground"
+                    />
                   </CardDescription>
                 ) : null}
                 {event.eventDate ? (

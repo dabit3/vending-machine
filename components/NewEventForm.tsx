@@ -207,6 +207,9 @@ export default function NewEventForm({
                     rows={3}
                     placeholder="A short welcome for your attendees"
                   />
+                  <FieldDescription>
+                    Pasted links become clickable; Markdown works too.
+                  </FieldDescription>
                 </Field>
                 <details className="group">
                   <summary className="cursor-pointer text-sm font-medium">
