@@ -1,5 +1,7 @@
 import DevinCredit from "@/components/DevinCredit";
 import { getAppName } from "@/lib/app-name";
+import { PAGE_WIDTHS, type PageWidth } from "@/lib/page-width";
+import { cn } from "@/lib/utils";
 
 // GitHub mark (octicon): lucide-react no longer ships brand icons, so the
 // path is inlined; currentColor keeps it dim at rest, ink on hover.
@@ -11,10 +13,19 @@ function GitHubMark({ className }: { className?: string }) {
   );
 }
 
-export default function SiteFooter() {
+export default function SiteFooter({
+  width = "default",
+}: {
+  width?: PageWidth;
+}) {
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto flex min-h-14 max-w-5xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div
+        className={cn(
+          "mx-auto flex min-h-14 items-center justify-between gap-4 px-4 py-3 sm:px-6",
+          PAGE_WIDTHS[width]
+        )}
+      >
         <a
           href="https://github.com/dabit3/vending-machine"
           target="_blank"

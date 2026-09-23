@@ -45,7 +45,7 @@ export default function EventQrPage({ slug }: { slug: string }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+      <SiteHeader width="card" />
       <main
         id="main-content"
         className="relative flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16"
@@ -125,7 +125,7 @@ export default function EventQrPage({ slug }: { slug: string }) {
           )}
         </div>
       </main>
-      <SiteFooter />
+      <SiteFooter width="card" />
     </div>
   );
 }
