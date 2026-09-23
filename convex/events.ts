@@ -318,9 +318,13 @@ export const update = mutation({
           .query("flaggedEmails")
           .withIndex("by_event", (q) => q.eq("eventId", args.id))
           .first(),
+        // Approved requests are dropped with their participant row and denied
+        // ones are inert, so only pending ones still carry a live key.
         ctx.db
           .query("accessRequests")
-          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .withIndex("by_event_status", (q) =>
+            q.eq("eventId", args.id).eq("status", "pending")
+          )
           .first(),
         ctx.db
           .query("codes")

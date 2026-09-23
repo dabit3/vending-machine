@@ -330,7 +330,8 @@ test("the identity mode can only change while the event has no participants or c
   await expect(asAdmin.mutation(api.events.update, { ...base, identity: "x" })).rejects.toThrow(
     /before changing how attendees are identified/,
   );
-  await t.run((ctx) => ctx.db.delete(requestId));
+  // A denied request is inert and stays in the table, so it must not lock the mode.
+  await t.run((ctx) => ctx.db.patch(requestId, { status: "denied" }));
   await asAdmin.mutation(api.events.update, { ...base, identity: "x" });
   expect(await asAdmin.query(api.events.get, { id: event.id })).toMatchObject({ identity: "x" });
 });
