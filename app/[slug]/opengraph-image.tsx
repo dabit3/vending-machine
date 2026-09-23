@@ -25,6 +25,5 @@ export default async function Image({
       : homeCard().eyebrow,
     title: event.name,
     subtitle: event.description ?? "Sign in to claim your credits.",
-    cta: "Claim your credits",
   });
 }
