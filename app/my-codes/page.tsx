@@ -157,7 +157,7 @@ export default function MyCodesPage() {
                 <EmptyDescription>
                   Codes you claim will appear here.{" "}
                   <Link href="/" className="hover:text-foreground">
-                    Browse events
+                    See your events
                   </Link>
                 </EmptyDescription>
               </EmptyHeader>

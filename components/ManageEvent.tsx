@@ -1682,7 +1682,6 @@ function EventDetailsForm({
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
-  const [hidden, setHidden] = useState(event.hidden ?? false);
   const [dynamic, setDynamic] = useState(event.dynamic ?? false);
   const [saving, setSaving] = useState(false);
 
@@ -1697,7 +1696,6 @@ function EventDetailsForm({
         description: description || undefined,
         eventDate: eventDate || undefined,
         claimInstructions: claimInstructions || undefined,
-        hidden: hidden || undefined,
         dynamic: dynamic || undefined,
       });
       setSlug(savedSlug);
@@ -1764,7 +1762,7 @@ function EventDetailsForm({
                 onChange={(e) => setEventDate(e.target.value)}
               />
               <FieldDescription>
-                Optional — shown on the home and claim pages.
+                Optional — shown on the claim page.
               </FieldDescription>
             </Field>
             <ClaimInstructionsField
@@ -1774,18 +1772,6 @@ function EventDetailsForm({
               onChange={setClaimInstructions}
               description="Optional — when set, attendees see a “How to redeem” button after claiming their code."
             />
-            <Field orientation="horizontal" className="sm:col-span-2">
-              <Checkbox
-                id="detail-hidden"
-                checked={hidden || dynamic}
-                disabled={dynamic}
-                onCheckedChange={(checked) => setHidden(checked === true)}
-              />
-              <FieldLabel htmlFor="detail-hidden" className="font-normal">
-                Hide from home page
-                {dynamic ? " (always on for dynamic events)" : null}
-              </FieldLabel>
-            </Field>
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-dynamic"

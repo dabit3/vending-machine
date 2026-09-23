@@ -1,16 +1,17 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import Link from "next/link";
-import { BadgeCheck, Ticket } from "lucide-react";
-import { useTheme } from "next-themes";
+import { ArrowUpRight, LogIn, Ticket } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { SignInButton } from "@clerk/nextjs";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
-import UnicornSceneEmbed from "@/components/UnicornSceneEmbed";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import { Alert, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
@@ -20,33 +21,7 @@ import {
   EmptyDescription,
 } from "@/components/ui/empty";
 import { cn } from "@/lib/utils";
-import { getAppName } from "@/lib/app-name";
-
-const RECENT_PAST_DAYS = 7;
-
-// The hero background is a theme-paired Unicorn Studio WebGL scene
-// (experiment). A Unicorn project publishes exactly one authored design and
-// the SDK has no color-scheme awareness, so a light-authored project shows
-// its light design in dark mode too — each theme therefore needs its own
-// project ID here.
-const UNICORN_PROJECTS = {
-  light: "wEz2vCJgsynwCYSb3HgR",
-  dark: "aEdLurlqLEmU1DUjAaUz",
-} as const;
-
-// Bump this whenever a scene is republished in Unicorn Studio. Deployed
-// builds read scene data through Unicorn's CDN, which caches for months and
-// doesn't reliably purge on republish; the update param below is part of the
-// CDN cache key, so bumping the version makes deploys fetch the new design.
-// Dev skips the param (and the CDN): without it the SDK cache-busts every
-// load, so republishes show up on a plain refresh.
-const UNICORN_CACHE_VERSION = 2;
-
-const isProdBuild = process.env.NODE_ENV === "production";
-
-// Stable no-op subscription for the hydration gate below: the snapshot never
-// changes on the client, we only care that the server snapshot is false.
-const emptySubscribe = () => () => {};
+import { APP_URL, getAppName } from "@/lib/app-name";
 
 interface EventItem {
   _id: string;
@@ -54,250 +29,211 @@ interface EventItem {
   slug: string;
   description?: string;
   eventDate?: string;
-}
-
-function EventRow({
-  event,
-  index,
-  claimed,
-  past,
-}: {
-  event: EventItem;
-  index: number;
   claimed: boolean;
-  past?: boolean;
-}) {
-  return (
-    <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 border-b border-border motion-reduce:animate-none"
-      style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
-    >
-      <Link
-        href={`/${event.slug}`}
-        className={cn(
-          "group flex items-center gap-6 px-2 py-7 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:gap-10 sm:px-4",
-          past && "opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100",
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading text-xl font-medium tracking-tight wrap-anywhere sm:text-2xl">
-            {event.name}
-            {claimed ? (
-              <Badge variant="secondary" className="gap-1">
-                <BadgeCheck data-icon="inline-start" />
-                Claimed
-              </Badge>
-            ) : null}
-          </div>
-          {event.description ? (
-            <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">
-              {event.description}
-            </p>
-          ) : null}
-          {event.eventDate ? (
-            <time
-              dateTime={event.eventDate}
-              className="mt-1.5 block text-xs text-muted-dim tabular-nums sm:hidden"
-            >
-              {formatEventDate(event.eventDate)}
-            </time>
-          ) : null}
-        </div>
-        {event.eventDate ? (
-          <time
-            dateTime={event.eventDate}
-            className="hidden shrink-0 text-xs text-muted-dim tabular-nums sm:inline"
-          >
-            {formatEventDate(event.eventDate)}
-          </time>
-        ) : null}
-      </Link>
-    </li>
-  );
 }
 
+// Events are never listed publicly: attendees arrive through the claim URL or
+// QR code their organizer shares. The page introduces the app to visitors and,
+// once someone signs in, lists the events their email is eligible for.
 export default function Home() {
-  const events = useQuery(api.events.list);
-  const { isAuthenticated } = useConvexAuth();
-  const mine = useQuery(api.codes.mine, isAuthenticated ? {} : "skip");
-  const claimedEventIds = new Set(
-    mine?.map((item) => item.event?._id).filter(Boolean) ?? [],
-  );
-
-  // The scene choice needs JS (the server doesn't know the theme, while the
-  // hydration render already does), so gate it behind hydration to keep both
-  // trees identical; the copy and scrim flip with pure dark: variants and
-  // render correctly from the first paint. Until hydration the plain
-  // theme-tinted shell stands in for both themes.
-  const { resolvedTheme } = useTheme();
-  const hydrated = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false,
-  );
-  const heroProjectId = hydrated
-    ? resolvedTheme === "light"
-      ? UNICORN_PROJECTS.light
-      : UNICORN_PROJECTS.dark
-    : undefined;
-
-  // Dated events that have passed sink into their own dimmed group; undated
-  // events are treated as current. Active events order soonest-first, with
-  // undated ones following in their arrival (newest created) order; past
-  // events list the most recently ended first. YYYY-MM-DD compares correctly
-  // as a plain string, so no date parsing is needed.
-  const active =
-    events?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
-    [];
-  const current = [
-    ...active
-      .filter((e) => e.eventDate)
-      .sort((a, b) => (a.eventDate ?? "").localeCompare(b.eventDate ?? "")),
-    ...active.filter((e) => !e.eventDate),
-  ];
-  // Past events drop off the page entirely once they are RECENT_PAST_DAYS or
-  // more days old; they stay reachable via their claim URL.
-  const past = (
-    events?.filter((e) => {
-      if (!e.eventDate) return false;
-      const days = daysUntilEvent(e.eventDate);
-      return days < 0 && days > -RECENT_PAST_DAYS;
-    }) ?? []
-  ).sort((a, b) => (b.eventDate ?? "").localeCompare(a.eventDate ?? ""));
-
-  // Shared hero copy: crisp DOM stacked above the theme's scene. pt-15.25
-  // offsets the translucent header bar the hero slides under, keeping the
-  // copy centered in the visible area.
-  const heroCopy = (
-    <div className="relative mx-auto flex h-full w-full max-w-5xl flex-col justify-center px-4 pt-15.25 sm:px-6">
-      <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-foreground/60 motion-reduce:animate-none">
-        {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
-        distribution
-      </p>
-      <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 max-w-2xl font-heading text-5xl leading-[0.95] font-semibold tracking-[-0.03em] text-balance text-foreground motion-reduce:animate-none sm:text-7xl">
-        {getAppName()}
-      </h1>
-      <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-6 max-w-md text-sm leading-relaxed text-foreground/70 motion-reduce:animate-none">
-        Sign in, then select your event to claim your credits.
-      </p>
-    </div>
-  );
+  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
+  const mine = useQuery(api.events.mine, isAuthenticated ? {} : "skip");
+  const signedIn = !authLoading && isAuthenticated;
 
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main id="main-content" className="flex-1">
-        <section className="-mt-15.25 border-b border-border/65">
-          {/* The section pulls up behind the translucent header bar
-              (-mt-15.25) so the background runs to the top of the page; the
-              hero is 61px taller to compensate and the scene shows through
-              the bar's frosted fill. The theme's Unicorn Studio scene renders
-              behind the copy and a soft theme-matched scrim; keying the scene
-              by project swaps it cleanly on theme change while the copy stays
-              mounted. The scene's mouse interactivity listens on window, so
-              the copy sitting above it doesn't block it. */}
-          <div className="relative h-[520px] overflow-hidden bg-background sm:h-[486px]">
-            {heroProjectId ? (
-              <div className="absolute inset-0" aria-hidden>
-                {/* Dev fetches fresh scene data on every load; deploys pin
-                    the CDN to UNICORN_CACHE_VERSION — see the constant. */}
-                <UnicornSceneEmbed
-                  key={heroProjectId}
-                  projectId={
-                    isProdBuild
-                      ? `${heroProjectId}?update=${UNICORN_CACHE_VERSION}`
-                      : heroProjectId
-                  }
-                  production={isProdBuild}
-                />
-              </div>
-            ) : null}
-            {/* Soft scrim keeps the headline legible over the scenes; tune
-                or remove once the look settles. */}
-            <div
-              className="absolute inset-0 bg-background/20"
-              aria-hidden
-            />
-            {heroCopy}
-          </div>
-        </section>
-
-        <section className="mx-auto w-full max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <h2 className="text-sm font-medium text-muted-foreground">
-            Active events
-          </h2>
-
-          {events === undefined ? (
-            <div
-              className="mt-4 border-t border-border"
-              role="status"
-              aria-label="Loading active events"
-            >
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-6 border-b border-border px-2 py-7 sm:gap-10 sm:px-4"
+      <main
+        id="main-content"
+        className="mx-auto grid w-full max-w-6xl flex-1 lg:grid-cols-2"
+      >
+        <section className="flex flex-col justify-center px-4 py-14 sm:px-6 lg:py-20 lg:pr-12">
+          <p className="eyebrow animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 text-muted-foreground motion-reduce:animate-none">
+            {process.env.NEXT_PUBLIC_IS_DEVIN ? "Devin " : ""}Event credit
+            distribution
+          </p>
+          <h1 className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-100 mt-6 font-heading text-5xl leading-[0.98] font-semibold tracking-[-0.03em] text-balance motion-reduce:animate-none sm:text-6xl lg:text-7xl">
+            {getAppName()}
+          </h1>
+          {signedIn ? (
+            <>
+              <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
+                Welcome back. You&apos;re eligible for the events listed here —
+                open one to claim, or revisit anything you&apos;ve already
+                claimed.
+              </p>
+              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
+                <Link
+                  href="/my-codes"
+                  className={buttonVariants({ variant: "outline", size: "lg" })}
                 >
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <Skeleton className="h-5 w-2/3 rounded-sm" />
-                    <Skeleton className="h-3 w-1/2 rounded-sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : events.length === 0 ? (
-            <Empty className="mt-6 border border-dashed border-border-strong py-16">
-              <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <Ticket />
-                </EmptyMedia>
-                <EmptyTitle>Nothing to dispense yet</EmptyTitle>
-                <EmptyDescription>
-                  Events will appear here as soon as they open.
-                </EmptyDescription>
-              </EmptyHeader>
-            </Empty>
+                  <Ticket data-icon="inline-start" />
+                  My codes
+                </Link>
+              </div>
+              <p className="mt-7 text-xs text-muted-dim">
+                Not seeing your event? Use the link or QR code from your
+                organizer.
+              </p>
+            </>
           ) : (
             <>
-              {current.length === 0 ? (
-                <p className="mt-6 text-sm text-muted-foreground">
-                  No active events right now.
-                </p>
-              ) : (
-                <ul className="mt-4 border-t border-border">
-                  {current.map((event, index) => (
-                    <EventRow
-                      key={event._id}
-                      event={event}
-                      index={index}
-                      claimed={claimedEventIds.has(event._id)}
-                    />
-                  ))}
-                </ul>
-              )}
-              {past.length > 0 ? (
-                <>
-                  <h2 className="mt-14 text-sm font-medium text-muted-foreground">
-                    Recent past events
-                  </h2>
-                  <ul className="mt-4 border-t border-border">
-                    {past.map((event, index) => (
-                      <EventRow
-                        key={event._id}
-                        event={event}
-                        index={index}
-                        claimed={claimedEventIds.has(event._id)}
-                        past
-                      />
-                    ))}
-                  </ul>
-                </>
-              ) : null}
+              <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
+                Free credits, handed out at your event. Scan the QR code at
+                the venue or open your organizer&apos;s link, sign in, and your
+                code is yours.
+              </p>
+              <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
+                <SignInButton mode="modal">
+                  <Button variant="brand" size="lg" disabled={authLoading}>
+                    <LogIn data-icon="inline-start" />
+                    Sign in
+                  </Button>
+                </SignInButton>
+              </div>
+              <p className="mt-7 text-xs text-muted-dim">
+                Events aren&apos;t listed publicly — every event has its own
+                link. Already have a code? Sign in to see it.
+              </p>
             </>
+          )}
+        </section>
+
+        <section
+          className="relative flex items-center justify-center overflow-hidden border-t border-border/65 px-4 py-12 sm:px-6 lg:border-t-0 lg:border-l lg:py-16"
+          aria-label={signedIn ? "Your events" : "How to claim"}
+        >
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
+          />
+          {signedIn || authLoading ? (
+            <YourEvents events={mine} />
+          ) : (
+            <div className="relative w-[300px] max-w-full rounded-2xl bg-card p-6 text-center shadow-(--shadow-card) ring-1 ring-foreground/10">
+              <div className="rounded-lg bg-white p-3">
+                <QRCodeSVG
+                  value={APP_URL}
+                  size={228}
+                  marginSize={0}
+                  fgColor="#000000"
+                  bgColor="#ffffff"
+                  className="size-full"
+                  aria-label={`QR code linking to ${APP_URL}`}
+                />
+              </div>
+              <p className="eyebrow mt-4 text-muted-foreground">Scan to claim</p>
+              <p className="mt-1.5 text-[13px] font-medium">
+                Your event&apos;s QR code, at the venue
+              </p>
+            </div>
           )}
         </section>
       </main>
       <SiteFooter />
     </div>
+  );
+}
+
+function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
+  if (events === undefined) {
+    return (
+      <div
+        className="relative grid w-full max-w-md gap-3"
+        role="status"
+        aria-label="Loading your events"
+      >
+        {[0, 1, 2].map((i) => (
+          <Skeleton key={i} className="h-[74px] rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+  if (events === null) {
+    return (
+      <Alert variant="destructive" className="relative max-w-md">
+        <AlertTitle>
+          Your account needs a verified email address to see your events.
+        </AlertTitle>
+      </Alert>
+    );
+  }
+  if (events.length === 0) {
+    return (
+      <Empty className="relative w-full max-w-md border border-dashed border-border-strong bg-background/60 py-14">
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <Ticket />
+          </EmptyMedia>
+          <EmptyTitle>No events yet</EmptyTitle>
+          <EmptyDescription>
+            Events you&apos;re eligible for will show up here. Open the link or
+            scan the QR code from your organizer to get started.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+  return (
+    <div className="relative grid w-full max-w-md gap-3">
+      <div className="flex items-baseline justify-between px-1">
+        <h2 className="text-sm font-medium text-muted-foreground">
+          Your events
+        </h2>
+        <span className="text-xs text-muted-dim tabular-nums">
+          {events.length}
+        </span>
+      </div>
+      <ul className="grid gap-3">
+        {events.map((event, index) => (
+          <EventCard key={event._id} event={event} index={index} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function EventCard({ event, index }: { event: EventItem; index: number }) {
+  const past = event.eventDate ? daysUntilEvent(event.eventDate) < 0 : false;
+  return (
+    <li
+      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
+      style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
+    >
+      <Link
+        href={`/${event.slug}`}
+        className={cn(
+          "group flex items-center justify-between gap-4 rounded-xl bg-card px-5 py-4 text-sm shadow-(--shadow-card) ring-1 ring-foreground/10 transition-[box-shadow,color] hover:ring-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+          past && "opacity-70 hover:opacity-100 focus-visible:opacity-100",
+        )}
+      >
+        <span className="min-w-0">
+          <span className="block truncate font-heading text-base font-medium tracking-tight">
+            {event.name}
+          </span>
+          {event.eventDate || event.description ? (
+            <span className="mt-1 block truncate text-xs text-muted-dim">
+              {event.eventDate ? (
+                <time dateTime={event.eventDate} className="tabular-nums">
+                  {formatEventDate(event.eventDate)}
+                </time>
+              ) : null}
+              {event.eventDate && event.description ? " · " : null}
+              {event.description}
+            </span>
+          ) : null}
+        </span>
+        {event.claimed ? (
+          <Badge variant="secondary" className="shrink-0">
+            Claimed
+          </Badge>
+        ) : (
+          <ArrowUpRight
+            className="size-4 shrink-0 text-muted-dim transition-colors group-hover:text-foreground"
+            aria-hidden
+          />
+        )}
+      </Link>
+    </li>
   );
 }

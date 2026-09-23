@@ -11,8 +11,8 @@ export function DynamicEventWarning({ className }: { className?: string }) {
       <AlertDescription>
         Dynamic events skip the eligible-email list: every signed-in email that
         opens the claim URL or scans the QR code receives one code until the
-        pool runs out, and the event is hidden from the home page. Only share
-        the link or QR code where you want codes handed out.
+        pool runs out. Only share the link or QR code where you want codes
+        handed out.
       </AlertDescription>
     </Alert>
   );

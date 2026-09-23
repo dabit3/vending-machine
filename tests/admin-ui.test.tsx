@@ -245,7 +245,6 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     slug: id,
     description: undefined,
     eventDate,
-    hidden: undefined,
     dynamic: undefined,
     createdBy: undefined,
   });
@@ -282,7 +281,6 @@ test("the dashboard shows who created an event when it is known", () => {
     slug: id,
     description: undefined,
     eventDate: undefined,
-    hidden: undefined,
     dynamic: undefined,
     createdBy,
   });
@@ -347,7 +345,7 @@ test("dynamic warning is hidden until the box is ticked and spells out the conse
   expect(warning).toContain('role="alert"');
   expect(warning).toContain("Anyone with the link can take a code");
   expect(warning).toContain("skip the eligible-email list");
-  expect(warning).toContain("hidden from the home page");
+  expect(warning).not.toContain("home page");
 });
 
 test("new event form defaults to adding codes later", () => {

@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
+import { isBlacklisted } from "./blacklist";
 import {
   adminEmailStatus,
   isEventAdmin,
@@ -30,18 +31,34 @@ function normalizeEventDate(raw?: string): string | undefined {
   return trimmed;
 }
 
-// Dynamic events are only reachable through their claim URL / QR code, so
-// they are always hidden from the home page regardless of the stored flag.
-function isHidden(event: { hidden?: boolean; dynamic?: boolean }) {
-  return Boolean(event.hidden || event.dynamic);
-}
-
-export const list = query({
+// Events are never listed publicly; attendees reach them through the claim
+// URL / QR code their organizer shares. The home page only lists the events
+// the signed-in viewer is on the participant list for (which, for dynamic
+// events, means they have already interacted with it), soonest first.
+export const mine = query({
   args: {},
   handler: async (ctx) => {
-    const events = await ctx.db.query("events").order("desc").collect();
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+    const email = identity.email?.trim().toLowerCase();
+    if (!email || identity.emailVerified !== true) return null;
+    if (await isBlacklisted(ctx, email)) return [];
+
+    const memberships = await ctx.db
+      .query("emails")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect();
+    const claimed = await ctx.db
+      .query("codes")
+      .withIndex("by_claimedBy", (q) => q.eq("claimedBy", email))
+      .collect();
+    const claimedEventIds = new Set(claimed.map((c) => c.eventId));
+    const eventIds = [
+      ...new Set([...memberships.map((m) => m.eventId), ...claimedEventIds]),
+    ];
+    const events = await Promise.all(eventIds.map((id) => ctx.db.get(id)));
     return events
-      .filter((event) => !isHidden(event))
+      .filter((event) => event !== null)
       .map((event) => ({
         _id: event._id,
         _creationTime: event._creationTime,
@@ -49,7 +66,14 @@ export const list = query({
         slug: event.slug,
         description: event.description,
         eventDate: event.eventDate,
-      }));
+        claimed: claimedEventIds.has(event._id),
+      }))
+      .sort((a, b) => {
+        if (a.eventDate && b.eventDate) return a.eventDate.localeCompare(b.eventDate);
+        if (a.eventDate) return -1;
+        if (b.eventDate) return 1;
+        return b._creationTime - a._creationTime;
+      });
   },
 });
 
@@ -140,7 +164,6 @@ export const get = query({
       codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
       claimInstructions: event.claimInstructions,
-      hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
       createdBy: event.createdBy,
     };
@@ -175,7 +198,6 @@ export const listManaged = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
-      hidden: isHidden(event) || undefined,
       dynamic: event.dynamic,
       createdBy: event.createdBy,
     }));
@@ -189,7 +211,6 @@ export const create = mutation({
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
-    hidden: v.optional(v.boolean()),
     dynamic: v.optional(v.boolean()),
     stripeGeneration: v.optional(v.object(generationFields)),
     stripeBatchId: v.optional(v.id("stripeBatches")),
@@ -215,7 +236,6 @@ export const create = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      hidden: isHidden(args) || undefined,
       dynamic: args.dynamic || undefined,
       createdBy: creator,
     });
@@ -238,7 +258,6 @@ export const update = mutation({
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
-    hidden: v.optional(v.boolean()),
     dynamic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -258,7 +277,6 @@ export const update = mutation({
       description: args.description?.trim() || undefined,
       eventDate: normalizeEventDate(args.eventDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      hidden: isHidden(args) || undefined,
       dynamic: args.dynamic || undefined,
     });
     return { slug };
