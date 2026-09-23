@@ -58,8 +58,8 @@ export default function Home() {
           {signedIn ? (
             <>
               <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
-                Welcome back. You&apos;re eligible for the events listed here —
-                open one to claim, or revisit anything you&apos;ve already
+                Welcome back. You&apos;re eligible for the events listed here.
+                Open one to claim, or revisit anything you&apos;ve already
                 claimed.
               </p>
               <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex flex-wrap items-center gap-2.5 motion-reduce:animate-none">
@@ -72,8 +72,7 @@ export default function Home() {
                 </Link>
               </div>
               <p className="mt-7 text-xs text-muted-dim">
-                Not seeing your event? Use the link or QR code from your
-                organizer.
+                Not seeing your event? Contact the event organizer.
               </p>
             </>
           ) : (
@@ -180,7 +179,7 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
           {events.length}
         </span>
       </div>
-      <ul className="grid gap-3">
+      <ul className="grid min-w-0 gap-3">
         {events.map((event, index) => (
           <EventCard key={event._id} event={event} index={index} />
         ))}
@@ -193,7 +192,7 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
   const past = event.eventDate ? daysUntilEvent(event.eventDate) < 0 : false;
   return (
     <li
-      className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
+      className="min-w-0 animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link

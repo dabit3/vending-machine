@@ -16,7 +16,7 @@ export const sendApprovalEmail = internalAction({
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
       console.warn(
-        `RESEND_API_KEY not set — skipping approval email to ${args.email}`
+        `RESEND_API_KEY not set, skipping approval email to ${args.email}`
       );
       return { sent: false as const };
     }

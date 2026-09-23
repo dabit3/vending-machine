@@ -228,7 +228,7 @@ export default function ClaimPage({
             <Alert className="mb-4">
               <Eye />
               <AlertTitle>
-                Admin preview — you&apos;re seeing this as an eligible
+                Admin preview: you&apos;re seeing this as an eligible
                 attendee. No code is dispensed.
               </AlertTitle>
             </Alert>
@@ -357,7 +357,7 @@ export default function ClaimPage({
                     ) : null}
                     {event.dynamic ? (
                       <p className="text-sm leading-relaxed text-muted-foreground">
-                        Sign in to claim your code — one per verified email
+                        Sign in to claim your code, one per verified email
                         address.
                       </p>
                     ) : (
@@ -492,7 +492,7 @@ export default function ClaimPage({
                           onClick={handleConfirmRead}
                         >
                           <Check data-icon="inline-start" />
-                          Got it — continue to claim
+                          Got it, continue to claim
                         </Button>
                       </DialogContent>
                     </Dialog>
@@ -631,7 +631,7 @@ function SoldOutNotice({
       <PackageOpen />
       <AlertTitle>All codes for this event have been claimed</AlertTitle>
       <AlertDescription>
-        Sorry — every code for {eventName} has already been picked up.{" "}
+        Sorry, every code for {eventName} has already been picked up.{" "}
         {signedOut
           ? "If you already claimed one, sign in with the same email and it will still be here."
           : "If you already claimed one with a different email, switch accounts and it will still be here."}
@@ -790,7 +790,7 @@ function Receipt({
             variant="secondary"
             className="animate-in fade-in fill-mode-both duration-500 delay-200 self-start motion-reduce:animate-none"
           >
-            Already claimed — here it is again
+            Already claimed, here it is again
           </Badge>
         ) : null}
 

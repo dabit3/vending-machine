@@ -113,7 +113,7 @@ export default function BlacklistPage() {
           <AlertTitle>Global admins only</AlertTitle>
           <AlertDescription>
             Only global admins can manage the email blacklist. You have
-            event-level access — head back to your events.
+            event-level access. Head back to your events.
           </AlertDescription>
         </Alert>
       </div>
@@ -179,7 +179,7 @@ export default function BlacklistPage() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Blacklisted emails are rejected whenever they would be added to any
-          event — uploads, flagged-email approvals, and access-request
+          event: uploads, flagged-email approvals, and access-request
           approvals all skip them.
         </p>
       </div>
@@ -339,7 +339,7 @@ export default function BlacklistPage() {
                 </ul>
                 {history.hasMore ? (
                   <p className="mt-3 text-xs text-muted-dim">
-                    Showing the first {history.attendees.length} matches — keep
+                    Showing the first {history.attendees.length} matches. Keep
                     typing to narrow the search.
                   </p>
                 ) : null}

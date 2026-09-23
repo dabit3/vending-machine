@@ -222,7 +222,7 @@ export default function NewEventForm({
                         placeholder={claimSlug || "build-with-devin"}
                       />
                       <FieldDescription>
-                        /{claimSlug || "your-event"} — generated from the event
+                        /{claimSlug || "your-event"} is generated from the event
                         name unless you set a custom slug.
                       </FieldDescription>
                     </Field>
@@ -241,7 +241,7 @@ export default function NewEventForm({
                         }
                       />
                       <FieldLabel htmlFor="event-dynamic">
-                        Dynamic — anyone can claim
+                        Dynamic: anyone can claim
                       </FieldLabel>
                     </Field>
                     <FieldDescription>
