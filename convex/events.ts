@@ -305,22 +305,33 @@ export const update = mutation({
     }
     const current = await ctx.db.get(args.id);
     if (!current) throw new Error("Event not found");
-    // Participant and claim rows are keyed by the identity in force when they
-    // were written, so the kind can only change while there are none.
+    // Participant, flagged, access-request and claim rows are keyed by the
+    // identity in force when they were written, so the kind can only change
+    // while there are none.
     if (args.identity !== undefined && args.identity !== eventIdentity(current)) {
-      const participant = await ctx.db
-        .query("emails")
-        .withIndex("by_event", (q) => q.eq("eventId", args.id))
-        .first();
-      const claimed = await ctx.db
-        .query("codes")
-        .withIndex("by_event_claimedBy", (q) =>
-          q.eq("eventId", args.id).gt("claimedBy", "")
-        )
-        .first();
-      if (participant || claimed) {
+      const [participant, flagged, request, claimed] = await Promise.all([
+        ctx.db
+          .query("emails")
+          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .first(),
+        ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .first(),
+        ctx.db
+          .query("accessRequests")
+          .withIndex("by_event", (q) => q.eq("eventId", args.id))
+          .first(),
+        ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.id).gt("claimedBy", "")
+          )
+          .first(),
+      ]);
+      if (participant || flagged || request || claimed) {
         throw new ConvexError(
-          "Remove the participant list and reset any claims before changing how attendees are identified."
+          "Remove the participant list, resolve flagged entries and access requests, and reset any claims before changing how attendees are identified."
         );
       }
     }

@@ -56,13 +56,15 @@ export function extractEmails(rows: string[][]): string[] {
   return emails;
 }
 
-const HANDLE_HEADER_RE = /^[\w\s]*(handles?|usernames?|twitter|x)$/i;
+const HANDLE_HEADER_RE =
+  /^(?:x|twitter|(?:(?:x|twitter)[\s_-]*)?(?:handles?|usernames?))$/i;
 const HANDLE_TOKEN_RE =
   /(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\/@?[a-z0-9_]{1,15}(?!\w)|(?<![\w.])@[a-z0-9_]{1,15}(?!\w)/i;
 
-// X handles: use a column headed like "handle"/"username"/"x" when there is
-// one (its cells may omit the "@"); otherwise scan every cell for an
-// "@handle" or x.com/twitter.com profile URL.
+// X handles: use a column headed exactly "handle"/"username"/"x"/"twitter"
+// (optionally "x handle", "twitter username", ...) when there is one; its
+// cells may omit the "@". Otherwise scan every cell for an "@handle" or
+// x.com/twitter.com profile URL.
 export function extractXHandles(rows: string[][]): string[] {
   const seen = new Set<string>();
   const handles: string[] = [];
@@ -148,8 +150,13 @@ export async function fileToItems(
   const { default: readXlsxFile } = await import("read-excel-file/browser");
   const sheets = await readXlsxFile(file);
   if (kind !== "codes") {
-    return extractAttendees(
-      sheets.flatMap((sheet) => toStringRows(sheet.data as SheetCell[][]))
+    // Each worksheet has its own header row, so extract per sheet.
+    return Array.from(
+      new Set(
+        sheets.flatMap((sheet) =>
+          extractAttendees(toStringRows(sheet.data as SheetCell[][]))
+        )
+      )
     );
   }
   const codeSheet =

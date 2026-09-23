@@ -79,6 +79,15 @@ test("spreadsheets yield handles from a handle column or scattered @mentions", a
       ["https://twitter.com/carol", "-"],
     ]),
   ).toEqual(["@alice", "@carol"]);
+  // Only explicit handle headings select a column; "tax"/"index" don't, and
+  // bare numbers in other columns never become handles.
+  expect(
+    extractXHandles([
+      ["tax", "index", "name"],
+      ["100", "1", "Alice"],
+    ]),
+  ).toEqual([]);
+  expect(extractXHandles([["twitter_username"], ["Dana"]])).toEqual(["@dana"]);
   const csv = new File(["handle\n@one\n@two\n"], "list.csv", { type: "text/csv" });
   expect(await fileToItems(csv, "handles")).toEqual(["@one", "@two"]);
 });
@@ -289,7 +298,7 @@ test("email events ignore a synced X handle and keep working for legacy rows", a
 });
 
 test("the identity mode can only change while the event has no participants or claims", async () => {
-  const { asAdmin, event } = await setup({ identity: "email", codes: [] });
+  const { t, asAdmin, event } = await setup({ identity: "email", codes: [] });
   const base = { id: event.id, name: "Meetup", slug: "meetup" };
   await asAdmin.mutation(api.events.update, { ...base, identity: "x" });
   expect(await asAdmin.query(api.events.get, { id: event.id })).toMatchObject({ identity: "x" });
@@ -306,6 +315,24 @@ test("the identity mode can only change while the event has no participants or c
   await asAdmin.mutation(api.emails.removeAll, { eventId: event.id });
   await asAdmin.mutation(api.events.update, { ...base, identity: "email" });
   expect(await asAdmin.query(api.events.get, { id: event.id })).toMatchObject({ identity: "email" });
+  // Pending flagged entries and access requests are keyed too, so they block
+  // the change until resolved.
+  const flagId = await t.run((ctx) =>
+    ctx.db.insert("flaggedEmails", { eventId: event.id, email: "alice@example.com", matchedEventIds: [] }),
+  );
+  await expect(asAdmin.mutation(api.events.update, { ...base, identity: "x" })).rejects.toThrow(
+    /before changing how attendees are identified/,
+  );
+  await t.run((ctx) => ctx.db.delete(flagId));
+  const requestId = await t.run((ctx) =>
+    ctx.db.insert("accessRequests", { eventId: event.id, email: "alice@example.com", status: "pending" }),
+  );
+  await expect(asAdmin.mutation(api.events.update, { ...base, identity: "x" })).rejects.toThrow(
+    /before changing how attendees are identified/,
+  );
+  await t.run((ctx) => ctx.db.delete(requestId));
+  await asAdmin.mutation(api.events.update, { ...base, identity: "x" });
+  expect(await asAdmin.query(api.events.get, { id: event.id })).toMatchObject({ identity: "x" });
 });
 
 test("the blacklist accepts @handles and blocks them from X events", async () => {
