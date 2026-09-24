@@ -64,8 +64,8 @@ export default defineSchema({
     // the X handle linked to their account. Participant and claim rows for
     // "x" events store "@handle" keys in the same fields emails use.
     identity: v.optional(v.union(v.literal("email"), v.literal("x"))),
-    // X events only: organizer-written Markdown shown to signed-out visitors
-    // on the claim page in place of the default "sign in with X" hint.
+    // Organizer-written Markdown shown to signed-out visitors on the claim
+    // page in place of the default sign-in hint.
     signInMessage: v.optional(v.string()),
     // Normalized email of the admin who created the event; absent on events
     // created before it was recorded.

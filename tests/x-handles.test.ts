@@ -355,7 +355,7 @@ test("the blacklist accepts @handles and blocks them from X events", async () =>
   });
 });
 
-test("X events keep an optional sign-in message that email events never expose", async () => {
+test("email and X events keep an optional sign-in message", async () => {
   const { t, asAdmin, event } = await setup({ identity: "x", codes: [] });
   expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBeUndefined();
   const base = { id: event.id, name: "Meetup", slug: "meetup", identity: "x" as const };
@@ -369,7 +369,7 @@ test("X events keep an optional sign-in message that email events never expose",
 
   await asAdmin.mutation(api.events.update, { ...base, signInMessage: "Hello" });
   await asAdmin.mutation(api.events.update, { ...base, identity: "email" });
-  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBeUndefined();
-  const emailEvent = await asAdmin.mutation(api.events.create, { name: "Email", identity: "email", signInMessage: "ignored" });
-  expect((await asAdmin.query(api.events.get, { id: emailEvent.id }))?.signInMessage).toBeUndefined();
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBe("Hello");
+  await asAdmin.mutation(api.events.create, { name: "Email", slug: "email-event", identity: "email", signInMessage: " Use your work email. " });
+  expect((await t.query(api.events.getBySlug, { slug: "email-event" }))?.signInMessage).toBe("Use your work email.");
 });

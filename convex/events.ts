@@ -158,8 +158,7 @@ export const getBySlug = query({
       codeTypeValues: event.codeTypeValues,
       dynamic: event.dynamic ?? false,
       identity: eventIdentity(event),
-      signInMessage:
-        eventIdentity(event) === "x" ? event.signInMessage : undefined,
+      signInMessage: event.signInMessage,
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
       soldOut: availableTypes.size === 0,
@@ -271,10 +270,7 @@ export const create = mutation({
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
       identity: args.identity === "x" ? "x" : undefined,
-      signInMessage:
-        args.identity === "x"
-          ? args.signInMessage?.trim() || undefined
-          : undefined,
+      signInMessage: args.signInMessage?.trim() || undefined,
       createdBy: creator,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
