@@ -158,6 +158,8 @@ export const getBySlug = query({
       codeTypeValues: event.codeTypeValues,
       dynamic: event.dynamic ?? false,
       identity: eventIdentity(event),
+      signInMessage:
+        eventIdentity(event) === "x" ? event.signInMessage : undefined,
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
       soldOut: availableTypes.size === 0,
@@ -189,6 +191,7 @@ export const get = query({
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
       identity: eventIdentity(event),
+      signInMessage: event.signInMessage,
       createdBy: event.createdBy,
     };
   },
@@ -238,6 +241,7 @@ export const create = mutation({
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
+    signInMessage: v.optional(v.string()),
     // Accepted but ignored: sent by admin forms loaded before the Hidden
     // option was removed.
     hidden: v.optional(v.boolean()),
@@ -267,6 +271,10 @@ export const create = mutation({
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
       identity: args.identity === "x" ? "x" : undefined,
+      signInMessage:
+        args.identity === "x"
+          ? args.signInMessage?.trim() || undefined
+          : undefined,
       createdBy: creator,
     });
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
@@ -290,6 +298,7 @@ export const update = mutation({
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
+    signInMessage: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
@@ -350,6 +359,10 @@ export const update = mutation({
       // rather than resetting the event to email.
       ...(args.identity !== undefined
         ? { identity: args.identity === "x" ? ("x" as const) : undefined }
+        : {}),
+      // Same for `signInMessage`: absent means unchanged, "" clears it.
+      ...(args.signInMessage !== undefined
+        ? { signInMessage: args.signInMessage.trim() || undefined }
         : {}),
     });
     return { slug };

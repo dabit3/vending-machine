@@ -407,7 +407,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         signedOut
                       />
                     ) : null}
-                    {event.dynamic ? (
+                    {byHandle && event.signInMessage ? (
+                      <Alert>
+                        <AtSign />
+                        <AlertDescription>
+                          <MarkdownText value={event.signInMessage} />
+                        </AlertDescription>
+                      </Alert>
+                    ) : event.dynamic ? (
                       <p className="text-sm leading-relaxed text-muted-foreground">
                         {byHandle
                           ? "Sign in with X to claim your code, one per X account."

@@ -73,6 +73,7 @@ export default function NewEventForm({
   const [instructions, setInstructions] = useState("");
   const [dynamic, setDynamic] = useState(false);
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
+  const [signInMessage, setSignInMessage] = useState("");
   const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
@@ -99,6 +100,8 @@ export default function NewEventForm({
         claimInstructions: instructions || undefined,
         dynamic,
         identity,
+        signInMessage:
+          identity === "x" ? signInMessage || undefined : undefined,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
       });
@@ -272,6 +275,25 @@ export default function NewEventForm({
                           : "Attendees sign in with the email address on your list."}
                       </FieldDescription>
                     </Field>
+                    {identity === "x" ? (
+                      <Field>
+                        <FieldLabel htmlFor="event-signin-message">
+                          Sign-in message
+                        </FieldLabel>
+                        <Textarea
+                          id="event-signin-message"
+                          value={signInMessage}
+                          onChange={(e) => setSignInMessage(e.target.value)}
+                          rows={3}
+                          placeholder="Sign in with the X account you RSVP’d with."
+                        />
+                        <FieldDescription>
+                          Optional. Shown on the claim page before attendees
+                          sign in, replacing the default &ldquo;Sign in with
+                          X&rdquo; hint. Markdown works.
+                        </FieldDescription>
+                      </Field>
+                    ) : null}
                     <Field orientation="horizontal">
                       <Checkbox
                         id="event-dynamic"
