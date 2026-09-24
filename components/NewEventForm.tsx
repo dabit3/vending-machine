@@ -16,10 +16,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
-import {
-  ATTENDEE_IDENTITIES,
-  type AttendeeIdentity,
-} from "@/lib/attendee-identity";
+import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
   emptyStripeForm,
   generationInput,
@@ -28,6 +25,12 @@ import {
 } from "@/lib/stripe-form";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
+import {
+  DatePicker,
+  DynamicToggle,
+  IdentityPicker,
+  SlugInput,
+} from "@/components/EventFormFields";
 import {
   ConfirmStripeGeneration,
   StripeGenerationFields,
@@ -46,7 +49,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
   FieldDescription,
@@ -54,10 +56,6 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
@@ -206,11 +204,11 @@ export default function NewEventForm({
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="event-date">Event date</FieldLabel>
-                    <Input
+                    <DatePicker
                       id="event-date"
-                      type="date"
                       value={eventDate}
-                      onChange={(e) => setEventDate(e.target.value)}
+                      onChange={setEventDate}
+                      placeholder="Optional"
                     />
                   </Field>
                 </FieldGroup>
@@ -247,10 +245,10 @@ export default function NewEventForm({
                   <FieldGroup className="border-t px-4 pt-5 pb-4">
                     <Field>
                       <FieldLabel htmlFor="event-slug">Claim URL</FieldLabel>
-                      <Input
+                      <SlugInput
                         id="event-slug"
                         value={slug}
-                        onChange={(e) => setSlug(e.target.value)}
+                        onChange={setSlug}
                         placeholder={claimSlug || "build-with-devin"}
                       />
                       <FieldDescription>
@@ -264,33 +262,16 @@ export default function NewEventForm({
                       onChange={setInstructions}
                       description="Attendees must read these before claiming. They can also view them after claiming."
                     />
-                    <Field>
-                      <FieldLabel htmlFor="event-identity">
-                        Identify attendees by
-                      </FieldLabel>
-                      <NativeSelect
-                        id="event-identity"
-                        className="w-full sm:w-64"
-                        value={identity}
-                        onChange={(e) =>
-                          setIdentity(e.target.value === "x" ? "x" : "email")
-                        }
-                      >
-                        {ATTENDEE_IDENTITIES.map((option) => (
-                          <NativeSelectOption
-                            key={option.value}
-                            value={option.value}
-                          >
-                            {option.label}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                      <FieldDescription>
-                        {identity === "x"
+                    <IdentityPicker
+                      id="event-identity"
+                      value={identity}
+                      onChange={setIdentity}
+                      description={
+                        identity === "x"
                           ? "Attendees sign in with X and codes go to the @handles on your list. X sign-in must be enabled in Clerk."
-                          : "Attendees sign in with the email address on your list."}
-                      </FieldDescription>
-                    </Field>
+                          : "Attendees sign in with the email address on your list."
+                      }
+                    />
                     <Field>
                       <FieldLabel htmlFor="event-signin-message">
                         Sign-in message
@@ -312,25 +293,12 @@ export default function NewEventForm({
                         works.
                       </FieldDescription>
                     </Field>
-                    <Field orientation="horizontal">
-                      <Checkbox
-                        id="event-dynamic"
-                        checked={dynamic}
-                        onCheckedChange={(checked) =>
-                          setDynamic(checked === true)
-                        }
-                      />
-                      <FieldLabel htmlFor="event-dynamic">
-                        Dynamic: anyone can claim
-                      </FieldLabel>
-                    </Field>
-                    <FieldDescription>
-                      No participant list needed. Anyone who signs in from the
-                      claim URL or QR code gets a code, and their{" "}
-                      {identity === "x" ? "X handle" : "email"} is recorded so
-                      each {identity === "x" ? "account" : "address"} can only
-                      claim once.
-                    </FieldDescription>
+                    <DynamicToggle
+                      id="event-dynamic"
+                      checked={dynamic}
+                      onChange={setDynamic}
+                      identity={identity}
+                    />
                     {dynamic ? <DynamicEventWarning /> : null}
                   </FieldGroup>
                 </details>
