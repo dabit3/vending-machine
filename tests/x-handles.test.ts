@@ -354,3 +354,22 @@ test("the blacklist accepts @handles and blocks them from X events", async () =>
     reason: "not_listed",
   });
 });
+
+test("X events keep an optional sign-in message that email events never expose", async () => {
+  const { t, asAdmin, event } = await setup({ identity: "x", codes: [] });
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBeUndefined();
+  const base = { id: event.id, name: "Meetup", slug: "meetup", identity: "x" as const };
+  await asAdmin.mutation(api.events.update, { ...base, signInMessage: "  Use the X account you RSVP'd with.  " });
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBe("Use the X account you RSVP'd with.");
+  // Forms that don't send the field leave it as is; an empty string clears it.
+  await asAdmin.mutation(api.events.update, base);
+  expect((await asAdmin.query(api.events.get, { id: event.id }))?.signInMessage).toBe("Use the X account you RSVP'd with.");
+  await asAdmin.mutation(api.events.update, { ...base, signInMessage: " " });
+  expect((await asAdmin.query(api.events.get, { id: event.id }))?.signInMessage).toBeUndefined();
+
+  await asAdmin.mutation(api.events.update, { ...base, signInMessage: "Hello" });
+  await asAdmin.mutation(api.events.update, { ...base, identity: "email" });
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.signInMessage).toBeUndefined();
+  const emailEvent = await asAdmin.mutation(api.events.create, { name: "Email", identity: "email", signInMessage: "ignored" });
+  expect((await asAdmin.query(api.events.get, { id: emailEvent.id }))?.signInMessage).toBeUndefined();
+});

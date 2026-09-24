@@ -1721,6 +1721,9 @@ function EventDetailsForm({
   const [identity, setIdentity] = useState<AttendeeIdentity>(
     event.identity ?? "email"
   );
+  const [signInMessage, setSignInMessage] = useState(
+    event.signInMessage ?? ""
+  );
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -1736,6 +1739,7 @@ function EventDetailsForm({
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
         identity,
+        ...(identity === "x" ? { signInMessage } : {}),
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1838,6 +1842,26 @@ function EventDetailsForm({
                   : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."}
               </FieldDescription>
             </Field>
+            {identity === "x" ? (
+              <Field className="sm:col-span-2">
+                <FieldLabel htmlFor="detail-signin-message">
+                  Sign-in message
+                </FieldLabel>
+                <Textarea
+                  id="detail-signin-message"
+                  value={signInMessage}
+                  onChange={(e) => setSignInMessage(e.target.value)}
+                  rows={3}
+                  className="resize-y"
+                  placeholder="Sign in with the X account you RSVP’d with."
+                />
+                <FieldDescription>
+                  Optional. Shown on the claim page before attendees sign in,
+                  replacing the default &ldquo;Sign in with X&rdquo; hint.
+                  Markdown works.
+                </FieldDescription>
+              </Field>
+            ) : null}
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-dynamic"
