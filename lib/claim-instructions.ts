@@ -13,7 +13,17 @@ function subscriptionNote(firstOption: string, firstStep: string) {
   ].join("\n");
 }
 
-const EXISTING_SUBSCRIPTION_NOTE = subscriptionNote(
+const EXISTING_SUBSCRIPTION_NOTE = [
+  "If you already have a Devin subscription, you can redeem your coupon in one of these three ways:",
+  "1. Cancel your account, once the expiration date arrives sign up again with this code",
+  "2. Create a new account in your current org",
+  "   - Click on the account name in top left corner",
+  "   - Click Switch account",
+  '   - Click "Create new account"',
+  "3. Sign up with a completely new email address",
+].join("\n");
+
+const TWO_OPTION_SUBSCRIPTION_NOTE = subscriptionNote(
   "Create a new account in your current org",
   "Click on the account name in top left corner"
 );
@@ -32,6 +42,7 @@ function preset(label: string) {
     text: `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${EXISTING_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
     // Earlier wordings still stored on events; rendered as `text`.
     legacyTexts: [
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${TWO_OPTION_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
       `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${PREVIOUS_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
       `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${CANCEL_NOTE}\n\n${WINDSURF_NOTE}`,
       `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${WINDSURF_NOTE}`,

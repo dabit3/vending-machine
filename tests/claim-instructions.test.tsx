@@ -13,7 +13,7 @@ const previousSubscriptionNote = [
   '   - Click "Create new account"',
   "2. Sign up with a completely new email address",
 ].join("\n");
-const subscriptionNote = [
+const twoOptionSubscriptionNote = [
   "If you already have a Devin subscription, you can redeem your coupon in one of two ways:",
   "1. Create a new account in your current org",
   "   - Click on the account name in top left corner",
@@ -21,9 +21,19 @@ const subscriptionNote = [
   '   - Click "Create new account"',
   "2. Sign up with a completely new email address",
 ].join("\n");
+const subscriptionNote = [
+  "If you already have a Devin subscription, you can redeem your coupon in one of these three ways:",
+  "1. Cancel your account, once the expiration date arrives sign up again with this code",
+  "2. Create a new account in your current org",
+  "   - Click on the account name in top left corner",
+  "   - Click Switch account",
+  '   - Click "Create new account"',
+  "3. Sign up with a completely new email address",
+].join("\n");
 const subscriptionNoteHtml = [
-  "<p>If you already have a Devin subscription, you can redeem your coupon in one of two ways:</p>",
+  "<p>If you already have a Devin subscription, you can redeem your coupon in one of these three ways:</p>",
   '<ol class="list-decimal pl-5">',
+  "<li>Cancel your account, once the expiration date arrives sign up again with this code</li>",
   "<li>Create a new account in your current org",
   '<ul class="list-disc pl-5">',
   "<li>Click on the account name in top left corner</li>",
@@ -36,7 +46,7 @@ const subscriptionNoteHtml = [
 ].join("\n");
 const note = "If you had a previous Windsurf account and your code does not work, try using a new email address.";
 
-test.each(["pro", "max"] as const)("renders the updated %s preset with a checkout link and the two-option subscription note", (plan) => {
+test.each(["pro", "max"] as const)("renders the updated %s preset with a checkout link and the three-option subscription note", (plan) => {
   const preset = CLAIM_INSTRUCTION_PRESETS[plan];
   expect(preset.text).toBe(`Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${subscriptionNote}\n\n${note}`);
   expect(preset.text).not.toContain("cancel your subscription");
@@ -57,7 +67,8 @@ test.each(["pro", "max"] as const)("recognizes and displays legacy %s presets wi
   const previous = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${note}`;
   const cancel = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelNote}\n\n${note}`;
   const twoOptions = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${previousSubscriptionNote}\n\n${note}`;
-  for (const stored of [legacy, previous, cancel, twoOptions]) {
+  const twoOptionsCurrentOrg = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${twoOptionSubscriptionNote}\n\n${note}`;
+  for (const stored of [legacy, previous, cancel, twoOptions, twoOptionsCurrentOrg]) {
     expect(claimInstructionsMode(stored)).toBe(plan);
     const html = renderToStaticMarkup(<ClaimInstructions value={stored} />);
     expect(html).toContain('href="https://app.devin.ai/"');
