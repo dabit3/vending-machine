@@ -407,9 +407,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         signedOut
                       />
                     ) : null}
-                    {byHandle && event.signInMessage ? (
+                    {event.signInMessage ? (
                       <Alert>
-                        <AtSign />
+                        {byHandle ? <AtSign /> : <Mail />}
                         <AlertDescription>
                           <MarkdownText value={event.signInMessage} />
                         </AlertDescription>

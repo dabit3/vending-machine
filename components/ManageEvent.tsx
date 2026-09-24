@@ -1739,7 +1739,7 @@ function EventDetailsForm({
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
         identity,
-        ...(identity === "x" ? { signInMessage } : {}),
+        signInMessage,
       });
       setSlug(savedSlug);
       toast.success("Event saved");
@@ -1842,26 +1842,27 @@ function EventDetailsForm({
                   : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."}
               </FieldDescription>
             </Field>
-            {identity === "x" ? (
-              <Field className="sm:col-span-2">
-                <FieldLabel htmlFor="detail-signin-message">
-                  Sign-in message
-                </FieldLabel>
-                <Textarea
-                  id="detail-signin-message"
-                  value={signInMessage}
-                  onChange={(e) => setSignInMessage(e.target.value)}
-                  rows={3}
-                  className="resize-y"
-                  placeholder="Sign in with the X account you RSVP’d with."
-                />
-                <FieldDescription>
-                  Optional. Shown on the claim page before attendees sign in,
-                  replacing the default &ldquo;Sign in with X&rdquo; hint.
-                  Markdown works.
-                </FieldDescription>
-              </Field>
-            ) : null}
+            <Field className="sm:col-span-2">
+              <FieldLabel htmlFor="detail-signin-message">
+                Sign-in message
+              </FieldLabel>
+              <Textarea
+                id="detail-signin-message"
+                value={signInMessage}
+                onChange={(e) => setSignInMessage(e.target.value)}
+                rows={3}
+                className="resize-y"
+                placeholder={
+                  identity === "x"
+                    ? "Sign in with the X account you RSVP’d with."
+                    : "Sign in with the email you RSVP’d with."
+                }
+              />
+              <FieldDescription>
+                Optional. Shown on the claim page before attendees sign in,
+                replacing the default sign-in hint. Markdown works.
+              </FieldDescription>
+            </Field>
             <Field orientation="horizontal" className="sm:col-span-2">
               <Checkbox
                 id="detail-dynamic"
