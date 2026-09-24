@@ -35,14 +35,9 @@ import {
   type EmailStatusFilter,
 } from "@/lib/email-search";
 import {
-  ATTENDEE_IDENTITIES,
   identityLabels,
   type AttendeeIdentity,
 } from "@/lib/attendee-identity";
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from "@/components/ui/native-select";
 import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
@@ -62,7 +57,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardAction,
@@ -91,6 +85,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
+import {
+  DatePicker,
+  DynamicToggle,
+  IdentityPicker,
+  SlugInput,
+} from "@/components/EventFormFields";
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
@@ -1725,6 +1725,15 @@ function EventDetailsForm({
     event.signInMessage ?? ""
   );
   const [saving, setSaving] = useState(false);
+  const dirty =
+    name !== event.name ||
+    slug !== event.slug ||
+    description !== (event.description ?? "") ||
+    eventDate !== (event.eventDate ?? "") ||
+    claimInstructions !== (event.claimInstructions ?? "") ||
+    dynamic !== (event.dynamic ?? false) ||
+    identity !== (event.identity ?? "email") ||
+    signInMessage !== (event.signInMessage ?? "");
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -1778,12 +1787,11 @@ function EventDetailsForm({
             </Field>
             <Field>
               <FieldLabel htmlFor="detail-slug">Slug</FieldLabel>
-              <Input
+              <SlugInput
                 id="detail-slug"
                 required
                 value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                className="font-mono"
+                onChange={setSlug}
               />
             </Field>
             <Field className="sm:col-span-2">
@@ -1801,11 +1809,11 @@ function EventDetailsForm({
             </Field>
             <Field>
               <FieldLabel htmlFor="detail-date">Event date</FieldLabel>
-              <Input
+              <DatePicker
                 id="detail-date"
-                type="date"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={setEventDate}
+                placeholder="No date"
               />
               <FieldDescription>
                 Optional, shown on the claim page.
@@ -1818,30 +1826,18 @@ function EventDetailsForm({
               onChange={setClaimInstructions}
               description="Optional. When set, attendees see a “How to redeem” button after claiming their code."
             />
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="detail-identity">
-                Identify attendees by
-              </FieldLabel>
-              <NativeSelect
+            <div className="sm:col-span-2">
+              <IdentityPicker
                 id="detail-identity"
-                className="w-full sm:w-64"
                 value={identity}
-                onChange={(e) =>
-                  setIdentity(e.target.value === "x" ? "x" : "email")
+                onChange={setIdentity}
+                description={
+                  identity === "x"
+                    ? "Attendees sign in with X; the list holds @handles. Can only be changed while the event has no participants or claims."
+                    : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."
                 }
-              >
-                {ATTENDEE_IDENTITIES.map((option) => (
-                  <NativeSelectOption key={option.value} value={option.value}>
-                    {option.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-              <FieldDescription>
-                {identity === "x"
-                  ? "Attendees sign in with X; the list holds @handles. Can only be changed while the event has no participants or claims."
-                  : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."}
-              </FieldDescription>
-            </Field>
+              />
+            </div>
             <Field className="sm:col-span-2">
               <FieldLabel htmlFor="detail-signin-message">
                 Sign-in message
@@ -1863,30 +1859,37 @@ function EventDetailsForm({
                 replacing the default sign-in hint. Markdown works.
               </FieldDescription>
             </Field>
-            <Field orientation="horizontal" className="sm:col-span-2">
-              <Checkbox
-                id="detail-dynamic"
-                checked={dynamic}
-                onCheckedChange={(checked) => setDynamic(checked === true)}
-              />
-              <FieldLabel htmlFor="detail-dynamic" className="font-normal">
-                Dynamic: anyone who signs in can claim, no participant list
-                needed (one code per {identity === "x" ? "X account" : "email"})
-              </FieldLabel>
-            </Field>
+            <DynamicToggle
+              id="detail-dynamic"
+              className="sm:col-span-2"
+              checked={dynamic}
+              onChange={setDynamic}
+              identity={identity}
+            />
             {dynamic ? <DynamicEventWarning className="sm:col-span-2" /> : null}
           </FieldGroup>
-          <div className="flex items-center justify-between gap-4">
-            <Button type="submit" disabled={saving} aria-busy={saving}>
-              {saving ? (
-                <>
-                  <Spinner data-icon="inline-start" />
-                  Saving...
-                </>
-              ) : (
-                "Save changes"
-              )}
-            </Button>
+          <div className="flex items-center justify-between gap-4 border-t pt-5">
+            <div className="flex items-center gap-3">
+              <Button
+                type="submit"
+                disabled={saving || !dirty}
+                aria-busy={saving}
+              >
+                {saving ? (
+                  <>
+                    <Spinner data-icon="inline-start" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save changes"
+                )}
+              </Button>
+              {dirty && !saving ? (
+                <span className="text-xs text-muted-foreground">
+                  Unsaved changes
+                </span>
+              ) : null}
+            </div>
             {canDelete ? (
               <AlertDialog>
                 <AlertDialogTrigger render={<Button variant="destructive" />}>

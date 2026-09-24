@@ -30,6 +30,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "@/components/ui/field";
+import { DatePicker } from "@/components/EventFormFields";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -162,11 +163,12 @@ export function StripeGenerationFields({
       </Field>
       <Field>
         <FieldLabel htmlFor={`${id}-expiration`}>Expiration date</FieldLabel>
-        <Input
+        <DatePicker
           id={`${id}-expiration`}
-          type="date"
           value={value.expiration}
-          onChange={(e) => set("expiration", e.target.value)}
+          onChange={(next) => set("expiration", next)}
+          placeholder="No expiration"
+          disablePast
         />
         <FieldDescription>
           Optional. End of day in your local time.
