@@ -4,7 +4,13 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
-import { ArrowLeft, ArrowRight, CalendarPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarPlus,
+  ChevronDown,
+  SlidersHorizontal,
+} from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -223,11 +229,22 @@ export default function NewEventForm({
                     Pasted links become clickable; Markdown works too.
                   </FieldDescription>
                 </Field>
-                <details className="group">
-                  <summary className="cursor-pointer text-sm font-medium">
-                    Claim page settings
+                <details className="group rounded-lg border bg-muted/30 open:bg-transparent">
+                  <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 transition-colors outline-none select-none hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
+                      <SlidersHorizontal className="size-4" />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="text-sm font-medium">
+                        Claim page settings
+                      </span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        URL, instructions, sign-in, and who can claim
+                      </span>
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
                   </summary>
-                  <FieldGroup className="mt-5">
+                  <FieldGroup className="border-t px-4 pt-5 pb-4">
                     <Field>
                       <FieldLabel htmlFor="event-slug">Claim URL</FieldLabel>
                       <Input
