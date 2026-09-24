@@ -21,9 +21,18 @@ const twoOptionSubscriptionNote = [
   '   - Click "Create new account"',
   "2. Sign up with a completely new email address",
 ].join("\n");
-const subscriptionNote = [
+const cancelAccountSubscriptionNote = [
   "If you already have a Devin subscription, you can redeem your coupon in one of these three ways:",
   "1. Cancel your account, once the expiration date arrives sign up again with this code",
+  "2. Create a new account in your current org",
+  "   - Click on the account name in top left corner",
+  "   - Click Switch account",
+  '   - Click "Create new account"',
+  "3. Sign up with a completely new email address",
+].join("\n");
+const subscriptionNote = [
+  "If you already have a Devin subscription, you can redeem your coupon in one of these three ways:",
+  "1. Cancel your current subscription, once the expiration date arrives sign up again with this code.",
   "2. Create a new account in your current org",
   "   - Click on the account name in top left corner",
   "   - Click Switch account",
@@ -33,7 +42,7 @@ const subscriptionNote = [
 const subscriptionNoteHtml = [
   "<p>If you already have a Devin subscription, you can redeem your coupon in one of these three ways:</p>",
   '<ol class="list-decimal pl-5">',
-  "<li>Cancel your account, once the expiration date arrives sign up again with this code</li>",
+  "<li>Cancel your current subscription, once the expiration date arrives sign up again with this code.</li>",
   "<li>Create a new account in your current org",
   '<ul class="list-disc pl-5">',
   "<li>Click on the account name in top left corner</li>",
@@ -68,13 +77,15 @@ test.each(["pro", "max"] as const)("recognizes and displays legacy %s presets wi
   const cancel = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelNote}\n\n${note}`;
   const twoOptions = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${previousSubscriptionNote}\n\n${note}`;
   const twoOptionsCurrentOrg = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${twoOptionSubscriptionNote}\n\n${note}`;
-  for (const stored of [legacy, previous, cancel, twoOptions, twoOptionsCurrentOrg]) {
+  const cancelAccount = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelAccountSubscriptionNote}\n\n${note}`;
+  for (const stored of [legacy, previous, cancel, twoOptions, twoOptionsCurrentOrg, cancelAccount]) {
     expect(claimInstructionsMode(stored)).toBe(plan);
     const html = renderToStaticMarkup(<ClaimInstructions value={stored} />);
     expect(html).toContain('href="https://app.devin.ai/"');
     expect(html).toContain(subscriptionNoteHtml);
     expect(html).not.toContain("cancel your subscription");
     expect(html).not.toContain("Create new account in your current org");
+    expect(html).not.toContain("Cancel your account");
   }
   const custom = `${legacy} Contact your event host.`;
   expect(claimInstructionsMode(custom)).toBe("custom");
