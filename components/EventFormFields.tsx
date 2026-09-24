@@ -91,8 +91,14 @@ export function DatePicker({
             selected={selected}
             defaultMonth={selected}
             captionLayout="dropdown"
-            startMonth={new Date(today.getFullYear() - 2, 0)}
-            endMonth={new Date(today.getFullYear() + 5, 11)}
+            startMonth={new Date(
+              Math.min(today.getFullYear() - 10, selected?.getFullYear() ?? Infinity),
+              0
+            )}
+            endMonth={new Date(
+              Math.max(today.getFullYear() + 25, selected?.getFullYear() ?? -Infinity),
+              11
+            )}
             disabled={disablePast ? { before: today } : undefined}
             onSelect={(date) => {
               onChange(date ? toDateValue(date) : "");

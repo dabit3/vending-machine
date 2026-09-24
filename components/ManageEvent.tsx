@@ -29,6 +29,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { activeCodeTypes, blockKey } from "@/convex/blockValues";
 import { downloadCsv } from "@/lib/csv";
+import { slugify } from "@/lib/slug";
 import {
   EMAIL_STATUS_FILTERS,
   filterEmails,
@@ -1726,14 +1727,14 @@ function EventDetailsForm({
   );
   const [saving, setSaving] = useState(false);
   const dirty =
-    name !== event.name ||
-    slug !== event.slug ||
-    description !== (event.description ?? "") ||
+    name.trim() !== event.name ||
+    slugify(slug) !== event.slug ||
+    description.trim() !== (event.description ?? "") ||
     eventDate !== (event.eventDate ?? "") ||
-    claimInstructions !== (event.claimInstructions ?? "") ||
+    claimInstructions.trim() !== (event.claimInstructions ?? "") ||
     dynamic !== (event.dynamic ?? false) ||
     identity !== (event.identity ?? "email") ||
-    signInMessage !== (event.signInMessage ?? "");
+    signInMessage.trim() !== (event.signInMessage ?? "");
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
