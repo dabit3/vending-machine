@@ -28,7 +28,7 @@ import { APP_URL, getAppName } from "@/lib/app-name";
 // Hero call-to-action: larger than the stock `lg` button, and full-width
 // with a taller tap target on phones.
 const HERO_BUTTON =
-  "h-12 w-full gap-2 px-5 text-base has-data-[icon=inline-start]:pl-4 sm:h-11 sm:w-auto sm:px-4.5 sm:text-[15px] sm:has-data-[icon=inline-start]:pl-3.5 [&_svg:not([class*='size-'])]:size-4.5";
+  "h-12 min-w-44 gap-2 px-7 text-base has-data-[icon=inline-start]:pl-6 sm:h-11 sm:min-w-0 sm:px-4.5 sm:text-[15px] sm:has-data-[icon=inline-start]:pl-3.5 [&_svg:not([class*='size-'])]:size-4.5";
 
 interface EventItem {
   _id: string;
@@ -69,7 +69,7 @@ export default function Home() {
             >
               <Skeleton className="h-4 w-full rounded" />
               <Skeleton className="h-4 w-3/4 rounded" />
-              <Skeleton className="mt-4 h-12 w-full rounded-md sm:h-11 sm:w-32" />
+              <Skeleton className="mt-4 h-12 w-44 rounded-md sm:h-11 sm:w-32" />
             </div>
           ) : signedIn ? (
             <>
