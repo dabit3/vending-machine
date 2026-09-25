@@ -232,7 +232,7 @@ export const listManaged = query({
   },
 });
 
-const SEARCH_LIMIT = 200;
+const X_PROFILE_URL = /^(?:https?:\/\/)?(?:www\.)?(?:x|twitter)\.com\//i;
 
 // Admin lookup of every managed event an attendee appears on, by exact email
 // or X handle: as a participant, a claimant, a flagged entry, or an access
@@ -244,38 +244,78 @@ export const searchByAttendee = query({
     if (!email) return null;
     const raw = args.query.trim();
     const key =
-      raw.includes("@") && !raw.startsWith("@")
+      raw.includes("@") && !raw.startsWith("@") && !X_PROFILE_URL.test(raw)
         ? normalizeEmail(raw)
         : normalizeXHandle(raw);
     if (!key) return null;
 
-    let managed: Set<string> | null = null;
+    // System admins read each table's index for the key; event admins look
+    // up the key within each event they manage.
+    let eventIds: Id<"events">[] | null = null;
     if (!isAdmin) {
       const memberships = await ctx.db
         .query("eventAdmins")
         .withIndex("by_email", (q) => q.eq("email", email))
         .collect();
-      managed = new Set(memberships.map((m) => m.eventId as string));
-      if (managed.size === 0) return { key, results: [] };
+      eventIds = memberships.map((m) => m.eventId);
     }
+    const perEvent = async <T>(
+      lookup: (eventId: Id<"events">) => Promise<T[]>
+    ) => (await Promise.all((eventIds ?? []).map(lookup))).flat();
 
     const [participants, claims, flagged, requests] = await Promise.all([
-      ctx.db
-        .query("emails")
-        .withIndex("by_email", (q) => q.eq("email", key))
-        .take(SEARCH_LIMIT),
-      ctx.db
-        .query("codes")
-        .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
-        .take(SEARCH_LIMIT),
-      ctx.db
-        .query("flaggedEmails")
-        .withIndex("by_email", (q) => q.eq("email", key))
-        .take(SEARCH_LIMIT),
-      ctx.db
-        .query("accessRequests")
-        .withIndex("by_email", (q) => q.eq("email", key))
-        .take(SEARCH_LIMIT),
+      eventIds
+        ? perEvent((eventId) =>
+            ctx.db
+              .query("emails")
+              .withIndex("by_event_email", (q) =>
+                q.eq("eventId", eventId).eq("email", key)
+              )
+              .collect()
+          )
+        : ctx.db
+            .query("emails")
+            .withIndex("by_email", (q) => q.eq("email", key))
+            .collect(),
+      eventIds
+        ? perEvent((eventId) =>
+            ctx.db
+              .query("codes")
+              .withIndex("by_event_claimedBy", (q) =>
+                q.eq("eventId", eventId).eq("claimedBy", key)
+              )
+              .collect()
+          )
+        : ctx.db
+            .query("codes")
+            .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
+            .collect(),
+      eventIds
+        ? perEvent((eventId) =>
+            ctx.db
+              .query("flaggedEmails")
+              .withIndex("by_event_email", (q) =>
+                q.eq("eventId", eventId).eq("email", key)
+              )
+              .collect()
+          )
+        : ctx.db
+            .query("flaggedEmails")
+            .withIndex("by_email", (q) => q.eq("email", key))
+            .collect(),
+      eventIds
+        ? perEvent((eventId) =>
+            ctx.db
+              .query("accessRequests")
+              .withIndex("by_event_email", (q) =>
+                q.eq("eventId", eventId).eq("email", key)
+              )
+              .collect()
+          )
+        : ctx.db
+            .query("accessRequests")
+            .withIndex("by_email", (q) => q.eq("email", key))
+            .collect(),
     ]);
 
     type Match = {
@@ -303,10 +343,9 @@ export const searchByAttendee = query({
     for (const row of flagged) entry(row.eventId).flagged = true;
     for (const row of requests) entry(row.eventId).accessRequest = row.status;
 
-    const ids = [...matches.keys()].filter(
-      (id) => managed === null || managed.has(id)
+    const events = await Promise.all(
+      [...matches.keys()].map((id) => ctx.db.get(id))
     );
-    const events = await Promise.all(ids.map((id) => ctx.db.get(id)));
     const results = events
       .filter((event) => event !== null)
       .sort((a, b) => b._creationTime - a._creationTime)
