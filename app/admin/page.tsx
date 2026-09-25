@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Search,
   Ticket,
+  X,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -23,6 +25,12 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Past events stay in the main listing for this many days after their date;
@@ -41,12 +49,47 @@ interface ManagedEventItem {
   createdBy?: string;
 }
 
+interface AttendeeMatch {
+  participant: boolean;
+  claimedCode?: string;
+  claimedAt?: number;
+  flagged: boolean;
+  accessRequest?: "pending" | "approved" | "denied";
+}
+
+function MatchBadges({ match }: { match: AttendeeMatch }) {
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+      {match.claimedCode ? (
+        <span>
+          Claimed <span className="font-mono">{match.claimedCode}</span>
+          {match.claimedAt
+            ? ` · ${new Date(match.claimedAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}`
+            : null}
+        </span>
+      ) : match.participant ? (
+        <span>On the list, not claimed</span>
+      ) : null}
+      {match.flagged ? <Badge variant="outline">Flagged</Badge> : null}
+      {match.accessRequest ? (
+        <Badge variant="outline">Access request {match.accessRequest}</Badge>
+      ) : null}
+    </div>
+  );
+}
+
 function AdminEventRow({
   event,
   past,
+  match,
 }: {
   event: ManagedEventItem;
   past?: boolean;
+  match?: AttendeeMatch;
 }) {
   return (
     <li className="border-b border-border">
@@ -65,7 +108,9 @@ function AdminEventRow({
               <Badge variant="outline">X handles</Badge>
             ) : null}
           </div>
-          {event.createdBy ? (
+          {match ? (
+            <MatchBadges match={match} />
+          ) : event.createdBy ? (
             <div className="truncate text-xs text-muted-dim">
               Created by {event.createdBy}
             </div>
@@ -91,6 +136,12 @@ export default function AdminDashboard() {
   const isGlobalAdmin = access?.isGlobalAdmin ?? false;
   const [showOlder, setShowOlder] = useState(false);
   const [olderPage, setOlderPage] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const search = useQuery(
+    api.events.searchByAttendee,
+    searchQuery ? { query: searchQuery } : "skip"
+  );
 
   // Mirrors the home page grouping: dated events that have passed sink into
   // their own dimmed group; undated events count as active. Active events
@@ -154,7 +205,102 @@ export default function AdminDashboard() {
         ) : null}
       </div>
 
-      {events === undefined ? (
+      {events && events.length > 0 ? (
+        <form
+          role="search"
+          className="mb-10"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setSearchQuery(searchInput.trim());
+          }}
+        >
+          <InputGroup className="h-10 sm:max-w-md">
+            <InputGroupAddon>
+              <Search />
+            </InputGroupAddon>
+            <InputGroupInput
+              type="search"
+              aria-label="Find events by attendee email or X handle"
+              placeholder="Find events by email or @handle"
+              value={searchInput}
+              onChange={(e) => {
+                setSearchInput(e.target.value);
+                if (!e.target.value.trim()) setSearchQuery("");
+              }}
+            />
+            {searchQuery ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label="Clear search"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearchQuery("");
+                  }}
+                >
+                  <X />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton type="submit" variant="secondary" size="xs">
+                  Search
+                </InputGroupButton>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
+        </form>
+      ) : null}
+
+      {searchQuery ? (
+        <section aria-live="polite">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="min-w-0 truncate text-sm font-medium text-muted-foreground">
+              Events for{" "}
+              <span className="font-mono text-foreground">
+                {search?.key ?? searchQuery}
+              </span>
+            </h2>
+            {search ? (
+              <span className="font-mono text-xs text-muted-dim tabular-nums">
+                {String(search.results.length).padStart(2, "0")}
+              </span>
+            ) : null}
+          </div>
+          {search === undefined ? (
+            <div className="mt-4 flex flex-col gap-3">
+              {[0, 1].map((i) => (
+                <Skeleton key={i} className="h-16 rounded-xl" />
+              ))}
+            </div>
+          ) : search === null ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Enter a full email address or X handle, like name@example.com or
+              @handle.
+            </p>
+          ) : search.results.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              No events have this attendee on their list, claims, flagged
+              entries or access requests.
+            </p>
+          ) : (
+            <ul className="mt-4 border-t border-border">
+              {search.results.map((result) => (
+                <AdminEventRow
+                  key={result._id}
+                  event={result}
+                  match={result}
+                  past={
+                    result.eventDate
+                      ? daysUntilEvent(result.eventDate) < 0
+                      : false
+                  }
+                />
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : events === undefined ? (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-16 rounded-xl" />
