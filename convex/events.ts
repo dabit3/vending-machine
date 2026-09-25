@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
@@ -228,6 +229,103 @@ export const listManaged = query({
       identity: eventIdentity(event),
       createdBy: event.createdBy,
     }));
+  },
+});
+
+const SEARCH_LIMIT = 200;
+
+// Admin lookup of every managed event an attendee appears on, by exact email
+// or X handle: as a participant, a claimant, a flagged entry, or an access
+// request.
+export const searchByAttendee = query({
+  args: { query: v.string() },
+  handler: async (ctx, args) => {
+    const { email, isAdmin } = await adminEmailStatus(ctx);
+    if (!email) return null;
+    const raw = args.query.trim();
+    const key =
+      raw.includes("@") && !raw.startsWith("@")
+        ? normalizeEmail(raw)
+        : normalizeXHandle(raw);
+    if (!key) return null;
+
+    let managed: Set<string> | null = null;
+    if (!isAdmin) {
+      const memberships = await ctx.db
+        .query("eventAdmins")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .collect();
+      managed = new Set(memberships.map((m) => m.eventId as string));
+      if (managed.size === 0) return { key, results: [] };
+    }
+
+    const [participants, claims, flagged, requests] = await Promise.all([
+      ctx.db
+        .query("emails")
+        .withIndex("by_email", (q) => q.eq("email", key))
+        .take(SEARCH_LIMIT),
+      ctx.db
+        .query("codes")
+        .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
+        .take(SEARCH_LIMIT),
+      ctx.db
+        .query("flaggedEmails")
+        .withIndex("by_email", (q) => q.eq("email", key))
+        .take(SEARCH_LIMIT),
+      ctx.db
+        .query("accessRequests")
+        .withIndex("by_email", (q) => q.eq("email", key))
+        .take(SEARCH_LIMIT),
+    ]);
+
+    type Match = {
+      participant: boolean;
+      claimedCode?: string;
+      claimedAt?: number;
+      flagged: boolean;
+      accessRequest?: Doc<"accessRequests">["status"];
+    };
+    const matches = new Map<Id<"events">, Match>();
+    const entry = (eventId: Id<"events">) => {
+      let match = matches.get(eventId);
+      if (!match) {
+        match = { participant: false, flagged: false };
+        matches.set(eventId, match);
+      }
+      return match;
+    };
+    for (const row of participants) entry(row.eventId).participant = true;
+    for (const row of claims) {
+      const match = entry(row.eventId);
+      match.claimedCode = row.code;
+      match.claimedAt = row.claimedAt;
+    }
+    for (const row of flagged) entry(row.eventId).flagged = true;
+    for (const row of requests) entry(row.eventId).accessRequest = row.status;
+
+    const ids = [...matches.keys()].filter(
+      (id) => managed === null || managed.has(id)
+    );
+    const events = await Promise.all(ids.map((id) => ctx.db.get(id)));
+    const results = events
+      .filter((event) => event !== null)
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .flatMap((event) => {
+        const match = matches.get(event._id);
+        return match ? [{ event, match }] : [];
+      })
+      .map(({ event, match }) => ({
+        _id: event._id,
+        _creationTime: event._creationTime,
+        name: event.name,
+        slug: event.slug,
+        eventDate: event.eventDate,
+        dynamic: event.dynamic,
+        identity: eventIdentity(event),
+        createdBy: event.createdBy,
+        ...match,
+      }));
+    return { key, results };
   },
 });
 
