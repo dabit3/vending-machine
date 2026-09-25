@@ -68,7 +68,7 @@ test("system admins find every event an email appears on, case-insensitively", a
 test("X handles are searchable in any accepted form", async () => {
   const { t } = await setup();
   const admin = t.withIdentity(adminIdentity);
-  for (const query of ["@ADA", "ada", "https://x.com/ada"]) {
+  for (const query of ["@ADA", "ada", "https://x.com/ada", "https://twitter.com/@Ada"]) {
     const found = await admin.query(api.events.searchByAttendee, { query });
     expect(found?.key).toBe("@ada");
     expect(found?.results.map((r) => r.name)).toEqual(["X event"]);
