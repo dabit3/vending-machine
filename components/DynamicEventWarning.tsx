@@ -7,12 +7,17 @@ export function DynamicEventWarning({ className }: { className?: string }) {
   return (
     <Alert className={cn("border-amber-500/40", className)}>
       <AlertTriangle className="text-amber-500" aria-hidden />
-      <AlertTitle>Anyone with the link can take a code</AlertTitle>
+      <AlertTitle>Warning: anyone with the link can take a code</AlertTitle>
       <AlertDescription>
-        Dynamic events skip the eligible-email list: every signed-in email that
-        opens the claim URL or scans the QR code receives one code until the
-        pool runs out. Only share the link or QR code where you want codes
-        handed out.
+        <p>
+          Dynamic events skip the eligible-email list: every unique signed-in
+          email that opens the claim URL receives one code until the pool runs
+          out. Only share the link where you want codes handed out.
+        </p>
+        <p>
+          Not recommended – only use if you do not have the list of attendee
+          emails.
+        </p>
       </AlertDescription>
     </Alert>
   );
