@@ -342,10 +342,10 @@ test("new event form exposes all three code sources and keeps page settings opti
 test("dynamic warning is hidden until the box is ticked and spells out the consequences", () => {
   const form = renderToStaticMarkup(<NewEventForm />);
   expect(form).toContain("Dynamic: anyone can claim");
-  expect(form).not.toContain("Anyone with the link can take a code");
+  expect(form).not.toContain("Warning: anyone with the link can take a code");
   const warning = renderToStaticMarkup(<DynamicEventWarning />);
   expect(warning).toContain('role="alert"');
-  expect(warning).toContain("Anyone with the link can take a code");
+  expect(warning).toContain("Warning: anyone with the link can take a code");
   expect(warning).toContain("skip the eligible-email list");
   expect(warning).not.toContain("home page");
 });
