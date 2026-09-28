@@ -1121,7 +1121,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     id="new-block-name"
                     value={newBlockName}
                     onChange={(e) => setNewBlockName(e.target.value)}
-                    placeholder="e.g. $50 credits"
+                    placeholder="e.g. $20 credits"
                     className="text-sm"
                   />
                   <FieldDescription>
@@ -1330,7 +1330,7 @@ function CodeBlockRow({
             aria-label="Code block name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. $50 credits"
+            placeholder="e.g. $20 credits"
             className="h-7 max-w-48 text-sm"
           />
           <Input
