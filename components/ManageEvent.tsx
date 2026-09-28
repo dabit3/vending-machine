@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   Inbox,
+  Mail,
   Plus,
   QrCode,
   RotateCcw,
@@ -21,6 +22,7 @@ import {
   Trash2,
   Upload,
   UserPlus,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -75,10 +77,10 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Progress } from "@/components/ui/progress";
@@ -1522,7 +1524,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
       setEmail("");
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to add event admin"
+        err instanceof Error ? err.message : "Failed to add organizer"
       );
     } finally {
       setSubmitting(false);
@@ -1534,54 +1536,129 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldCheck className="size-4 text-muted-dim" aria-hidden />
-          Event admins
+          Organizers
+          {admins && admins.length > 0 ? (
+            <span className="text-sm font-normal text-muted-dim tabular-nums">
+              {admins.length}
+            </span>
+          ) : null}
         </CardTitle>
         <CardDescription>
-          These emails can manage this event: its details, emails, and codes.
+          Organizers can edit this event and manage its attendees and codes.
           Global admins always have access.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <form onSubmit={handleAdd} className="max-w-md">
-          <InputGroup>
-            <InputGroupInput
-              type="email"
-              aria-label="Event admin email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="organizer@example.com"
-              className="text-sm"
-            />
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                type="submit"
-                variant="default"
-                size="xs"
-                disabled={submitting}
-                aria-busy={submitting}
-              >
-                <UserPlus data-icon="inline-start" />
-                {submitting ? "Adding..." : "Add"}
-              </InputGroupButton>
-            </InputGroupAddon>
-          </InputGroup>
+      <CardContent className="flex flex-col gap-5">
+        <form onSubmit={handleAdd} className="flex flex-col gap-2">
+          <Label htmlFor="organizer-email">Add an organizer</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <InputGroup className="sm:max-w-sm">
+              <InputGroupAddon>
+                <Mail aria-hidden />
+              </InputGroupAddon>
+              <InputGroupInput
+                id="organizer-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="organizer@example.com"
+                className="text-sm"
+              />
+            </InputGroup>
+            <Button
+              type="submit"
+              disabled={submitting}
+              aria-busy={submitting}
+              className="sm:w-auto"
+            >
+              <UserPlus data-icon="inline-start" />
+              {submitting ? "Adding..." : "Add organizer"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-dim">
+            They sign in with this email and find the event under Admin.
+          </p>
         </form>
-        <RowList
-          items={admins?.map((a) => ({
-            key: a._id,
-            label: a.isSelf ? `${a.email} (you)` : a.email,
-            onRemove: () =>
-              removeAdmin({ id: a._id }).catch((err) =>
-                toast.error(
-                  err instanceof Error
-                    ? err.message
-                    : "Failed to remove event admin"
-                )
-              ),
-          }))}
-          emptyText="No event admins yet. Only global admins can manage this event."
-        />
+        {!admins ? (
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-12 rounded-lg" />
+            <Skeleton className="h-12 rounded-lg" />
+          </div>
+        ) : admins.length === 0 ? (
+          <div className="flex flex-col items-center gap-1 rounded-lg border border-dashed border-border px-4 py-6 text-center">
+            <Users className="size-5 text-muted-dim" aria-hidden />
+            <p className="text-sm font-medium">No organizers yet</p>
+            <p className="text-xs text-muted-dim">
+              Only global admins can manage this event.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {admins.map((a) => (
+              <li
+                key={a._id}
+                className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+              >
+                <span
+                  aria-hidden
+                  className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground uppercase"
+                >
+                  {a.email.charAt(0)}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {a.email}
+                </span>
+                {a.isSelf ? <Badge variant="secondary">You</Badge> : null}
+                <AlertDialog>
+                  <AlertDialogTrigger
+                    render={
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="shrink-0 text-muted-foreground"
+                        aria-label={`Remove ${a.email}`}
+                      />
+                    }
+                  >
+                    <Trash2 />
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {a.isSelf
+                          ? "Remove yourself as an organizer?"
+                          : `Remove ${a.email}?`}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {a.isSelf
+                          ? "You'll lose access to this event unless you're a global admin."
+                          : "They'll no longer be able to manage this event."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        variant="destructive"
+                        onClick={() =>
+                          removeAdmin({ id: a._id }).catch((err) =>
+                            toast.error(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to remove organizer"
+                            )
+                          )
+                        }
+                      >
+                        Remove
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </li>
+            ))}
+          </ul>
+        )}
       </CardContent>
     </Card>
   );
