@@ -16,7 +16,7 @@ export type StripeForm = {
 };
 export const emptyStripeForm: StripeForm = {
   name: "",
-  amount: "50",
+  amount: "20",
   quantity: "100",
   redemptionsPerCode: "1",
   prefix: "",

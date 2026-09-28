@@ -16,6 +16,7 @@ test("converts decimal USD input to integer cents and preserves the reviewed mod
 
 test("defaults to one redemption and accepts two", () => {
   expect(emptyStripeForm.redemptionsPerCode).toBe("1");
+  expect(emptyStripeForm.amount).toBe("20");
   expect(generationInput(form, false, requestId).redemptionsPerCode).toBe(1);
   expect(generationInput({ ...form, redemptionsPerCode: "2" }, false, requestId).redemptionsPerCode).toBe(2);
 });
