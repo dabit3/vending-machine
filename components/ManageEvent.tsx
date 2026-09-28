@@ -44,6 +44,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
+import { blockExpirySummary } from "@/lib/code-expiry";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -1243,9 +1244,7 @@ function CodeBlocks({
           <CodeBlockRow
             key={type || "__unnamed"}
             type={type}
-            count={
-              codes?.filter((c) => (c.codeType ?? "") === type).length ?? 0
-            }
+            codes={codes?.filter((c) => (c.codeType ?? "") === type) ?? []}
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
@@ -1258,14 +1257,14 @@ function CodeBlocks({
 
 function CodeBlockRow({
   type,
-  count,
+  codes,
   value,
   onRename,
   onSetValue,
   onDelete,
 }: {
   type: string;
-  count: number;
+  codes: Doc<"codes">[];
   value?: string;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
   onSetValue: (
@@ -1280,6 +1279,13 @@ function CodeBlockRow({
   const [name, setName] = useState(type);
   const [valueInput, setValueInput] = useState(value ?? "");
   const [busy, setBusy] = useState(false);
+  const count = codes.length;
+  const claimed = codes.filter((c) => c.claimedBy !== undefined).length;
+  const available = count - claimed;
+  const unclaimed = codes.filter((c) => c.claimedBy === undefined);
+  const expiry = blockExpirySummary(
+    (unclaimed.length > 0 ? unclaimed : codes).map((c) => c.expiresAt)
+  );
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -1319,11 +1325,11 @@ function CodeBlockRow({
   }
 
   return (
-    <div className="flex min-h-9 flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-1.5">
+    <div className="rounded-lg border border-border bg-surface">
       {editing ? (
         <form
           onSubmit={handleSave}
-          className="flex flex-1 flex-wrap items-center gap-2"
+          className="flex flex-wrap items-center gap-2 px-3 py-2"
         >
           <Input
             autoFocus
@@ -1360,76 +1366,141 @@ function CodeBlockRow({
         </form>
       ) : (
         <>
-          <Badge variant={type ? "secondary" : "outline"}>
-            {type || "Unnamed"}
-          </Badge>
-          <span className="text-xs text-muted-dim tabular-nums">
-            {count} code{count === 1 ? "" : "s"}
-          </span>
-          {value ? (
-            <span className="max-w-40 truncate text-xs text-muted-foreground">
-              {value}
-            </span>
-          ) : null}
-          <Button
-            size="xs"
-            variant="ghost"
-            className="ml-auto text-muted-foreground"
-            onClick={() => setEditing(true)}
-          >
-            Edit
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger
-              render={
-                <Button
-                  size="icon-sm"
-                  variant="ghost"
-                  className="shrink-0 text-muted-foreground"
-                  aria-label={`Delete block ${type || "Unnamed"}`}
-                />
-              }
+          <div className="flex min-h-10 items-center gap-2 px-3 py-1.5">
+            <Ticket className="size-4 shrink-0 text-muted-dim" aria-hidden />
+            <span
+              className={cn(
+                "truncate text-sm font-medium",
+                !type && "text-muted-foreground"
+              )}
             >
-              <Trash2 />
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  This removes the block and all of its unclaimed codes.
-                  Codes already dispensed are kept, so attendees keep their
-                  claim status and can still see their code. This does not
-                  revoke Stripe promotion codes.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => {
-                    onDelete(type || undefined)
-                      .then(({ removed, kept }) =>
-                        toast.success(
-                          `Deleted block${type ? ` “${type}”` : ""}: ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
+              {type || "Unnamed block"}
+            </span>
+            <Button
+              size="xs"
+              variant="ghost"
+              className="ml-auto text-muted-foreground"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    className="shrink-0 text-muted-foreground"
+                    aria-label={`Delete block ${type || "Unnamed"}`}
+                  />
+                }
+              >
+                <Trash2 />
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete the &ldquo;{type || "Unnamed"}&rdquo; block?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes the block and all of its unclaimed codes.
+                    Codes already dispensed are kept, so attendees keep their
+                    claim status and can still see their code. This does not
+                    revoke Stripe promotion codes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      onDelete(type || undefined)
+                        .then(({ removed, kept }) =>
+                          toast.success(
+                            `Deleted block${type ? ` “${type}”` : ""}: ${removed} unclaimed code${removed === 1 ? "" : "s"} removed${kept > 0 ? `, ${kept} claimed kept` : ""}`
+                          )
                         )
-                      )
-                      .catch((err) =>
-                        toast.error(
-                          err instanceof Error
-                            ? err.message
-                            : "Failed to delete code block"
-                        )
-                      );
-                  }}
+                        .catch((err) =>
+                          toast.error(
+                            err instanceof Error
+                              ? err.message
+                              : "Failed to delete code block"
+                          )
+                        );
+                    }}
+                  >
+                    Delete block
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+          <dl className="grid grid-cols-1 border-t border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
+            <BlockStat label="Value per code">
+              {value ? (
+                <span className="truncate text-xl font-semibold tracking-tight tabular-nums">
+                  {formatBlockValue(value)}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  onClick={() => setEditing(true)}
                 >
-                  Delete block
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  Not set, add a value
+                </button>
+              )}
+            </BlockStat>
+            <BlockStat label="Codes expire">
+              <span
+                className={cn(
+                  "text-xl font-semibold tracking-tight",
+                  expiry.status === "none" && "text-base font-normal text-muted-foreground",
+                  expiry.status === "expired" && "text-destructive"
+                )}
+              >
+                {expiry.label}
+              </span>
+              {expiry.status === "expired" ? (
+                <Badge variant="destructive">Expired</Badge>
+              ) : expiry.status === "partlyExpired" ? (
+                <Badge variant="destructive">Some expired</Badge>
+              ) : null}
+            </BlockStat>
+            <BlockStat label="Codes">
+              <span className="text-xl font-semibold tracking-tight tabular-nums">
+                {available}
+              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">
+                available · {claimed} of {count} claimed
+              </span>
+            </BlockStat>
+          </dl>
         </>
       )}
+    </div>
+  );
+}
+
+// Numeric block values are dollar credits ("20" → "$20"); anything else
+// ("Team plan", "$200") is shown as entered.
+function formatBlockValue(value: string) {
+  const trimmed = value.trim();
+  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+}
+
+function BlockStat({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 border-t border-border px-3 py-2.5 first:border-t-0 sm:border-t-0">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+        {children}
+      </dd>
     </div>
   );
 }
