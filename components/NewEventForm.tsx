@@ -210,6 +210,7 @@ export default function NewEventForm({
                       value={eventDate}
                       onChange={setEventDate}
                       placeholder="Optional"
+                      disablePast
                     />
                   </Field>
                 </FieldGroup>
