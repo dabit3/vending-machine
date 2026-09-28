@@ -75,8 +75,6 @@ export default function Home() {
             <>
               <p className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-200 mt-5 max-w-md text-[15px] leading-relaxed text-muted-foreground motion-reduce:animate-none">
                 Welcome back. You&apos;re eligible for the events listed here.
-                Open one to claim, or revisit anything you&apos;ve already
-                claimed.
               </p>
               <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 mt-8 flex w-full max-w-md flex-wrap items-center justify-center gap-2.5 motion-reduce:animate-none lg:justify-start">
                 <Link

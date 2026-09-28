@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   ArrowUpRight,
-  AtSign,
   BookOpen,
   CalendarClock,
   CalendarDays,
@@ -12,7 +11,6 @@ import {
   Copy,
   Eye,
   LogIn,
-  Mail,
   OctagonX,
   PackageOpen,
   QrCode,
@@ -41,6 +39,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { ClaimInstructions } from "@/components/ClaimInstructions";
 import { MarkdownText } from "@/components/MarkdownText";
+import { SignInHint } from "@/components/SignInHint";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -407,46 +406,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         signedOut
                       />
                     ) : null}
-                    {event.signInMessage ? (
-                      <Alert>
-                        {byHandle ? <AtSign /> : <Mail />}
-                        <AlertDescription>
-                          <MarkdownText value={event.signInMessage} />
-                        </AlertDescription>
-                      </Alert>
-                    ) : event.dynamic ? (
-                      <p className="text-sm leading-relaxed text-muted-foreground">
-                        {byHandle
-                          ? "Sign in with X to claim your code, one per X account."
-                          : "Sign in to claim your code, one per verified email address."}
-                      </p>
-                    ) : byHandle ? (
-                      <Alert>
-                        <AtSign />
-                        <AlertTitle>
-                          Sign in with the X account you registered for this
-                          event with
-                        </AlertTitle>
-                        <AlertDescription>
-                          Codes are only dispensed to the X handles your
-                          organizer added. Choose &ldquo;Continue with X&rdquo;
-                          when signing in.
-                        </AlertDescription>
-                      </Alert>
-                    ) : (
-                      <Alert>
-                        <Mail />
-                        <AlertTitle>
-                          Sign in with the email you registered for this event
-                          with
-                        </AlertTitle>
-                        <AlertDescription>
-                          Codes are only dispensed to the addresses your
-                          organizer added. A different email won&apos;t be on
-                          the list, even if it&apos;s yours.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <SignInHint
+                      identity={byHandle ? "x" : "email"}
+                      dynamic={event.dynamic}
+                      message={event.signInMessage}
+                    />
                     <SignInButton mode="modal">
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />

@@ -86,6 +86,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
+import { SignInMessageField } from "@/components/SignInMessageField";
 import {
   DatePicker,
   DynamicToggle,
@@ -1839,27 +1840,14 @@ function EventDetailsForm({
                 }
               />
             </div>
-            <Field className="sm:col-span-2">
-              <FieldLabel htmlFor="detail-signin-message">
-                Sign-in message
-              </FieldLabel>
-              <Textarea
-                id="detail-signin-message"
-                value={signInMessage}
-                onChange={(e) => setSignInMessage(e.target.value)}
-                rows={3}
-                className="resize-y"
-                placeholder={
-                  identity === "x"
-                    ? "Sign in with the X account you RSVP’d with."
-                    : "Sign in with the email you RSVP’d with."
-                }
-              />
-              <FieldDescription>
-                Optional. Shown on the claim page before attendees sign in,
-                replacing the default sign-in hint. Markdown works.
-              </FieldDescription>
-            </Field>
+            <SignInMessageField
+              id="detail-signin-message"
+              className="sm:col-span-2"
+              value={signInMessage}
+              onChange={setSignInMessage}
+              identity={identity}
+              dynamic={dynamic}
+            />
             <DynamicToggle
               id="detail-dynamic"
               className="sm:col-span-2"

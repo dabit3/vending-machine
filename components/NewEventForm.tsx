@@ -25,6 +25,7 @@ import {
 } from "@/lib/stripe-form";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
+import { SignInMessageField } from "@/components/SignInMessageField";
 import {
   DatePicker,
   DynamicToggle,
@@ -272,27 +273,13 @@ export default function NewEventForm({
                           : "Attendees sign in with the email address on your list."
                       }
                     />
-                    <Field>
-                      <FieldLabel htmlFor="event-signin-message">
-                        Sign-in message
-                      </FieldLabel>
-                      <Textarea
-                        id="event-signin-message"
-                        value={signInMessage}
-                        onChange={(e) => setSignInMessage(e.target.value)}
-                        rows={3}
-                        placeholder={
-                          identity === "x"
-                            ? "Sign in with the X account you RSVP’d with."
-                            : "Sign in with the email you RSVP’d with."
-                        }
-                      />
-                      <FieldDescription>
-                        Optional. Shown on the claim page before attendees
-                        sign in, replacing the default sign-in hint. Markdown
-                        works.
-                      </FieldDescription>
-                    </Field>
+                    <SignInMessageField
+                      id="event-signin-message"
+                      value={signInMessage}
+                      onChange={setSignInMessage}
+                      identity={identity}
+                      dynamic={dynamic}
+                    />
                     <DynamicToggle
                       id="event-dynamic"
                       checked={dynamic}
