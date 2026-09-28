@@ -1816,6 +1816,7 @@ function EventDetailsForm({
                 value={eventDate}
                 onChange={setEventDate}
                 placeholder="No date"
+                disablePast
               />
               <FieldDescription>
                 Optional, shown on the claim page.

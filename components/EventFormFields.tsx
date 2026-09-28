@@ -92,7 +92,10 @@ export function DatePicker({
             defaultMonth={selected}
             captionLayout="dropdown"
             startMonth={new Date(
-              Math.min(today.getFullYear() - 10, selected?.getFullYear() ?? Infinity),
+              Math.min(
+                today.getFullYear() - (disablePast ? 0 : 10),
+                selected?.getFullYear() ?? Infinity
+              ),
               0
             )}
             endMonth={new Date(
