@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
 import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -142,6 +143,15 @@ export default function AdminDashboard() {
     api.events.searchByAttendee,
     searchQuery ? { query: searchQuery } : "skip"
   );
+  const nameFilter = searchInput.trim().toLowerCase();
+  const attendeeLike = looksLikeAttendeeQuery(searchInput);
+  const filtered = nameFilter
+    ? events?.filter(
+        (e) =>
+          e.name.toLowerCase().includes(nameFilter) ||
+          e.slug.includes(nameFilter)
+      )
+    : events;
 
   // Mirrors the home page grouping: dated events that have passed sink into
   // their own dimmed group; undated events count as active. Active events
@@ -149,7 +159,7 @@ export default function AdminDashboard() {
   // (newest created) order; past events list the most recently ended first.
   // YYYY-MM-DD compares correctly as a plain string.
   const active =
-    events?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
+    filtered?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
     [];
   const current = [
     ...active
@@ -164,10 +174,10 @@ export default function AdminDashboard() {
   const byDateDesc = (a: ManagedEventItem, b: ManagedEventItem) =>
     (b.eventDate ?? "").localeCompare(a.eventDate ?? "");
   const past = (
-    events?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
+    filtered?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
   const older = (
-    events?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
+    filtered?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
   const olderPageCount = Math.max(1, Math.ceil(older.length / OLDER_PAGE_SIZE));
   const olderPageIndex = Math.min(olderPage, olderPageCount - 1);
@@ -211,7 +221,7 @@ export default function AdminDashboard() {
           className="mb-10"
           onSubmit={(e) => {
             e.preventDefault();
-            setSearchQuery(searchInput.trim());
+            if (attendeeLike) setSearchQuery(searchInput.trim());
           }}
         >
           <InputGroup className="h-10 sm:max-w-md">
@@ -220,15 +230,21 @@ export default function AdminDashboard() {
             </InputGroupAddon>
             <InputGroupInput
               type="search"
-              aria-label="Find events by attendee email or X handle"
-              placeholder="Find events by email or @handle"
+              aria-label="Search events by name, or find an attendee by email or X handle"
+              placeholder="Search events, or find an attendee by email or @handle"
               value={searchInput}
               onChange={(e) => {
                 setSearchInput(e.target.value);
-                if (!e.target.value.trim()) setSearchQuery("");
+                if (e.target.value.trim() !== searchQuery) setSearchQuery("");
               }}
             />
-            {searchQuery ? (
+            {attendeeLike && !searchQuery ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton type="submit" variant="secondary" size="xs">
+                  Find attendee
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : searchInput ? (
               <InputGroupAddon align="inline-end">
                 <InputGroupButton
                   size="icon-xs"
@@ -241,19 +257,13 @@ export default function AdminDashboard() {
                   <X />
                 </InputGroupButton>
               </InputGroupAddon>
-            ) : (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton type="submit" variant="secondary" size="xs">
-                  Search
-                </InputGroupButton>
-              </InputGroupAddon>
-            )}
+            ) : null}
           </InputGroup>
         </form>
       ) : null}
 
       {searchQuery ? (
-        <section aria-live="polite">
+        <section aria-live="polite" className="mb-12">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="min-w-0 truncate text-sm font-medium text-muted-foreground">
               Events for{" "}
@@ -300,7 +310,8 @@ export default function AdminDashboard() {
             </ul>
           )}
         </section>
-      ) : events === undefined ? (
+      ) : null}
+      {events === undefined ? (
         <div className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-16 rounded-xl" />
@@ -320,27 +331,40 @@ export default function AdminDashboard() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : nameFilter && current.length + past.length + older.length === 0 ? (
+        searchQuery ? null : (
+          <p className="text-sm text-muted-foreground" aria-live="polite">
+            No events match &ldquo;{searchInput.trim()}&rdquo;.
+            {attendeeLike
+              ? " Press Enter to find events this attendee is on."
+              : null}
+          </p>
+        )
       ) : (
         <>
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              Active events
-            </h2>
-            <span className="font-mono text-xs text-muted-dim tabular-nums">
-              {String(current.length).padStart(2, "0")}
-            </span>
-          </div>
-          {current.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">
-              No active events right now.
-            </p>
-          ) : (
-            <ul className="mt-4 border-t border-border">
-              {current.map((event) => (
-                <AdminEventRow key={event._id} event={event} />
-              ))}
-            </ul>
-          )}
+          {!nameFilter || current.length > 0 ? (
+            <>
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Active events
+                </h2>
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {String(current.length).padStart(2, "0")}
+                </span>
+              </div>
+              {current.length === 0 ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  No active events right now.
+                </p>
+              ) : (
+                <ul className="mt-4 border-t border-border">
+                  {current.map((event) => (
+                    <AdminEventRow key={event._id} event={event} />
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : null}
           {past.length > 0 ? (
             <>
               <div className="mt-12 flex items-baseline justify-between">
@@ -359,7 +383,7 @@ export default function AdminDashboard() {
             </>
           ) : null}
           {older.length > 0 ? (
-            showOlder ? (
+            showOlder || nameFilter ? (
               <>
                 <div className="mt-12 flex items-baseline justify-between">
                   <h2 className="text-sm font-medium text-muted-foreground">

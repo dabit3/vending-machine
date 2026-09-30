@@ -68,3 +68,9 @@ export function identityLabels(identity: AttendeeIdentity) {
     exportName: "emails",
   };
 }
+
+// Search input that names an attendee (an email, @handle or X profile link)
+// rather than part of an event name.
+export function looksLikeAttendeeQuery(input: string): boolean {
+  return /@|(?:x|twitter)\.com\//i.test(input.trim());
+}
