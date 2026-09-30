@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
-import { ClaimInstructions } from "../components/ClaimInstructions";
+import { ClaimInstructions, claimInstructionsCopyText } from "../components/ClaimInstructions";
+import { RedemptionInstructions } from "../components/RedemptionInstructions";
 import { ClaimInstructionsField } from "../components/ClaimInstructionsField";
 import { CLAIM_INSTRUCTION_PRESETS, claimInstructionsMode } from "../lib/claim-instructions";
 
@@ -123,4 +124,18 @@ test("previews formatted presets and custom instructions in the shared editor", 
   expect(html).toContain("Markdown");
   expect(html).toContain("Preview");
   expect(html).toContain(">checkout</a>");
+});
+
+test("copy text resolves presets and flattens Markdown links and emphasis", () => {
+  expect(
+    claimInstructionsCopyText("**Redeem** at [checkout](https://app.devin.ai/).\n\n1. Open https://app.devin.ai/\n   - Enter your code")
+  ).toBe("Redeem at checkout (https://app.devin.ai/).\n\n1. Open https://app.devin.ai/\n   - Enter your code");
+  expect(claimInstructionsCopyText("[https://x.com](https://x.com)")).toBe("https://x.com");
+  expect(claimInstructionsCopyText(CLAIM_INSTRUCTION_PRESETS.pro.legacyTexts[0])).toBe(CLAIM_INSTRUCTION_PRESETS.pro.text);
+});
+
+test("the claim-page instructions card has a copy button", () => {
+  const html = renderToStaticMarkup(<RedemptionInstructions value="Redeem at checkout." />);
+  expect(html).toContain('aria-label="Copy instructions"');
+  expect(html).toContain("Redeem at checkout.");
 });

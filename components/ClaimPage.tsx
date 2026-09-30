@@ -37,7 +37,7 @@ import {
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
-import { ClaimInstructions } from "@/components/ClaimInstructions";
+import { RedemptionInstructions } from "@/components/RedemptionInstructions";
 import { MarkdownText } from "@/components/MarkdownText";
 import { SignInHint } from "@/components/SignInHint";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -532,11 +532,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           <DialogTitle className="font-heading tracking-tight">
                             How to redeem your code
                           </DialogTitle>
-                          <DialogDescription className="sr-only">
-                            Redemption instructions for {event.name}
+                          <DialogDescription>
+                            Read these before claiming. You can copy them to
+                            keep for later.
                           </DialogDescription>
                         </DialogHeader>
-                        <ClaimInstructions value={event.claimInstructions ?? ""} />
+                        <RedemptionInstructions
+                          value={event.claimInstructions ?? ""}
+                        />
                         <Button
                           variant="brand"
                           size="lg"
@@ -712,11 +715,11 @@ function RedeemInstructionsDialog({
           <DialogTitle className="font-heading tracking-tight">
             How to redeem your code
           </DialogTitle>
-          <DialogDescription className="sr-only">
-            Redemption instructions for {eventName}
+          <DialogDescription>
+            Follow these steps to use your code for {eventName}.
           </DialogDescription>
         </DialogHeader>
-        <ClaimInstructions value={instructions} />
+        <RedemptionInstructions value={instructions} />
       </DialogContent>
     </Dialog>
   );
