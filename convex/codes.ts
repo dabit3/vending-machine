@@ -44,6 +44,22 @@ export const list = query({
   },
 });
 
+// Codes from attached Stripe batches that each redeem twice. Matched by code
+// string so the result survives block renames.
+export const multiUseCodes = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const batches = await ctx.db
+      .query("stripeBatches")
+      .withIndex("by_target_event", (q) => q.eq("targetEventId", args.eventId))
+      .collect();
+    return batches
+      .filter((b) => b.eventId === args.eventId && b.redemptionsPerCode === 2)
+      .flatMap((b) => b.codes.map((c) => c.code));
+  },
+});
+
 export const add = mutation({
   args: {
     eventId: v.id("events"),
