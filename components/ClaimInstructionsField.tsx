@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import {
   CLAIM_INSTRUCTION_PRESETS,
   claimInstructionsMode,
   type ClaimInstructionsMode,
 } from "@/lib/claim-instructions";
+import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,13 +38,17 @@ export function ClaimInstructionsField({
   const [mode, setMode] = useState<ClaimInstructionsMode>(() =>
     claimInstructionsMode(value)
   );
+  const [customDraft, setCustomDraft] = useState(() =>
+    claimInstructionsMode(value) === "custom" ? value : ""
+  );
+  const [showPreview, setShowPreview] = useState(false);
 
   function selectMode(next: ClaimInstructionsMode) {
+    if (mode === "custom") setCustomDraft(value);
     setMode(next);
     if (next === "none") onChange("");
-    else if (next === "custom") {
-      if (claimInstructionsMode(value) !== "custom") onChange("");
-    } else onChange(CLAIM_INSTRUCTION_PRESETS[next].text);
+    else if (next === "custom") onChange(mode === "custom" ? value : customDraft);
+    else onChange(CLAIM_INSTRUCTION_PRESETS[next].text);
   }
 
   return (
@@ -71,14 +77,35 @@ export function ClaimInstructionsField({
             className="resize-y"
             aria-describedby={`${id}-markdown-help`}
           />
-          <FieldDescription id={`${id}-markdown-help`}>
-            Markdown is supported. Use [link text](https://app.devin.ai/) for a link, or paste a URL. Add a blank line between paragraphs.
-          </FieldDescription>
-          {value.trim() && (
-            <div className="flex flex-col gap-2">
-              <p className="text-sm font-medium">Preview</p>
-              <ClaimInstructions value={value} className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground" />
-            </div>
+          <div className="flex items-start justify-between gap-3">
+            <FieldDescription id={`${id}-markdown-help`}>
+              Markdown is supported. Use [link text](https://app.devin.ai/) for a link, or paste a URL. Add a blank line between paragraphs.
+            </FieldDescription>
+            {value.trim() && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={() => setShowPreview((v) => !v)}
+                aria-expanded={showPreview}
+                aria-controls={`${id}-preview`}
+              >
+                {showPreview ? (
+                  <EyeOff data-icon="inline-start" />
+                ) : (
+                  <Eye data-icon="inline-start" />
+                )}
+                {showPreview ? "Hide preview" : "Show preview"}
+              </Button>
+            )}
+          </div>
+          {value.trim() && showPreview && (
+            <ClaimInstructions
+              id={`${id}-preview`}
+              value={value}
+              className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground"
+            />
           )}
         </>
       ) : mode !== "none" ? (

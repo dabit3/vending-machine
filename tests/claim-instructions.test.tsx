@@ -117,13 +117,13 @@ test.each([
   expect(html).not.toMatch(/href=|<script|<img|onerror=/i);
 });
 
-test("previews formatted presets and custom instructions in the shared editor", () => {
+test("previews formatted presets and hides the custom preview until requested", () => {
   const render = (value: string) => renderToStaticMarkup(<ClaimInstructionsField id="instructions" value={value} onChange={() => {}} description="Read before claiming." />);
   expect(render(CLAIM_INSTRUCTION_PRESETS.pro.text)).toContain('href="https://app.devin.ai/"');
   const html = render("Go to [checkout](https://app.devin.ai/).");
   expect(html).toContain("Markdown");
-  expect(html).toContain("Preview");
-  expect(html).toContain(">checkout</a>");
+  expect(html).toContain("Show preview");
+  expect(html).not.toContain(">checkout</a>");
 });
 
 test("copy text resolves presets and flattens Markdown links and emphasis", () => {
