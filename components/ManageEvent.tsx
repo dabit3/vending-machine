@@ -30,6 +30,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { activeCodeTypes, blockKey } from "@/convex/blockValues";
+import { blockValueSummary } from "@/lib/block-value";
 import { downloadCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
 import {
@@ -103,6 +104,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
+  const multiUseCodes = useQuery(api.codes.multiUseCodes, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
@@ -1056,6 +1058,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <CodeBlocks
               types={blockTypes}
               codes={codes}
+              multiUseCodes={multiUseCodes}
               values={event.codeTypeValues}
               onSetValue={(codeType, value) =>
                 setTypeValue({ eventId: id, codeType, value })
@@ -1222,6 +1225,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 function CodeBlocks({
   types,
   codes,
+  multiUseCodes,
   values,
   onRename,
   onSetValue,
@@ -1229,6 +1233,7 @@ function CodeBlocks({
 }: {
   types: string[];
   codes: Doc<"codes">[] | undefined;
+  multiUseCodes: string[] | undefined;
   values: Record<string, string> | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
   onSetValue: (
@@ -1240,6 +1245,7 @@ function CodeBlocks({
   ) => Promise<{ removed: number; kept: number }>;
 }) {
   if (types.length === 0) return null;
+  const twice = new Set(multiUseCodes);
   return (
     <div className="flex flex-col gap-2">
       {types.map((type) => (
@@ -1247,6 +1253,7 @@ function CodeBlocks({
             key={type || "__unnamed"}
             type={type}
             codes={codes?.filter((c) => (c.codeType ?? "") === type) ?? []}
+            twice={twice}
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
@@ -1260,6 +1267,7 @@ function CodeBlocks({
 function CodeBlockRow({
   type,
   codes,
+  twice,
   value,
   onRename,
   onSetValue,
@@ -1267,6 +1275,7 @@ function CodeBlockRow({
 }: {
   type: string;
   codes: Doc<"codes">[];
+  twice: Set<string>;
   value?: string;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
   onSetValue: (
@@ -1284,6 +1293,10 @@ function CodeBlockRow({
   const count = codes.length;
   const claimed = codes.filter((c) => c.claimedBy !== undefined).length;
   const available = count - claimed;
+  const twiceCount = codes.filter((c) => twice.has(c.code)).length;
+  const valueSummary = value
+    ? blockValueSummary(value, count, twiceCount)
+    : null;
   const unclaimed = codes.filter((c) => c.claimedBy === undefined);
   const expiry = blockExpirySummary(
     (unclaimed.length > 0 ? unclaimed : codes).map((c) => c.expiresAt)
@@ -1438,10 +1451,17 @@ function CodeBlockRow({
           </div>
           <dl className="grid grid-cols-1 border-t border-border sm:grid-cols-3 sm:divide-x sm:divide-border">
             <BlockStat label="Value per code">
-              {value ? (
-                <span className="truncate text-xl font-semibold tracking-tight tabular-nums">
-                  {formatBlockValue(value)}
-                </span>
+              {valueSummary ? (
+                <>
+                  <span className="truncate text-xl font-semibold tracking-tight tabular-nums">
+                    {valueSummary.headline}
+                  </span>
+                  {valueSummary.detail ? (
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {valueSummary.detail}
+                    </span>
+                  ) : null}
+                </>
               ) : (
                 <button
                   type="button"
@@ -1481,13 +1501,6 @@ function CodeBlockRow({
       )}
     </div>
   );
-}
-
-// Numeric block values are dollar credits ("20" → "$20"); anything else
-// ("Team plan", "$200") is shown as entered.
-function formatBlockValue(value: string) {
-  const trimmed = value.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
 }
 
 function BlockStat({

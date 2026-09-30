@@ -768,6 +768,22 @@ describe("code library", () => {
   });
 });
 
+  test("lists an event's double-redemption codes for its admins, even after a block rename", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Two uses", stripeGeneration: { ...input, quantity: 2, redemptionsPerCode: 2 } });
+    await admin.mutation(api.stripeBatches.create, { ...input, requestId: "request-single-0001", name: "Single", quantity: 1, eventId: event.id });
+    await drain(t);
+    const codes = await admin.query(api.codes.list, { eventId: event.id });
+    expect(codes).toHaveLength(3);
+    const [batch] = (await admin.query(api.stripeBatches.list, { eventId: event.id })).filter((b) => b.redemptionsPerCode === 2);
+    await admin.mutation(api.codes.renameType, { eventId: event.id, from: batch.codeType, to: "Renamed" });
+    const twice = await admin.query(api.codes.multiUseCodes, { eventId: event.id });
+    expect(twice).toHaveLength(2);
+    expect(codes.filter((c) => twice.includes(c.code))).toHaveLength(2);
+    const stranger = t.withIdentity({ subject: "x", email: "x@example.com", emailVerified: true });
+    await expect(stranger.query(api.codes.multiUseCodes, { eventId: event.id })).rejects.toThrow();
+  });
+
 describe("batch assignment", () => {
   test.each([
     { name: "Itaú Hackathon", codeType: undefined },
