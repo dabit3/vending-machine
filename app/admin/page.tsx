@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Plus,
   Search,
-  Ticket,
   X,
 } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -199,19 +198,10 @@ export default function AdminDashboard() {
           </p>
         </div>
         {isGlobalAdmin ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/admin/codes/new"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Ticket data-icon="inline-start" />
-              New code block
-            </Link>
-            <Link href="/admin/events/new" className={buttonVariants()}>
-              <Plus data-icon="inline-start" />
-              New event
-            </Link>
-          </div>
+          <Link href="/admin/events/new" className={buttonVariants()}>
+            <Plus data-icon="inline-start" />
+            New event
+          </Link>
         ) : null}
       </div>
 

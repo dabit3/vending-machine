@@ -224,15 +224,12 @@ test("the standalone creation route requires system-admin access", async () => {
   expect(html).not.toContain('id="event-name"');
 });
 
-test("the dashboard exposes standalone code creation only to system admins", () => {
+test("the dashboard leaves code block creation to the Codes tab", () => {
   state.global = true;
   const html = renderToStaticMarkup(<AdminDashboard />);
-  expect(html.includes('href="/admin/codes/new"')).toBe(true);
-  expect(html).toContain("New code block");
-  state.global = false;
-  expect(renderToStaticMarkup(<AdminDashboard />)).not.toContain(
-    'href="/admin/codes/new"',
-  );
+  expect(html).toContain('href="/admin/events/new"');
+  expect(html).not.toContain('href="/admin/codes/new"');
+  expect(html).not.toContain("New code block");
 });
 
 test("the dashboard collapses events 14+ days old behind a view-more button", () => {
