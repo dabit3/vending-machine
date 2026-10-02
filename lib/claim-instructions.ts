@@ -44,6 +44,9 @@ const PREVIOUS_SUBSCRIPTION_NOTE = subscriptionNote(
 );
 
 const WINDSURF_NOTE =
+  'If you had a previous Windsurf account and your code does not work (you may see "Exafunction" in the top left corner of the billing page), try using a new email address.';
+
+const LEGACY_WINDSURF_NOTE =
   "If you had a previous Windsurf account and your code does not work, try using a new email address.";
 
 function preset(label: string) {
@@ -52,12 +55,13 @@ function preset(label: string) {
     text: `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${EXISTING_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
     // Earlier wordings still stored on events; rendered as `text`.
     legacyTexts: [
-      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${CANCEL_ACCOUNT_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
-      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${TWO_OPTION_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
-      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${PREVIOUS_SUBSCRIPTION_NOTE}\n\n${WINDSURF_NOTE}`,
-      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${CANCEL_NOTE}\n\n${WINDSURF_NOTE}`,
-      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${WINDSURF_NOTE}`,
-      `Redeem at checkout for a free Devin ${label} plan. ${WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${EXISTING_SUBSCRIPTION_NOTE}\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${CANCEL_ACCOUNT_SUBSCRIPTION_NOTE}\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${TWO_OPTION_SUBSCRIPTION_NOTE}\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${PREVIOUS_SUBSCRIPTION_NOTE}\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${CANCEL_NOTE}\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan at https://app.devin.ai/.\n\n${LEGACY_WINDSURF_NOTE}`,
+      `Redeem at checkout for a free Devin ${label} plan. ${LEGACY_WINDSURF_NOTE}`,
     ],
   } as const;
 }
