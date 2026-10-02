@@ -116,15 +116,11 @@ function AdminEventRow({
             </div>
           ) : null}
         </div>
-        <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
-          {event.eventDate
-            ? formatEventDate(event.eventDate)
-            : new Date(event._creationTime).toLocaleDateString("en-US", {
-                month: "short",
-                day: "2-digit",
-                year: "numeric",
-              })}
-        </span>
+        {event.eventDate ? (
+          <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
+            {formatEventDate(event.eventDate)}
+          </span>
+        ) : null}
       </Link>
     </li>
   );

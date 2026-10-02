@@ -291,6 +291,27 @@ test("the dashboard shows who created an event when it is known", () => {
   expect(renderToStaticMarkup(<AdminDashboard />)).not.toContain("Created by");
 });
 
+test("the dashboard shows an event's date only when it has one", () => {
+  const event = (id: string, eventDate?: string) => ({
+    _id: id as Id<"events">,
+    _creationTime: Date.UTC(2026, 2, 15, 12),
+    name: `Event ${id}`,
+    slug: id,
+    description: undefined,
+    eventDate,
+    dynamic: undefined,
+    identity: "email" as const,
+    createdBy: undefined,
+  });
+  state.events = [event("undated")];
+  const html = renderToStaticMarkup(<AdminDashboard />);
+  expect(html).toContain('href="/admin/events/undated"');
+  expect(html).not.toContain("Mar 15, 2026");
+  expect(html).not.toContain("<time");
+  state.events = [event("dated", "2099-07-04")];
+  expect(renderToStaticMarkup(<AdminDashboard />)).toContain("Jul 4, 2099");
+});
+
 test("the codes page opens a library with an explicit create action", () => {
   const html = renderToStaticMarkup(<CodeStudioPage />);
   expect(html.includes("Code blocks")).toBe(true);
