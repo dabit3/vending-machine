@@ -15,8 +15,8 @@ import { notExpired } from "./codeExpiry";
 import { resolveViewer } from "./identity";
 
 // Participant rows are keyed by the event's identity kind: a lowercased email
-// or an "@handle" (see lib/attendee-identity.ts).
-async function findParticipant(
+// or an "@handle" (see lib/attendee-identity.ts). Includes blocked rows.
+async function findParticipantRow(
   ctx: QueryCtx | MutationCtx,
   event: Doc<"events">,
   key: string
@@ -66,8 +66,9 @@ async function findOrEnrollParticipant(
   event: Doc<"events">,
   key: string
 ) {
-  const existing = await findParticipant(ctx, event, key);
-  if (existing || !event.dynamic) return existing;
+  const existing = await findParticipantRow(ctx, event, key);
+  if (existing) return existing.blockedAt === undefined ? existing : null;
+  if (!event.dynamic) return null;
   if (await isBlacklisted(ctx, key)) return null;
   const id = await ctx.db.insert("emails", { eventId: event._id, email: key });
   return await ctx.db.get(id);
@@ -99,7 +100,9 @@ export const eligibility = query({
       return { eligible: false as const, reason: viewer.reason };
     }
     const key = viewer.ok ? viewer.key : "";
-    const allowed = key ? await findParticipant(ctx, event, key) : null;
+    const row = key ? await findParticipantRow(ctx, event, key) : null;
+    const blocked = row?.blockedAt !== undefined;
+    const allowed = row && !blocked ? row : null;
     if (previewing) {
       const codeTypes = event.codeTypes ?? [];
       const options = codeTypes.length > 1 ? codeTypes : [undefined];
@@ -117,7 +120,8 @@ export const eligibility = query({
         previewCodes,
       };
     }
-    const walkUpEligible = event.dynamic && !(await isBlacklisted(ctx, key));
+    const walkUpEligible =
+      event.dynamic && !row && !(await isBlacklisted(ctx, key));
     if (!allowed && !walkUpEligible) {
       return { eligible: false as const, reason: "not_listed" as const, identity: key };
     }

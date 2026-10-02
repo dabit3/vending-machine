@@ -44,7 +44,10 @@ export const requestAccess = mutation({
     if (whitelisted) {
       return {
         ok: false as const,
-        error: "You're already on the list for this event. Claim your code.",
+        error:
+          whitelisted.blockedAt !== undefined
+            ? "The organizer has turned off claiming for your account on this event."
+            : "You're already on the list for this event. Claim your code.",
       };
     }
 

@@ -232,6 +232,7 @@ export const rejectFlagged = mutation({
     const flagged = await ctx.db.get(args.id);
     if (!flagged) return;
     const actorEmail = await requireEventAdmin(ctx, flagged.eventId);
+    const { isAdmin: isGlobalAdmin } = await adminEmailStatus(ctx);
     await ctx.db.delete(args.id);
     // The address may have become eligible through another path (e.g. an
     // approved access request) while flagged — rejection removes it from the
@@ -242,7 +243,16 @@ export const rejectFlagged = mutation({
         q.eq("eventId", flagged.eventId).eq("email", flagged.email)
       )
       .unique();
-    if (eligible) {
+    if (eligible && !isGlobalAdmin) {
+      // Event admins can't delete participants, so the address is blocked.
+      if (eligible.blockedAt === undefined) {
+        await ctx.db.patch(eligible._id, {
+          blockedAt: Date.now(),
+          blockedBy: actorEmail ?? undefined,
+        });
+      }
+      await releaseReservations(ctx, eligible);
+    } else if (eligible) {
       await ctx.db.delete(eligible._id);
       const reserved = await ctx.db
         .query("codes")
@@ -394,16 +404,7 @@ async function deleteEmail(ctx: MutationCtx, email: Doc<"emails">) {
   await ctx.db.delete(email._id);
   // Release any unclaimed code reserved for this email so it returns to
   // the general pool instead of staying locked away.
-  const reserved = await ctx.db
-    .query("codes")
-    .withIndex("by_event_reservedFor", (q) =>
-      q.eq("eventId", email.eventId).eq("reservedFor", email.email)
-    )
-    .filter((q) => q.eq(q.field("claimedBy"), undefined))
-    .collect();
-  for (const code of reserved) {
-    await ctx.db.patch(code._id, { reservedFor: undefined });
-  }
+  await releaseReservations(ctx, email);
   // Drop an approved access request for this email so the attendee can
   // request access again instead of being stuck showing "approved".
   const request = await ctx.db
@@ -417,13 +418,55 @@ async function deleteEmail(ctx: MutationCtx, email: Doc<"emails">) {
   }
 }
 
+async function releaseReservations(ctx: MutationCtx, email: Doc<"emails">) {
+  const reserved = await ctx.db
+    .query("codes")
+    .withIndex("by_event_reservedFor", (q) =>
+      q.eq("eventId", email.eventId).eq("reservedFor", email.email)
+    )
+    .filter((q) => q.eq(q.field("claimedBy"), undefined))
+    .collect();
+  for (const code of reserved) {
+    await ctx.db.patch(code._id, { reservedFor: undefined });
+  }
+}
+
+// Deleting participants is reserved for system admins; event admins block
+// attendees instead (see setBlocked).
 export const remove = mutation({
   args: { id: v.id("emails") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const email = await ctx.db.get(args.id);
     if (!email) return;
-    await requireEventAdmin(ctx, email.eventId);
     await deleteEmail(ctx, email);
+  },
+});
+
+// Blocking keeps the attendee on the list but stops them from claiming, and
+// releases any code held for them. Codes already claimed are kept.
+export const setBlocked = mutation({
+  args: { id: v.id("emails"), blocked: v.boolean() },
+  handler: async (ctx, args) => {
+    const email = await ctx.db.get(args.id);
+    if (!email) throw new Error("Participant not found");
+    const actorEmail = await requireEventAdmin(ctx, email.eventId);
+    if (args.blocked === (email.blockedAt !== undefined)) return;
+    if (args.blocked) {
+      await ctx.db.patch(email._id, {
+        blockedAt: Date.now(),
+        blockedBy: actorEmail ?? undefined,
+      });
+      await releaseReservations(ctx, email);
+    } else {
+      await ctx.db.patch(email._id, { blockedAt: undefined, blockedBy: undefined });
+    }
+    await logAudit(ctx, {
+      eventId: email.eventId,
+      action: args.blocked ? "email_blocked" : "email_unblocked",
+      actorEmail: actorEmail ?? undefined,
+      subjectEmail: email.email,
+    });
   },
 });
 
@@ -433,7 +476,8 @@ export const remove = mutation({
 export const removeAll = mutation({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
-    const actorEmail = await requireEventAdmin(ctx, args.eventId);
+    await requireAdmin(ctx);
+    const { email: actorEmail } = await adminEmailStatus(ctx);
     const page = await ctx.db
       .query("emails")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))

@@ -66,10 +66,12 @@ export const mine = query({
     for (const key of keys) {
       if (await isBlacklisted(ctx, key)) continue;
       memberships.push(
-        ...(await ctx.db
-          .query("emails")
-          .withIndex("by_email", (q) => q.eq("email", key))
-          .take(MINE_ROWS))
+        ...(
+          await ctx.db
+            .query("emails")
+            .withIndex("by_email", (q) => q.eq("email", key))
+            .take(MINE_ROWS)
+        ).filter((m) => m.blockedAt === undefined)
       );
       claimed.push(
         ...(await ctx.db
