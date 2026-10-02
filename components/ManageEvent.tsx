@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Ticket,
   Trash2,
+  Undo2,
   Upload,
   UserPlus,
   Users,
@@ -108,6 +109,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
+  const setEmailBlocked = useMutation(api.emails.setBlocked);
   const removeAllEmails = useMutation(api.emails.removeAll);
   const approveFlagged = useMutation(api.emails.approveFlagged);
   const rejectFlagged = useMutation(api.emails.rejectFlagged);
@@ -185,7 +187,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const byHandle = identity === "x";
   const labels = identityLabels(identity);
   const listedEmails:
-    | { email: string; id?: Id<"emails">; claimed: boolean }[]
+    | { email: string; id?: Id<"emails">; claimed: boolean; blocked?: boolean }[]
     | undefined = isDynamic
     ? codes &&
       [...claimedCodesByEmail.keys()].map((email) => ({
@@ -196,7 +198,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         email: e.email,
         id: e._id,
         claimed: claimedCodesByEmail.has(e.email),
+        blocked: e.blockedAt !== undefined,
       }));
+  const isGlobalAdmin = access?.isGlobalAdmin === true;
   // Dynamic lists are claimants only, so the status filter doesn't apply.
   const activeEmailFilter: EmailStatusFilter = isDynamic ? "all" : emailFilter;
   const visibleEmails =
@@ -828,7 +832,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   }
                 />
               )}
-              {!isDynamic && emails && emails.length > 0 ? (
+              {isGlobalAdmin && !isDynamic && emails && emails.length > 0 ? (
                 <AlertDialog>
                   <AlertDialogTrigger
                     render={
@@ -957,6 +961,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   key: emailId ?? e.email,
                   label: e.email,
                   claimed: e.claimed && !isDynamic,
+                  blocked: e.blocked,
+                  onToggleBlock:
+                    emailId === undefined
+                      ? undefined
+                      : () =>
+                          setEmailBlocked({
+                            id: emailId,
+                            blocked: !e.blocked,
+                          }).catch(() =>
+                            toast.error(
+                              e.blocked
+                                ? `Failed to allow ${e.email} to claim`
+                                : `Failed to block ${e.email}`
+                            )
+                          ),
                   onReclaim: e.claimed
                     ? () =>
                         setReclaimTarget({
@@ -965,7 +984,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         })
                     : undefined,
                   onRemove:
-                    emailId === undefined
+                    emailId === undefined || !isGlobalAdmin
                       ? undefined
                       : () =>
                           removeEmail({ id: emailId }).catch(() =>
@@ -1758,8 +1777,10 @@ function RowList({
     label: string;
     tag?: string;
     claimed?: boolean;
+    blocked?: boolean;
     claimedBy?: string;
     onReclaim?: () => void;
+    onToggleBlock?: () => void;
     onRemove?: () => void;
   }[];
   emptyText: string;
@@ -1804,7 +1825,11 @@ function RowList({
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
-              className={cn("truncate text-sm", mono && "font-mono text-xs")}
+              className={cn(
+                "truncate text-sm",
+                mono && "font-mono text-xs",
+                item.blocked && "text-muted-foreground line-through"
+              )}
             >
               {item.label}
             </span>
@@ -1823,6 +1848,28 @@ function RowList({
                 <Check data-icon="inline-start" />
                 Claimed
               </Badge>
+            ) : null}
+            {item.blocked ? (
+              <Badge variant="destructive" className="text-[10px]">
+                <Ban data-icon="inline-start" />
+                Blocked
+              </Badge>
+            ) : null}
+            {item.onToggleBlock ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={
+                  item.blocked
+                    ? `Allow ${item.label} to claim`
+                    : `Block ${item.label} from claiming`
+                }
+                title={item.blocked ? "Allow claiming" : "Block from claiming"}
+                onClick={item.onToggleBlock}
+                className="shrink-0 text-muted-foreground"
+              >
+                {item.blocked ? <Undo2 /> : <Ban />}
+              </Button>
             ) : null}
             {item.onReclaim ? (
               <Button

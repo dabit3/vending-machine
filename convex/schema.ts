@@ -94,6 +94,10 @@ export default defineSchema({
     // When the attendee confirmed reading the redemption instructions,
     // required once (per event) before claiming when instructions exist.
     instructionsViewedAt: v.optional(v.number()),
+    // Set by an organizer to stop this attendee from claiming while keeping
+    // them on the list; only system admins can delete participant rows.
+    blockedAt: v.optional(v.number()),
+    blockedBy: v.optional(v.string()),
   })
     .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"])
