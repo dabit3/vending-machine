@@ -54,7 +54,9 @@ const subscriptionNoteHtml = [
   "<li>Sign up with a completely new email address</li>",
   "</ol>",
 ].join("\n");
-const note = "If you had a previous Windsurf account and your code does not work, try using a new email address.";
+const note = 'If you had a previous Windsurf account and your code does not work (you may see "Exafunction" in the top left corner of the billing page), try using a new email address.';
+const noteHtml = note.replaceAll('"', "&quot;");
+const legacyNote = "If you had a previous Windsurf account and your code does not work, try using a new email address.";
 
 test.each(["pro", "max"] as const)("renders the updated %s preset with a checkout link and the three-option subscription note", (plan) => {
   const preset = CLAIM_INSTRUCTION_PRESETS[plan];
@@ -65,7 +67,7 @@ test.each(["pro", "max"] as const)("renders the updated %s preset with a checkou
   expect(html).toContain('href="https://app.devin.ai/"');
   expect(html).toContain('target="_blank"');
   expect(html).toContain('rel="noopener noreferrer"');
-  expect(html).toContain(`${subscriptionNoteHtml}\n<p>${note}</p>`);
+  expect(html).toContain(`${subscriptionNoteHtml}\n<p>${noteHtml}</p>`);
   expect(html).not.toContain("cancel your subscription");
   expect(html).not.toContain("Create new account in your current org");
   expect(html.match(/<p\b/g)).toHaveLength(3);
@@ -73,13 +75,14 @@ test.each(["pro", "max"] as const)("renders the updated %s preset with a checkou
 
 test.each(["pro", "max"] as const)("recognizes and displays legacy %s presets without rewriting custom instructions", (plan) => {
   const preset = CLAIM_INSTRUCTION_PRESETS[plan];
-  const legacy = `Redeem at checkout for a free Devin ${preset.label} plan. ${note}`;
-  const previous = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${note}`;
-  const cancel = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelNote}\n\n${note}`;
-  const twoOptions = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${previousSubscriptionNote}\n\n${note}`;
-  const twoOptionsCurrentOrg = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${twoOptionSubscriptionNote}\n\n${note}`;
-  const cancelAccount = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelAccountSubscriptionNote}\n\n${note}`;
-  for (const stored of [legacy, previous, cancel, twoOptions, twoOptionsCurrentOrg, cancelAccount]) {
+  const legacy = `Redeem at checkout for a free Devin ${preset.label} plan. ${legacyNote}`;
+  const previous = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${legacyNote}`;
+  const cancel = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelNote}\n\n${legacyNote}`;
+  const twoOptions = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${previousSubscriptionNote}\n\n${legacyNote}`;
+  const twoOptionsCurrentOrg = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${twoOptionSubscriptionNote}\n\n${legacyNote}`;
+  const cancelAccount = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${cancelAccountSubscriptionNote}\n\n${legacyNote}`;
+  const withoutExafunction = `Redeem at checkout for a free Devin ${preset.label} plan at https://app.devin.ai/.\n\n${subscriptionNote}\n\n${legacyNote}`;
+  for (const stored of [legacy, previous, cancel, twoOptions, twoOptionsCurrentOrg, cancelAccount, withoutExafunction]) {
     expect(claimInstructionsMode(stored)).toBe(plan);
     const html = renderToStaticMarkup(<ClaimInstructions value={stored} />);
     expect(html).toContain('href="https://app.devin.ai/"');
@@ -87,6 +90,7 @@ test.each(["pro", "max"] as const)("recognizes and displays legacy %s presets wi
     expect(html).not.toContain("cancel your subscription");
     expect(html).not.toContain("Create new account in your current org");
     expect(html).not.toContain("Cancel your account");
+    expect(html).toContain(noteHtml);
   }
   const custom = `${legacy} Contact your event host.`;
   expect(claimInstructionsMode(custom)).toBe("custom");
