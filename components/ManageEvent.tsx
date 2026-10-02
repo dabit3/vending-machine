@@ -2027,7 +2027,7 @@ function EventDetailsForm({
                 disablePast
               />
               <FieldDescription>
-                Optional, shown on the claim page.
+                Optional. Leave it empty and no date is shown anywhere.
               </FieldDescription>
             </Field>
             <ClaimInstructionsField
