@@ -136,20 +136,27 @@ test("removeAll is scoped to the event and requires system admin access", async 
   expect(await admin.query(api.emails.list, { eventId: other.id })).toHaveLength(1);
 });
 
-test("only system admins can delete a participant", async () => {
+test("event admins can delete participants only on events they manage", async () => {
   const { t, admin, event } = await setup();
+  const other = await admin.mutation(api.events.create, { name: "Other" });
   await admin.mutation(api.emails.add, {
     eventId: event.id,
     emails: ["one@example.com", "two@example.com"],
   });
+  await admin.mutation(api.emails.add, {
+    eventId: other.id,
+    emails: ["three@example.com"],
+  });
   const organizer = await withOrganizer(t, event.id);
   const [one, two] = await admin.query(api.emails.list, { eventId: event.id });
+  const [three] = await admin.query(api.emails.list, { eventId: other.id });
+  await organizer.mutation(api.emails.remove, { id: one._id });
   await expect(
-    organizer.mutation(api.emails.remove, { id: one._id }),
-  ).rejects.toThrow("Not an admin");
+    organizer.mutation(api.emails.remove, { id: three._id }),
+  ).rejects.toThrow("Not an admin for this event");
   await admin.mutation(api.emails.remove, { id: two._id });
-  const left = await admin.query(api.emails.list, { eventId: event.id });
-  expect(left.map((e) => e.email)).toEqual([one.email]);
+  expect(await admin.query(api.emails.list, { eventId: event.id })).toHaveLength(0);
+  expect(await admin.query(api.emails.list, { eventId: other.id })).toHaveLength(1);
 });
 
 test("event admins can block and unblock a participant from claiming", async () => {

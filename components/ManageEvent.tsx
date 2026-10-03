@@ -984,7 +984,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                         })
                     : undefined,
                   onRemove:
-                    emailId === undefined || !isGlobalAdmin
+                    emailId === undefined
                       ? undefined
                       : () =>
                           removeEmail({ id: emailId }).catch(() =>
