@@ -232,7 +232,6 @@ export const rejectFlagged = mutation({
     const flagged = await ctx.db.get(args.id);
     if (!flagged) return;
     const actorEmail = await requireEventAdmin(ctx, flagged.eventId);
-    const { isAdmin: isGlobalAdmin } = await adminEmailStatus(ctx);
     await ctx.db.delete(args.id);
     // The address may have become eligible through another path (e.g. an
     // approved access request) while flagged — rejection removes it from the
@@ -243,16 +242,7 @@ export const rejectFlagged = mutation({
         q.eq("eventId", flagged.eventId).eq("email", flagged.email)
       )
       .unique();
-    if (eligible && !isGlobalAdmin) {
-      // Event admins can't delete participants, so the address is blocked.
-      if (eligible.blockedAt === undefined) {
-        await ctx.db.patch(eligible._id, {
-          blockedAt: Date.now(),
-          blockedBy: actorEmail ?? undefined,
-        });
-      }
-      await releaseReservations(ctx, eligible);
-    } else if (eligible) {
+    if (eligible) {
       await ctx.db.delete(eligible._id);
       const reserved = await ctx.db
         .query("codes")
@@ -431,14 +421,12 @@ async function releaseReservations(ctx: MutationCtx, email: Doc<"emails">) {
   }
 }
 
-// Deleting participants is reserved for system admins; event admins block
-// attendees instead (see setBlocked).
 export const remove = mutation({
   args: { id: v.id("emails") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
     const email = await ctx.db.get(args.id);
     if (!email) return;
+    await requireEventAdmin(ctx, email.eventId);
     await deleteEmail(ctx, email);
   },
 });
