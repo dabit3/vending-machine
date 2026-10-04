@@ -79,6 +79,12 @@ test("create and update store an end date only after the start", async () => {
   await expect(
     admin.mutation(api.events.update, { ...base, eventDate: "2026-10-10", eventEndDate: "soon" })
   ).rejects.toThrow("valid event date");
+  await expect(
+    admin.mutation(api.events.update, { ...base, eventDate: "2026-02-10", eventEndDate: "2026-02-30" })
+  ).rejects.toThrow("valid event date");
+  await expect(
+    admin.mutation(api.events.update, { ...base, eventDate: "2026-02-30" })
+  ).rejects.toThrow("valid event date");
 });
 
 test("legacy single-date events read back without an end date", async () => {

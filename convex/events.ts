@@ -30,7 +30,11 @@ const identityValidator = v.union(v.literal("email"), v.literal("x"));
 function normalizeEventDate(raw?: string): string | undefined {
   const trimmed = raw?.trim();
   if (!trimmed) return undefined;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed) || isNaN(Date.parse(trimmed))) {
+  const parsed = /^\d{4}-\d{2}-\d{2}$/.test(trimmed)
+    ? new Date(`${trimmed}T00:00:00Z`)
+    : null;
+  // Round-trip so overflow days like 2026-02-30 are rejected.
+  if (!parsed || isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== trimmed) {
     throw new Error("Enter a valid event date");
   }
   return trimmed;
