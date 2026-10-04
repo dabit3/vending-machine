@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
+  ArrowRight,
   ArrowUpRight,
   BookOpen,
   CalendarClock,
@@ -894,6 +895,14 @@ function Receipt({
               instructions={instructions}
             />
           ) : null}
+          <Button
+            variant="outline"
+            render={<Link href="/get-started" />}
+            nativeButton={false}
+          >
+            How to use your code
+            <ArrowRight data-icon="inline-end" aria-hidden />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
