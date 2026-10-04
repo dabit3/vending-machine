@@ -93,7 +93,7 @@ import EventStripeCodes from "@/components/EventStripeCodes";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 import { SignInMessageField } from "@/components/SignInMessageField";
 import {
-  DatePicker,
+  EventDatesField,
   DynamicToggle,
   IdentityPicker,
   SlugInput,
@@ -1924,6 +1924,7 @@ function EventDetailsForm({
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
+  const [eventEndDate, setEventEndDate] = useState(event.eventEndDate ?? "");
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
@@ -1940,6 +1941,7 @@ function EventDetailsForm({
     slugify(slug) !== event.slug ||
     description.trim() !== (event.description ?? "") ||
     eventDate !== (event.eventDate ?? "") ||
+    eventEndDate !== (event.eventEndDate ?? "") ||
     claimInstructions.trim() !== (event.claimInstructions ?? "") ||
     dynamic !== (event.dynamic ?? false) ||
     identity !== (event.identity ?? "email") ||
@@ -1955,6 +1957,7 @@ function EventDetailsForm({
         slug,
         description: description || undefined,
         eventDate: eventDate || undefined,
+        eventEndDate,
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
         identity,
@@ -2017,19 +2020,17 @@ function EventDetailsForm({
                 Pasted links become clickable; Markdown works too.
               </FieldDescription>
             </Field>
-            <Field>
-              <FieldLabel htmlFor="detail-date">Event date</FieldLabel>
-              <DatePicker
-                id="detail-date"
-                value={eventDate}
-                onChange={setEventDate}
-                placeholder="No date"
-                disablePast
-              />
-              <FieldDescription>
-                Optional. Leave it empty and no date is shown anywhere.
-              </FieldDescription>
-            </Field>
+            <EventDatesField
+              id="detail-date"
+              startDate={eventDate}
+              endDate={eventEndDate}
+              onChange={(dates) => {
+                setEventDate(dates.startDate);
+                setEventEndDate(dates.endDate);
+              }}
+              placeholder="No date"
+              description="Optional. Leave it empty and no date is shown anywhere."
+            />
             <ClaimInstructionsField
               id="detail-instructions"
               className="sm:col-span-2"

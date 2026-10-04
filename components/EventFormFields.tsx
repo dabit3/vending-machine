@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AtSign, CalendarDays, Mail, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { AtSign, CalendarDays, Mail, Plus, X } from "lucide-react";
 import { APP_URL } from "@/lib/app-name";
 import {
   ATTENDEE_IDENTITIES,
@@ -51,6 +51,7 @@ export function DatePicker({
   onChange,
   placeholder = "Pick a date",
   disablePast = false,
+  after,
   className,
 }: {
   id: string;
@@ -58,12 +59,24 @@ export function DatePicker({
   onChange: (value: string) => void;
   placeholder?: string;
   disablePast?: boolean;
+  // YYYY-MM-DD; only later days can be picked.
+  after?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const selected = parseDate(value);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const afterDate = after ? parseDate(after) : undefined;
+  const firstAllowed = afterDate
+    ? new Date(afterDate.getFullYear(), afterDate.getMonth(), afterDate.getDate() + 1)
+    : undefined;
+  const minDate =
+    firstAllowed && (!disablePast || firstAllowed > today)
+      ? firstAllowed
+      : disablePast
+        ? today
+        : undefined;
 
   return (
     <div className={cn("relative flex w-full", className)}>
@@ -89,7 +102,7 @@ export function DatePicker({
           <Calendar
             mode="single"
             selected={selected}
-            defaultMonth={selected}
+            defaultMonth={selected ?? minDate}
             captionLayout="dropdown"
             startMonth={new Date(
               Math.min(
@@ -102,7 +115,7 @@ export function DatePicker({
               Math.max(today.getFullYear() + 25, selected?.getFullYear() ?? -Infinity),
               11
             )}
-            disabled={disablePast ? { before: today } : undefined}
+            disabled={minDate ? { before: minDate } : undefined}
             onSelect={(date) => {
               onChange(date ? toDateValue(date) : "");
               setOpen(false);
@@ -113,6 +126,7 @@ export function DatePicker({
               type="button"
               variant="ghost"
               size="sm"
+              disabled={minDate !== undefined && minDate > today}
               onClick={() => {
                 onChange(toDateValue(today));
                 setOpen(false);
@@ -148,6 +162,87 @@ export function DatePicker({
         </Button>
       ) : null}
     </div>
+  );
+}
+
+// Event date with an optional end date for multi-day events. Values are
+// YYYY-MM-DD strings; "" means unset.
+export function EventDatesField({
+  id,
+  startDate,
+  endDate,
+  onChange,
+  placeholder,
+  description,
+  className,
+}: {
+  id: string;
+  startDate: string;
+  endDate: string;
+  onChange: (dates: { startDate: string; endDate: string }) => void;
+  placeholder?: string;
+  description?: ReactNode;
+  className?: string;
+}) {
+  const [addingEnd, setAddingEnd] = useState(false);
+  const multiDay = Boolean(startDate) && (addingEnd || Boolean(endDate));
+
+  return (
+    <Field className={className}>
+      <div className="flex min-h-6 items-center justify-between gap-2">
+        <FieldLabel htmlFor={id}>
+          {multiDay ? "Event dates" : "Event date"}
+        </FieldLabel>
+        {startDate ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="text-muted-foreground"
+            onClick={() => {
+              if (multiDay) {
+                setAddingEnd(false);
+                onChange({ startDate, endDate: "" });
+              } else {
+                setAddingEnd(true);
+              }
+            }}
+          >
+            {multiDay ? "Single day" : (
+              <>
+                <Plus data-icon="inline-start" />
+                End date
+              </>
+            )}
+          </Button>
+        ) : null}
+      </div>
+      <div className="flex flex-col gap-2">
+        <DatePicker
+          id={id}
+          value={startDate}
+          onChange={(next) => {
+            if (!next) setAddingEnd(false);
+            onChange({
+              startDate: next,
+              endDate: next && endDate > next ? endDate : "",
+            });
+          }}
+          placeholder={multiDay ? "Start date" : placeholder}
+          disablePast
+        />
+        {multiDay ? (
+          <DatePicker
+            id={`${id}-end`}
+            value={endDate}
+            onChange={(next) => onChange({ startDate, endDate: next })}
+            placeholder="End date"
+            after={startDate}
+          />
+        ) : null}
+      </div>
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
+    </Field>
   );
 }
 

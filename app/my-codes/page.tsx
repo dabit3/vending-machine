@@ -15,7 +15,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
 import { api } from "@/convex/_generated/api";
-import { formatEventDate } from "@/lib/event-date";
+import { formatEventDateRange } from "@/lib/event-date";
 import { codeExpiry } from "@/lib/code-expiry";
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
@@ -54,11 +54,12 @@ interface EventInfo {
   slug: string;
   creditAmount?: string;
   eventDate?: string;
+  eventEndDate?: string;
 }
 
 function eventMeta(event: EventInfo) {
   const parts: string[] = [];
-  if (event.eventDate) parts.push(formatEventDate(event.eventDate));
+  if (event.eventDate) parts.push(formatEventDateRange(event.eventDate, event.eventEndDate));
   if (event.creditAmount) parts.push(formatValue(event.creditAmount));
   return parts.length > 0 ? parts.join(" · ") : null;
 }

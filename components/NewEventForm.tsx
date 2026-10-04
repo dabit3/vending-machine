@@ -27,7 +27,7 @@ import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 import { SignInMessageField } from "@/components/SignInMessageField";
 import {
-  DatePicker,
+  EventDatesField,
   DynamicToggle,
   IdentityPicker,
   SlugInput,
@@ -74,6 +74,7 @@ export default function NewEventForm({
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [eventEndDate, setEventEndDate] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dynamic, setDynamic] = useState(false);
@@ -101,6 +102,7 @@ export default function NewEventForm({
         name,
         slug: slug || undefined,
         eventDate: eventDate || undefined,
+        eventEndDate: eventEndDate || undefined,
         description: description || undefined,
         claimInstructions: instructions || undefined,
         dynamic,
@@ -203,16 +205,16 @@ export default function NewEventForm({
                       placeholder="Build with Devin"
                     />
                   </Field>
-                  <Field>
-                    <FieldLabel htmlFor="event-date">Event date</FieldLabel>
-                    <DatePicker
-                      id="event-date"
-                      value={eventDate}
-                      onChange={setEventDate}
-                      placeholder="Optional"
-                      disablePast
-                    />
-                  </Field>
+                  <EventDatesField
+                    id="event-date"
+                    startDate={eventDate}
+                    endDate={eventEndDate}
+                    onChange={(dates) => {
+                      setEventDate(dates.startDate);
+                      setEventEndDate(dates.endDate);
+                    }}
+                    placeholder="Optional"
+                  />
                 </FieldGroup>
                 <Field>
                   <FieldLabel htmlFor="event-description">

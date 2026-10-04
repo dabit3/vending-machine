@@ -7,7 +7,7 @@ import { SignInButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
-import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import { daysSinceEventEnded, formatEventDateRange } from "@/lib/event-date";
 import { markdownToPlainText } from "@/lib/markdown-plain";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -36,6 +36,7 @@ interface EventItem {
   slug: string;
   description?: string;
   eventDate?: string;
+  eventEndDate?: string;
   claimed: boolean;
 }
 
@@ -215,7 +216,9 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
 }
 
 function EventCard({ event, index }: { event: EventItem; index: number }) {
-  const past = event.eventDate ? daysUntilEvent(event.eventDate) < 0 : false;
+  const past = event.eventDate
+    ? daysSinceEventEnded(event.eventDate, event.eventEndDate) > 0
+    : false;
   return (
     <li
       className="min-w-0 animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
@@ -236,7 +239,7 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
             <span className="mt-1 block truncate text-xs text-muted-dim">
               {event.eventDate ? (
                 <time dateTime={event.eventDate} className="tabular-nums">
-                  {formatEventDate(event.eventDate)}
+                  {formatEventDateRange(event.eventDate, event.eventEndDate)}
                 </time>
               ) : null}
               {event.eventDate && event.description ? " · " : null}

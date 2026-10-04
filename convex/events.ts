@@ -36,6 +36,16 @@ function normalizeEventDate(raw?: string): string | undefined {
   return trimmed;
 }
 
+// A multi-day event's end date only counts when it falls after the start;
+// an end on or before the start (or without one) means a single-day event.
+function resolveEventEndDate(
+  start: string | undefined,
+  rawEnd?: string
+): string | undefined {
+  const end = normalizeEventDate(rawEnd);
+  return start && end && end > start ? end : undefined;
+}
+
 // Events are never listed publicly; attendees reach them through the claim
 // URL / QR code their organizer shares. Clients built before the home page
 // stopped listing events still subscribe to this until they reload.
@@ -94,6 +104,7 @@ export const mine = query({
         slug: event.slug,
         description: event.description,
         eventDate: event.eventDate,
+        eventEndDate: event.eventEndDate,
         claimed: claimedEventIds.has(event._id),
       }))
       .sort((a, b) => {
@@ -156,6 +167,7 @@ export const getBySlug = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
+      eventEndDate: event.eventEndDate,
       claimInstructions: event.claimInstructions,
       creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
@@ -190,6 +202,7 @@ export const get = query({
       codeTypes: event.codeTypes,
       codeTypeValues: event.codeTypeValues,
       eventDate: event.eventDate,
+      eventEndDate: event.eventEndDate,
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
       identity: eventIdentity(event),
@@ -227,6 +240,7 @@ export const listManaged = query({
       slug: event.slug,
       description: event.description,
       eventDate: event.eventDate,
+      eventEndDate: event.eventEndDate,
       dynamic: event.dynamic,
       identity: eventIdentity(event),
       createdBy: event.createdBy,
@@ -361,6 +375,7 @@ export const searchByAttendee = query({
         name: event.name,
         slug: event.slug,
         eventDate: event.eventDate,
+        eventEndDate: event.eventEndDate,
         dynamic: event.dynamic,
         identity: eventIdentity(event),
         createdBy: event.createdBy,
@@ -376,6 +391,7 @@ export const create = mutation({
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
@@ -401,11 +417,13 @@ export const create = mutation({
     ) {
       slug = `${base}-${Math.random().toString(36).slice(2, 8)}`;
     }
+    const eventDate = normalizeEventDate(args.eventDate);
     const id = await ctx.db.insert("events", {
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
-      eventDate: normalizeEventDate(args.eventDate),
+      eventDate,
+      eventEndDate: resolveEventEndDate(eventDate, args.eventEndDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
       identity: args.identity === "x" ? "x" : undefined,
@@ -430,6 +448,7 @@ export const update = mutation({
     slug: v.string(),
     description: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
@@ -483,11 +502,18 @@ export const update = mutation({
         );
       }
     }
+    const eventDate = normalizeEventDate(args.eventDate);
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
-      eventDate: normalizeEventDate(args.eventDate),
+      eventDate,
+      // Older admin forms don't send `eventEndDate`; keep the stored end
+      // date (dropped if it no longer falls after the start). "" clears it.
+      eventEndDate: resolveEventEndDate(
+        eventDate,
+        args.eventEndDate ?? current.eventEndDate
+      ),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
       // Older admin forms don't send `identity`; leave the setting untouched

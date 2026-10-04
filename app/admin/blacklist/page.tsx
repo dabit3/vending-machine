@@ -20,7 +20,7 @@ import {
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { formatEventDate } from "@/lib/event-date";
+import { formatEventDateRange } from "@/lib/event-date";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -317,7 +317,10 @@ export default function BlacklistPage() {
                               </Link>
                               {event.eventDate ? (
                                 <span className="shrink-0 text-muted-dim">
-                                  {formatEventDate(event.eventDate)}
+                                  {formatEventDateRange(
+                                    event.eventDate,
+                                    event.eventEndDate ?? undefined
+                                  )}
                                 </span>
                               ) : null}
                             </span>

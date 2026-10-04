@@ -272,6 +272,7 @@ export const mine = query({
                 slug: event.slug,
                 creditAmount: blockValue(event, c.codeType),
                 eventDate: event.eventDate,
+                eventEndDate: event.eventEndDate,
               }
             : null,
         };

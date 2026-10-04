@@ -51,6 +51,9 @@ export default defineSchema({
     // Legacy event-wide value; superseded by per-block codeTypeValues.
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
+    // Last day of a multi-day event (YYYY-MM-DD, after eventDate). Absent
+    // for single-day and undated events.
+    eventEndDate: v.optional(v.string()),
     // Optional post-claim redemption instructions shown to attendees.
     claimInstructions: v.optional(v.string()),
     // Legacy: events used to be listed on the home page unless hidden. No

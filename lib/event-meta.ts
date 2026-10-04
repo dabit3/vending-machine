@@ -6,6 +6,7 @@ export type EventMeta = {
   name: string;
   description?: string;
   eventDate?: string;
+  eventEndDate?: string;
 };
 
 // Server-side event lookup for metadata and social cards. Any failure (no
@@ -19,7 +20,12 @@ export async function fetchEventMeta(slug: string): Promise<EventMeta | null> {
       ? markdownToPlainText(event.description).replace(/\s+/g, " ").trim()
       : "";
     const description = plain ? truncate(plain, 160) : undefined;
-    return { name: event.name, description, eventDate: event.eventDate };
+    return {
+      name: event.name,
+      description,
+      eventDate: event.eventDate,
+      eventEndDate: event.eventEndDate,
+    };
   } catch {
     return null;
   }

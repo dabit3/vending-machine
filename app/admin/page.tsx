@@ -14,7 +14,11 @@ import {
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
-import { daysUntilEvent, formatEventDate } from "@/lib/event-date";
+import {
+  daysSinceEventEnded,
+  eventLastDay,
+  formatEventDateRange,
+} from "@/lib/event-date";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -44,6 +48,7 @@ interface ManagedEventItem {
   name: string;
   slug: string;
   eventDate?: string;
+  eventEndDate?: string;
   dynamic?: boolean;
   identity?: "email" | "x";
   createdBy?: string;
@@ -118,7 +123,7 @@ function AdminEventRow({
         </div>
         {event.eventDate ? (
           <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
-            {formatEventDate(event.eventDate)}
+            {formatEventDateRange(event.eventDate, event.eventEndDate)}
           </span>
         ) : null}
       </Link>
@@ -154,7 +159,9 @@ export default function AdminDashboard() {
   // (newest created) order; past events list the most recently ended first.
   // YYYY-MM-DD compares correctly as a plain string.
   const active =
-    filtered?.filter((e) => !e.eventDate || daysUntilEvent(e.eventDate) >= 0) ??
+    filtered?.filter(
+      (e) => !e.eventDate || daysSinceEventEnded(e.eventDate, e.eventEndDate) <= 0
+    ) ??
     [];
   const current = [
     ...active
@@ -165,9 +172,11 @@ export default function AdminDashboard() {
   // Ended events split at RECENT_PAST_DAYS: the recent ones list under
   // "Past events", the rest are collapsed and paged under "Older events".
   const daysAgo = (e: ManagedEventItem) =>
-    e.eventDate ? -daysUntilEvent(e.eventDate) : 0;
+    e.eventDate ? daysSinceEventEnded(e.eventDate, e.eventEndDate) : 0;
+  const lastDay = (e: ManagedEventItem) =>
+    e.eventDate ? eventLastDay(e.eventDate, e.eventEndDate) : "";
   const byDateDesc = (a: ManagedEventItem, b: ManagedEventItem) =>
-    (b.eventDate ?? "").localeCompare(a.eventDate ?? "");
+    lastDay(b).localeCompare(lastDay(a));
   const past = (
     filtered?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
@@ -288,7 +297,10 @@ export default function AdminDashboard() {
                   match={result}
                   past={
                     result.eventDate
-                      ? daysUntilEvent(result.eventDate) < 0
+                      ? daysSinceEventEnded(
+                          result.eventDate,
+                          result.eventEndDate
+                        ) > 0
                       : false
                   }
                 />
