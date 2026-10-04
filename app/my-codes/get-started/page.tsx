@@ -112,10 +112,6 @@ const TIPS: ReactNode[] = [
     <strong className="font-medium text-foreground">Keep tasks scoped.</strong>{" "}
     Split big projects into steps Devin can finish and you can check.
   </>,
-  <>
-    <strong className="font-medium text-foreground">Connect GitHub.</strong>{" "}
-    Devin can then clone your repos and open pull requests.
-  </>,
 ];
 
 const DOCS: { label: string; href: string }[] = [
@@ -125,7 +121,10 @@ const DOCS: { label: string; href: string }[] = [
     href: "https://docs.devin.ai/essential-guidelines/instructing-devin-effectively",
   },
   { label: "When to use Devin", href: "https://docs.devin.ai/essential-guidelines/when-to-use-devin" },
-  { label: "Connect GitHub", href: "https://docs.devin.ai/integrations/gh" },
+  {
+    label: "Testing and recordings",
+    href: "https://docs.devin.ai/work-with-devin/testing-and-recordings",
+  },
   { label: "Plans and usage", href: "https://docs.devin.ai/admin/billing/self-serve" },
   { label: "Release notes", href: "https://docs.devin.ai/release-notes/overview" },
 ];
