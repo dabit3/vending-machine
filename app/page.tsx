@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, LogIn, Ticket } from "lucide-react";
+import { ArrowRight, ArrowUpRight, LogIn, Ticket } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { SignInButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -86,6 +86,17 @@ export default function Home() {
                 >
                   <Ticket data-icon="inline-start" />
                   My codes
+                </Link>
+                <Link
+                  href="/my-codes/get-started"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "lg" }),
+                    HERO_BUTTON,
+                    "text-muted-foreground",
+                  )}
+                >
+                  How to use your codes
+                  <ArrowRight data-icon="inline-end" aria-hidden />
                 </Link>
               </div>
               <p className="mt-7 text-xs text-muted-dim">

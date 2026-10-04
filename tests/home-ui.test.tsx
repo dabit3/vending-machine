@@ -78,6 +78,7 @@ test("signed-in visitors see every event they are eligible for, in server order"
   expect(html).toContain("Welcome back");
   expect(html).toMatch(/<h2\b[^>]*>Your events<\/h2>/);
   expect(html).toContain('href="/my-codes"');
+  expect(html).toContain('href="/my-codes/get-started"');
   expect(html).not.toContain("Scan to claim");
   expect(html).toMatch(/<section class="(?:(?!\bhidden lg:flex\b)[^"])*" aria-label="Your events"/);
   for (const slug of ["today", "upcoming", "open", "old"]) {
