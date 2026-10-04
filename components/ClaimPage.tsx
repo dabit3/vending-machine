@@ -31,9 +31,9 @@ import {
 import { api } from "@/convex/_generated/api";
 import { blockKey } from "@/convex/blockValues";
 import {
-  daysUntilEvent,
   eventCountdownLabel,
-  formatEventDate,
+  formatEventDateRange,
+  isEventLive,
 } from "@/lib/event-date";
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
@@ -371,9 +371,10 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     {event.eventDate ? (
                       <span className="flex items-center gap-1.5 tabular-nums">
                         <CalendarDays className="size-3.5" aria-hidden />
-                        {formatEventDate(event.eventDate)}
-                        {eventCountdownLabel(event.eventDate) ? (
-                          daysUntilEvent(event.eventDate) === 0 ? (
+                        {formatEventDateRange(event.eventDate, event.eventEndDate)}
+                        {isEventLive(event.eventDate, event.eventEndDate) ||
+                        eventCountdownLabel(event.eventDate) ? (
+                          isEventLive(event.eventDate, event.eventEndDate) ? (
                             <Badge variant="secondary" className="gap-1.5">
                               <span
                                 className="size-1.5 animate-pulse rounded-full bg-brand motion-reduce:animate-none"

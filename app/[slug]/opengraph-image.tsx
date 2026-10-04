@@ -1,5 +1,5 @@
 import { fetchEventMeta } from "@/lib/event-meta";
-import { formatEventDate } from "@/lib/event-date";
+import { formatEventDateRange } from "@/lib/event-date";
 import {
   OG_CONTENT_TYPE,
   OG_SIZE,
@@ -21,7 +21,7 @@ export default async function Image({
   if (!event) return renderOgImage(homeCard());
   return renderOgImage({
     eyebrow: event.eventDate
-      ? formatEventDate(event.eventDate)
+      ? formatEventDateRange(event.eventDate, event.eventEndDate)
       : homeCard().eyebrow,
     title: event.name,
     subtitle: event.description ?? "Sign in to claim your credits.",

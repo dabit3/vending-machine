@@ -381,6 +381,7 @@ export const searchAttendees = query({
           id: event._id,
           name: event.name,
           eventDate: event.eventDate ?? null,
+          eventEndDate: event.eventEndDate ?? null,
           eligible: history.eligible,
           claimedAt: history.claimedAt,
         })),
