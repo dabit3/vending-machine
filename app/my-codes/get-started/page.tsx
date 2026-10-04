@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: `Get started with Devin · ${getAppName()}`,
   description:
     "How to apply your Devin credit code, and where to start once it's active.",
-  alternates: { canonical: "/get-started" },
+  alternates: { canonical: "/my-codes/get-started" },
 };
 
 const PLANS_URL = "https://app.devin.ai/settings/plans";

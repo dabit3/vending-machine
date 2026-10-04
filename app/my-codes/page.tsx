@@ -123,7 +123,7 @@ export default function MyCodesPage() {
               variant="outline"
               size="sm"
               className="self-start sm:self-auto"
-              render={<Link href="/get-started" />}
+              render={<Link href="/my-codes/get-started" />}
               nativeButton={false}
             >
               How to use your codes

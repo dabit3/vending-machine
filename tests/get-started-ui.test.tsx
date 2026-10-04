@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-import GetStartedPage from "../app/get-started/page";
+import GetStartedPage from "../app/my-codes/get-started/page";
 
 vi.mock("../components/SiteHeader", () => ({ default: () => <header /> }));
 vi.mock("../components/SiteFooter", () => ({ default: () => <footer /> }));

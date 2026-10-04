@@ -897,7 +897,7 @@ function Receipt({
           ) : null}
           <Button
             variant="outline"
-            render={<Link href="/get-started" />}
+            render={<Link href="/my-codes/get-started" />}
             nativeButton={false}
           >
             How to use your code
