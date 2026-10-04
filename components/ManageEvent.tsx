@@ -2035,7 +2035,7 @@ function EventDetailsForm({
               className="sm:col-span-2"
               value={claimInstructions}
               onChange={setClaimInstructions}
-              description="Optional. When set, attendees see a “How to redeem” button after claiming their code."
+              description="Optional. When set, attendees see a “Redemption steps” button after claiming their code."
             />
             <div className="sm:col-span-2">
               <IdentityPicker

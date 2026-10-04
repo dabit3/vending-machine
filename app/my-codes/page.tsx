@@ -126,7 +126,7 @@ export default function MyCodesPage() {
               render={<Link href="/my-codes/get-started" />}
               nativeButton={false}
             >
-              How to use your codes
+              Get started with Devin
               <ArrowRight data-icon="inline-end" aria-hidden />
             </Button>
           </div>
