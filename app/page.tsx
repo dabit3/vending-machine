@@ -95,7 +95,7 @@ export default function Home() {
                     "text-muted-foreground",
                   )}
                 >
-                  How to use your codes
+                  Get started with Devin
                   <ArrowRight data-icon="inline-end" aria-hidden />
                 </Link>
               </div>

@@ -645,7 +645,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         render={<Link href="/my-codes/get-started" />}
                         nativeButton={false}
                       >
-                        How to use your code
+                        Get started with Devin
                         <ArrowRight data-icon="inline-end" aria-hidden />
                       </Button>
                     </div>
@@ -721,7 +721,7 @@ function RedeemInstructionsDialog({
     <Dialog>
       <DialogTrigger render={<Button variant="outline" size="lg" />}>
         <BookOpen data-icon="inline-start" />
-        How to redeem
+        Redemption steps
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -912,7 +912,7 @@ function Receipt({
             render={<Link href="/my-codes/get-started" />}
             nativeButton={false}
           >
-            How to use your code
+            Get started with Devin
             <ArrowRight data-icon="inline-end" aria-hidden />
           </Button>
           <Button
