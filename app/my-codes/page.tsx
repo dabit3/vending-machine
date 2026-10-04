@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  ArrowRight,
   ArrowUpRight,
   Check,
   Copy,
@@ -109,13 +110,25 @@ export default function MyCodesPage() {
       <SiteHeader />
       <main id="main-content" className="flex-1">
         <section className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 sm:py-14">
-          <div className="mb-10">
-            <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
-              My codes
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              All the credit codes you&apos;ve claimed across events.
-            </p>
+          <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
+                My codes
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                All the credit codes you&apos;ve claimed across events.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start sm:self-auto"
+              render={<Link href="/my-codes/get-started" />}
+              nativeButton={false}
+            >
+              How to use your codes
+              <ArrowRight data-icon="inline-end" aria-hidden />
+            </Button>
           </div>
 
           {!authReady ? (
