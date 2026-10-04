@@ -631,12 +631,24 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         "Dispense my code"
                       )}
                     </Button>
-                    {event.claimInstructions ? (
-                      <RedeemInstructionsDialog
-                        eventName={event.name}
-                        instructions={event.claimInstructions}
-                      />
-                    ) : null}
+                    <div className="flex flex-col gap-2">
+                      {event.claimInstructions ? (
+                        <RedeemInstructionsDialog
+                          eventName={event.name}
+                          instructions={event.claimInstructions}
+                        />
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="self-center text-muted-foreground"
+                        render={<Link href="/my-codes/get-started" />}
+                        nativeButton={false}
+                      >
+                        How to use your code
+                        <ArrowRight data-icon="inline-end" aria-hidden />
+                      </Button>
+                    </div>
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="min-w-0 truncate">
                         Signed in as{" "}
