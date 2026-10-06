@@ -4,6 +4,7 @@ import Home from "../app/page";
 
 interface MineItem {
   _id: string;
+  _creationTime?: number;
   name: string;
   slug: string;
   description?: string;
@@ -45,7 +46,7 @@ beforeEach(() => {
     mine: [
       { _id: "today", name: "Today's event", slug: "today", eventDate: "2026-09-07", claimed: true },
       { _id: "upcoming", name: "Upcoming event", slug: "upcoming", eventDate: "2026-09-10", claimed: false },
-      { _id: "undated", name: "Open event", slug: "open", description: "Walk-up", claimed: false },
+      { _id: "undated", _creationTime: Date.parse("2026-08-01T00:00:00Z"), name: "Open event", slug: "open", description: "Walk-up", claimed: false },
       { _id: "old", name: "Old event", slug: "old", eventDate: "2026-07-01", claimed: false },
     ],
     authenticated: true,
@@ -73,7 +74,7 @@ test("signed-out visitors see the intro and a QR card, never an event list", () 
   expect(html).not.toContain("Recent past events");
 });
 
-test("signed-in visitors see every event they are eligible for, in server order", () => {
+test("signed-in visitors see their 3 newest events, newest first, with a View all button", () => {
   const html = renderToStaticMarkup(<Home />);
   expect(html).toContain("Welcome back");
   expect(html).toMatch(/<h2\b[^>]*>Your events<\/h2>/);
@@ -81,14 +82,22 @@ test("signed-in visitors see every event they are eligible for, in server order"
   expect(html).toContain('href="/my-codes/get-started"');
   expect(html).not.toContain("Scan to claim");
   expect(html).toMatch(/<section class="(?:(?!\bhidden lg:flex\b)[^"])*" aria-label="Your events"/);
-  for (const slug of ["today", "upcoming", "open", "old"]) {
-    expect(html).toContain(`href="/${slug}"`);
-  }
-  expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/upcoming"'));
-  expect(html.indexOf('href="/upcoming"')).toBeLessThan(html.indexOf('href="/open"'));
+  expect(html.indexOf('href="/upcoming"')).toBeLessThan(html.indexOf('href="/today"'));
+  expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/open"'));
+  expect(html).not.toContain('href="/old"');
+  expect(html).toContain("View all 4 events");
   expect(html).toContain("Claimed");
   expect(html).toContain("Walk-up");
-  // Past events stay listed but are dimmed.
+});
+
+test("three or fewer events show without a View all button; past ones are dimmed", () => {
+  state.mine = state.mine!.filter((e) => e._id !== "undated");
+  const html = renderToStaticMarkup(<Home />);
+  for (const slug of ["upcoming", "today", "old"]) {
+    expect(html).toContain(`href="/${slug}"`);
+  }
+  expect(html.indexOf('href="/today"')).toBeLessThan(html.indexOf('href="/old"'));
+  expect(html).not.toContain("View all");
   expect(html.match(/opacity-70/g)).toHaveLength(1);
 });
 
