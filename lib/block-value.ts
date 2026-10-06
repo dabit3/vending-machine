@@ -69,3 +69,35 @@ export function blockValueSummary(
     Array.from({ length: twiceCount }, () => ({ redemptions: 2, months: 1 }))
   );
 }
+
+function attendeeTermsPhrase(perRedemption: string | null, { redemptions, months }: CodeTerms) {
+  const repeat = redemptions > 1 ? `redeemable ${redemptions} times` : null;
+  if (perRedemption === null) {
+    const parts = [months > 1 ? `applies for ${months} months` : null, repeat].filter(Boolean);
+    const text = parts.join(", ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  if (months > 1)
+    return `${perRedemption} a month for ${months} months${repeat ? `, ${repeat}` : ""}`;
+  return `${perRedemption} each time, ${repeat}`;
+}
+
+// What a dispensed code is worth to the attendee. A "$200" code that applies
+// for 2 months, or redeems twice, is worth $400 in total; the detail line
+// explains how the total adds up. Free-text values aren't multiplied.
+export function codeValueSummary(
+  value: string,
+  terms?: CodeTerms
+): { headline: string; detail?: string } {
+  const trimmed = value.trim();
+  const credits = /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
+  if (!terms || (terms.redemptions <= 1 && terms.months <= 1))
+    return { headline: credits };
+  const numeric = /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : null;
+  if (numeric === null)
+    return { headline: credits, detail: attendeeTermsPhrase(null, terms) };
+  return {
+    headline: `${dollars(numeric * terms.redemptions * terms.months)} in credits total`,
+    detail: attendeeTermsPhrase(dollars(numeric), terms),
+  };
+}

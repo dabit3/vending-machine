@@ -5,6 +5,9 @@ import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
+import { codeTerms } from "./codeTerms";
+import { blockKey } from "./blockValues";
+import type { CodeTerms } from "../lib/block-value";
 import { isBlacklisted } from "./blacklist";
 import { eventIdentity, resolveViewer, viewerIdentityKeys } from "./identity";
 import {
@@ -139,6 +142,8 @@ export const getBySlug = query({
     const viewerKey = viewer.ok ? viewer.key : undefined;
     const candidateTypes = event.codeTypes ?? [""];
     const availableTypes = new Set<string>();
+    // Terms of the code each block would dispense next, for the type picker.
+    const codeTypeTerms: Record<string, CodeTerms> = {};
     for (const typeKey of candidateTypes) {
       const hit = await ctx.db
         .query("codes")
@@ -152,6 +157,8 @@ export const getBySlug = query({
         .filter((q) => q.eq(q.field("reservedFor"), undefined))
         .first();
       if (hit) availableTypes.add(typeKey);
+      const terms = hit ? await codeTerms(ctx, hit) : undefined;
+      if (terms) codeTypeTerms[blockKey(typeKey)] = terms;
     }
     if (viewerKey) {
       const reserved = await ctx.db
@@ -162,7 +169,14 @@ export const getBySlug = query({
         .filter(notExpired)
         .filter((q) => q.eq(q.field("claimedBy"), undefined))
         .first();
-      if (reserved) availableTypes.add(reserved.codeType ?? "");
+      if (reserved) {
+        const typeKey = reserved.codeType ?? "";
+        availableTypes.add(typeKey);
+        // claims.claim dispenses the viewer's reservation first.
+        const terms = await codeTerms(ctx, reserved);
+        if (terms) codeTypeTerms[blockKey(typeKey)] = terms;
+        else delete codeTypeTerms[blockKey(typeKey)];
+      }
     }
     return {
       _id: event._id,
@@ -175,6 +189,7 @@ export const getBySlug = query({
       claimInstructions: event.claimInstructions,
       creditAmount: event.creditAmount,
       codeTypeValues: event.codeTypeValues,
+      codeTypeTerms,
       dynamic: event.dynamic ?? false,
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { blockTermsSummary, blockValueSummary } from "../lib/block-value";
+import { blockTermsSummary, blockValueSummary, codeValueSummary } from "../lib/block-value";
 
 test("single-use blocks show the value as entered", () => {
   expect(blockValueSummary("20", 5, 0)).toEqual({ headline: "$20" });
@@ -49,5 +49,26 @@ test("multi-month codes show the total with a monthly breakdown", () => {
   expect(blockTermsSummary("200", 2, [twoMonths, { redemptions: 2, months: 1 }])).toEqual({
     headline: "$200",
     detail: "Codes in this block have different terms",
+  });
+});
+
+test("dispensed code values include months and redemptions", () => {
+  expect(codeValueSummary("200")).toEqual({ headline: "$200 in credits" });
+  expect(codeValueSummary("200", { redemptions: 1, months: 1 })).toEqual({ headline: "$200 in credits" });
+  expect(codeValueSummary("200", { redemptions: 1, months: 2 })).toEqual({
+    headline: "$400 in credits total",
+    detail: "$200 a month for 2 months",
+  });
+  expect(codeValueSummary("200", { redemptions: 2, months: 1 })).toEqual({
+    headline: "$400 in credits total",
+    detail: "$200 each time, redeemable 2 times",
+  });
+  expect(codeValueSummary("200", { redemptions: 2, months: 2 })).toEqual({
+    headline: "$800 in credits total",
+    detail: "$200 a month for 2 months, redeemable 2 times",
+  });
+  expect(codeValueSummary("Team plan", { redemptions: 2, months: 3 })).toEqual({
+    headline: "Team plan",
+    detail: "Applies for 3 months, redeemable 2 times",
   });
 });

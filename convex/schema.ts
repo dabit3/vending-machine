@@ -138,6 +138,8 @@ export default defineSchema({
     claimedBy: v.optional(v.string()),
     claimedAt: v.optional(v.number()),
     reservedFor: v.optional(v.string()),
+    // Stripe batch the code came from; missing on manual and older codes.
+    stripeBatchId: v.optional(v.id("stripeBatches")),
   })
     .index("by_event", ["eventId"])
     .index("by_event_claimedBy", ["eventId", "claimedBy"])
