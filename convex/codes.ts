@@ -5,8 +5,7 @@ import { requireEventAdmin } from "./admins";
 import { viewerIdentityKeys } from "./identity";
 import { logAudit } from "./auditLog";
 import { activeCodeTypes, blockKey, blockValue } from "./blockValues";
-import type { CodeTerms } from "../lib/block-value";
-import { eventCodeTerms } from "./codeTerms";
+import { codeTerms as termsOf } from "./codeTerms";
 
 // Drop the type from the event's denormalized list when its last code is
 // removed.
@@ -284,15 +283,6 @@ export const mine = query({
           .collect())
       );
     }
-    const termsByEvent = new Map<Id<"events">, Promise<Map<string, CodeTerms>>>();
-    const termsFor = (eventId: Id<"events">) => {
-      let terms = termsByEvent.get(eventId);
-      if (!terms) {
-        terms = eventCodeTerms(ctx, eventId);
-        termsByEvent.set(eventId, terms);
-      }
-      return terms;
-    };
     const items = await Promise.all(
       claimed.map(async (c) => {
         const event = await ctx.db.get(c.eventId);
@@ -302,7 +292,7 @@ export const mine = query({
           codeType: c.codeType,
           claimedAt: c.claimedAt,
           expiresAt: c.expiresAt,
-          terms: (await termsFor(c.eventId)).get(c.code),
+          terms: await termsOf(ctx, c),
           event: event
             ? {
                 _id: event._id,

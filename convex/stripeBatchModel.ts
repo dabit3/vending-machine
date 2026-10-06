@@ -178,6 +178,7 @@ export async function attachBatchToEvent(
       code: code.code,
       codeType: codeType || undefined,
       expiresAt: batch.expiresAt,
+      stripeBatchId: batch._id,
     });
   }
   await ctx.db.patch(eventId, {

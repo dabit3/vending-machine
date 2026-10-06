@@ -894,6 +894,51 @@ describe("batch assignment", () => {
     expect(await user.query(api.codes.mine)).toMatchObject([{ terms, event: { creditAmount: "200" } }]);
   });
 
+  test("backfill links older codes to their batch so their terms show", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Backfill" });
+    await admin.mutation(api.stripeBatches.create, {
+      ...input, name: "Pro", eventId: event.id, quantity: 2, durationMonths: 3,
+    });
+    await drain(t);
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("codes").collect())
+        await ctx.db.patch(row._id, { stripeBatchId: undefined });
+    });
+    const attendee = { subject: "attendee", email: "attendee@example.com", emailVerified: true };
+    await t.run((ctx) => ctx.db.insert("emails", { eventId: event.id, email: attendee.email }));
+    const user = t.withIdentity(attendee);
+    expect(await t.query(api.events.getBySlug, { slug: event.slug })).toMatchObject({ codeTypeTerms: {} });
+    await t.mutation(internal.codeTerms.backfillBatchIds, {});
+    await drain(t);
+    expect(await user.mutation(api.claims.claim, { slug: event.slug, codeType: "Pro" })).toMatchObject({
+      ok: true, terms: { redemptions: 1, months: 3 },
+    });
+  });
+
+  test("the picker describes the viewer's reserved code, which is dispensed first", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Reserved" });
+    await admin.mutation(api.stripeBatches.create, {
+      ...input, name: "Pro", eventId: event.id, quantity: 2, durationMonths: 2,
+    });
+    await drain(t);
+    const attendee = { subject: "attendee", email: "attendee@example.com", emailVerified: true };
+    await t.run(async (ctx) => {
+      await ctx.db.insert("emails", { eventId: event.id, email: attendee.email });
+      const [first] = await ctx.db.query("codes").collect();
+      await ctx.db.patch(first._id, { stripeBatchId: undefined, reservedFor: attendee.email });
+    });
+    const user = t.withIdentity(attendee);
+    const anon = await t.query(api.events.getBySlug, { slug: event.slug });
+    expect(anon?.codeTypeTerms).toEqual({ [blockKey("Pro")]: { redemptions: 1, months: 2 } });
+    const viewer = await user.query(api.events.getBySlug, { slug: event.slug });
+    expect(viewer?.codeTypeTerms).toEqual({});
+    const result = await user.mutation(api.claims.claim, { slug: event.slug, codeType: "Pro" });
+    expect(result).toMatchObject({ ok: true });
+    expect(result).not.toHaveProperty("terms");
+  });
+
   test("legacy single-use codes have no terms", async () => {
     const { t, admin } = await setup();
     const event = await admin.mutation(api.events.create, { name: "Legacy terms" });
