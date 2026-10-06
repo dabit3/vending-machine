@@ -38,6 +38,11 @@ export function durationLabel(months: number | undefined): string {
   return (months ?? 1) > 1 ? `${months} months` : "Once";
 }
 
+// Typed month counts above the maximum snap down to it.
+export function capDurationMonths(raw: string): string {
+  return Number(raw) > MAX_DURATION_MONTHS ? String(MAX_DURATION_MONTHS) : raw;
+}
+
 export function generationInput(
   form: StripeForm,
   live: boolean,
