@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { capDurationMonths, emptyStripeForm, generationInput } from "../lib/stripe-form";
+import { capDurationMonths, committableDurationMonths, emptyStripeForm, generationInput } from "../lib/stripe-form";
 
 const form = { ...emptyStripeForm, name: "Credits", amount: "19.99" };
 const requestId = "request-1234567890";
@@ -110,4 +110,17 @@ test.each(["", "0", "13", "1.5", "NaN"])("rejects invalid month count %j", (dura
 
 test.each([["13", "12"], ["99", "12"], ["12", "12"], ["3", "3"], ["", ""], ["0", "0"]])("caps typed month count %j at 12", (raw, expected) => {
   expect(capDurationMonths(raw)).toBe(expected);
+});
+
+test.each([
+  ["1", undefined],
+  ["", undefined],
+  ["0", undefined],
+  ["1.5", undefined],
+  ["13", undefined],
+  ["2", "2"],
+  ["10", "10"],
+  ["12", "12"],
+])("only commits typed month count %j once it is a valid repeat", (raw, expected) => {
+  expect(committableDurationMonths(raw)).toBe(expected);
 });

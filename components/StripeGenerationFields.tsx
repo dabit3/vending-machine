@@ -1,11 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { MAX_DURATION_MONTHS } from "@/convex/stripeValidation";
 import {
   capDurationMonths,
+  committableDurationMonths,
   durationLabel,
   usd,
   type StripeForm,
@@ -77,6 +78,12 @@ export function StripeGenerationFields({
     onChange({ ...value, [field]: next });
   const prefix = normalizeStripeCodePrefix(value.prefix);
   const repeating = value.durationMonths !== "1";
+  const [monthsDraft, setMonthsDraft] = useState(value.durationMonths);
+  const [committedMonths, setCommittedMonths] = useState(value.durationMonths);
+  if (committedMonths !== value.durationMonths) {
+    setCommittedMonths(value.durationMonths);
+    setMonthsDraft(value.durationMonths);
+  }
   return (
     <FieldGroup>
       <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
@@ -195,8 +202,14 @@ export function StripeGenerationFields({
                 step="1"
                 required
                 className="w-20"
-                value={value.durationMonths}
-                onChange={(e) => set("durationMonths", capDurationMonths(e.target.value))}
+                value={monthsDraft}
+                onChange={(e) => {
+                  const raw = capDurationMonths(e.target.value);
+                  setMonthsDraft(raw);
+                  const months = committableDurationMonths(raw);
+                  if (months !== undefined) set("durationMonths", months);
+                }}
+                onBlur={() => setMonthsDraft(value.durationMonths)}
               />
               <span className="text-sm text-muted-foreground">months</span>
             </div>
