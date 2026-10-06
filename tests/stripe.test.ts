@@ -180,6 +180,63 @@ describe("Stripe generation", () => {
     expect((await admin.query(api.stripeBatches.history, { paginationOpts: { cursor: null, numItems: 25 } })).page[0].redemptionsPerCode).toBe(expected);
   });
 
+  test.each([
+    [undefined, { duration: "once" }],
+    [1, { duration: "once" }],
+    [2, { duration: "repeating", duration_in_months: 2 }],
+    [12, { duration: "repeating", duration_in_months: 12 }],
+  ] as const)("creates a coupon for duration %j months", async (durationMonths, expected) => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, durationMonths, redemptionsPerCode: 2 });
+    await drain(t);
+    const [params] = stripe.coupon.mock.calls[0];
+    expect(params).toMatchObject({ ...expected, amount_off: 5000, max_redemptions: input.quantity * 2 });
+    if (expected.duration === "once") expect(params).not.toHaveProperty("duration_in_months");
+    for (const [promo] of stripe.promotion.mock.calls) expect(promo.max_redemptions).toBe(2);
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({ durationMonths: durationMonths ?? 1, status: "complete" });
+  });
+
+  test.each([0, 13, -1, 1.5, NaN])("rejects invalid duration %j in both creation paths", async (durationMonths) => {
+    const { t, admin } = await setup();
+    const request = { ...input, durationMonths };
+    await expect(admin.mutation(api.stripeBatches.create, request)).rejects.toThrow();
+    await expect(admin.mutation(api.events.create, { name: "Invalid", stripeGeneration: request })).rejects.toThrow();
+    expect(await t.run((ctx) => ctx.db.query("stripeBatches").collect())).toHaveLength(0);
+    expect(stripe.coupon).not.toHaveBeenCalled();
+  });
+
+  test("one-month requests dedupe with legacy requests, but a changed duration is rejected", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, input);
+    expect(await t.run((ctx) => ctx.db.get(batchId))).not.toHaveProperty("durationMonths");
+    expect(await admin.mutation(api.stripeBatches.create, { ...input, durationMonths: 1 })).toBe(batchId);
+    await expect(admin.mutation(api.stripeBatches.create, { ...input, durationMonths: 3 })).rejects.toThrow("already used");
+  });
+
+  test("retry keeps a multi-month duration", async () => {
+    const { t, admin } = await setup();
+    const batchId = await admin.mutation(api.stripeBatches.create, { ...input, durationMonths: 3 });
+    stripe.coupon.mockRejectedValueOnce(new Error("temporary failure"));
+    await drain(t);
+    await admin.mutation(api.stripeBatches.retry, { batchId, confirmLive: false });
+    await drain(t);
+    expect(stripe.coupon).toHaveBeenCalledTimes(2);
+    expect(stripe.coupon.mock.calls[1][0]).toMatchObject({ duration: "repeating", duration_in_months: 3 });
+    expect(await admin.query(api.stripeBatches.get, { batchId })).toMatchObject({ durationMonths: 3, status: "complete" });
+  });
+
+  test("lists per-code terms for an event's multi-month and multi-use codes", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Months", stripeGeneration: { ...input, quantity: 2, durationMonths: 2 } });
+    await admin.mutation(api.stripeBatches.create, { ...input, requestId: "request-single-0001", name: "Single", quantity: 1, eventId: event.id });
+    await drain(t);
+    const terms = await admin.query(api.codes.codeTerms, { eventId: event.id });
+    expect(terms).toHaveLength(2);
+    for (const term of terms) expect(term).toMatchObject({ redemptions: 1, months: 2 });
+    const stranger = t.withIdentity({ subject: "x", email: "x@example.com", emailVerified: true });
+    await expect(stranger.query(api.codes.codeTerms, { eventId: event.id })).rejects.toThrow();
+  });
+
   test("deduplicates omitted and explicit single use, but rejects a changed redemption limit", async () => {
     const { admin } = await setup();
     const batchId = await admin.mutation(api.stripeBatches.create, input);

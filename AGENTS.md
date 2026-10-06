@@ -35,6 +35,7 @@ Important - do not test locally with chromium / playright unless I specifically 
 - Preserve stored prefixes on retries, including longer or empty legacy prefixes.
 - New Stripe batches allow one or two redemptions per code, defaulting to one. Missing legacy limits mean one. Keep the saved limit on retries and multiply the coupon cap and maximum discount by that limit.
 - Keep single-use request fingerprints compatible with legacy requests by omitting the default redemption limit. App claims still dispense each code to one attendee.
+- New Stripe batches apply once or repeat monthly for 2–12 months (`durationMonths`, Stripe `repeating`). Missing legacy durations mean once. Omit the one-month default from request fingerprints, and multiply the maximum discount by the months.
 - Render admin-authored text (event descriptions, redemption instructions) through `MarkdownText` for safe Markdown links and bare URLs; `ClaimInstructions` wraps it so exact legacy Pro/Max presets display the current wording without changing custom text. Use `markdownToPlainText` where markup can't go (one-line summaries inside links).
 - `/admin/codes` is the saved code library. `/admin/codes/new` creates standalone Stripe blocks without events and saves them automatically.
 - Keep links from the event form to standalone code creation in a new tab, so the event draft stays open.

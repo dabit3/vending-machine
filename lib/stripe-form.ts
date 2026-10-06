@@ -1,5 +1,8 @@
 import { ConvexError } from "convex/values";
-import type { GenerationInput } from "@/convex/stripeValidation";
+import {
+  MAX_DURATION_MONTHS,
+  type GenerationInput,
+} from "@/convex/stripeValidation";
 import {
   normalizeStripeCodePrefix,
   STRIPE_CODE_PREFIX_ERROR,
@@ -11,6 +14,7 @@ export type StripeForm = {
   amount: string;
   quantity: string;
   redemptionsPerCode: string;
+  durationMonths: string;
   prefix: string;
   expiration: string;
 };
@@ -19,6 +23,7 @@ export const emptyStripeForm: StripeForm = {
   amount: "20",
   quantity: "100",
   redemptionsPerCode: "1",
+  durationMonths: "1",
   prefix: "",
   expiration: "",
 };
@@ -26,6 +31,12 @@ export const usd = (cents: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
     cents / 100,
   );
+
+// "Once" or "2 months": how long each redemption keeps discounting a
+// subscription.
+export function durationLabel(months: number | undefined): string {
+  return (months ?? 1) > 1 ? `${months} months` : "Once";
+}
 
 export function generationInput(
   form: StripeForm,
@@ -39,6 +50,13 @@ export function generationInput(
   const redemptionsPerCode = Number(form.redemptionsPerCode);
   if (redemptionsPerCode !== 1 && redemptionsPerCode !== 2)
     throw new Error("Each code can be redeemed once or twice only.");
+  const durationMonths = Number(form.durationMonths);
+  if (
+    !Number.isInteger(durationMonths) ||
+    durationMonths < 1 ||
+    durationMonths > MAX_DURATION_MONTHS
+  )
+    throw new Error(`Enter between 2 and ${MAX_DURATION_MONTHS} months.`);
   if (
     !Number.isSafeInteger(amountCents) ||
     amountCents < 1 ||
@@ -64,6 +82,7 @@ export function generationInput(
     amountCents,
     quantity,
     redemptionsPerCode,
+    durationMonths,
     codePrefix: prefix,
     expiresAt,
     expectedLive: live,

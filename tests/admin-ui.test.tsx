@@ -121,6 +121,7 @@ function savedBlock(): FunctionReturnType<
     amountCents: 5000,
     quantity: 2,
     redemptionsPerCode: 1,
+    durationMonths: 1,
     expiresAt: undefined,
     live: false,
     createdBy: "admin@example.com",
@@ -385,11 +386,26 @@ test("new event form defaults to adding codes later", () => {
 
 test.each(["1", "2"])("generation fields offer only once and twice, with %s selected", (redemptionsPerCode) => {
   const html = renderToStaticMarkup(<StripeGenerationFields value={{ ...emptyStripeForm, redemptionsPerCode }} onChange={() => {}} />);
-  const toggles = [...html.matchAll(/<button\b[^>]*data-slot="toggle-group-item"[^>]*>([^<]*)<\/button>/g)];
+  const toggles = [...html.matchAll(/<button\b[^>]*data-slot="toggle-group-item"[^>]*>([^<]*)<\/button>/g)].slice(0, 2);
   expect(toggles.map((match) => match[1])).toEqual(["Once", "Twice"]);
   const selected = toggles.filter((match) => match[0].includes('aria-pressed="true"'));
   expect(selected.map((match) => match[1])).toEqual([redemptionsPerCode === "2" ? "Twice" : "Once"]);
   expect(html).toContain(`Each code can be redeemed ${redemptionsPerCode === "2" ? "twice" : "once"} in total at checkout.`);
+});
+
+test.each(["1", "3"])("duration field offers once or multiple months, with %s month(s)", (durationMonths) => {
+  const html = renderToStaticMarkup(<StripeGenerationFields value={{ ...emptyStripeForm, durationMonths }} onChange={() => {}} />);
+  const toggles = [...html.matchAll(/<button\b[^>]*data-slot="toggle-group-item"[^>]*>([^<]*)<\/button>/g)].slice(2);
+  expect(toggles.map((match) => match[1])).toEqual(["Once", "Multiple months"]);
+  const selected = toggles.filter((match) => match[0].includes('aria-pressed="true"'));
+  expect(selected.map((match) => match[1])).toEqual([durationMonths === "1" ? "Once" : "Multiple months"]);
+  if (durationMonths === "1") {
+    expect(html).not.toContain('aria-label="Number of months"');
+    expect(html).toContain("takes the value off one invoice");
+  } else {
+    expect(html).toContain('aria-label="Number of months"');
+    expect(html).toContain("every monthly invoice for 3 months");
+  }
 });
 
 test.each([1, 2] as const)("saved details and library display the %i-redemption limit", (redemptionsPerCode) => {

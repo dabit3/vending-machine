@@ -365,7 +365,7 @@ export default function NewEventForm({
             <span className="font-medium">{name || "Your new event"}</span>
             <span className="text-muted-foreground">
               {source === "generate"
-                ? `${stripeForm.quantity || "0"} codes · Redeem ${stripeForm.redemptionsPerCode === "2" ? "twice" : "once"} each · ${usd(Math.round(Number(stripeForm.amount || 0) * 100))} per redemption`
+                ? `${stripeForm.quantity || "0"} codes · Redeem ${stripeForm.redemptionsPerCode === "2" ? "twice" : "once"} each · ${usd(Math.round(Number(stripeForm.amount || 0) * 100))} per redemption${stripeForm.durationMonths !== "1" ? ` for ${stripeForm.durationMonths || "?"} months` : ""}`
                 : source === "saved"
                   ? "Use an existing saved batch"
                   : "Add codes when you’re ready"}

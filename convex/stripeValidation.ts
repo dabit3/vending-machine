@@ -5,12 +5,15 @@ import {
   truncateStripeBatchName,
 } from "../lib/stripe-name";
 
+export const MAX_DURATION_MONTHS = 12;
+
 export const generationFields = {
   name: v.string(),
   codePrefix: v.optional(v.string()),
   amountCents: v.number(),
   quantity: v.number(),
   redemptionsPerCode: v.optional(v.number()),
+  durationMonths: v.optional(v.number()),
   expiresAt: v.optional(v.number()),
   expectedLive: v.boolean(),
   confirmLive: v.boolean(),
@@ -23,6 +26,7 @@ export type GenerationInput = {
   amountCents: number;
   quantity: number;
   redemptionsPerCode?: number;
+  durationMonths?: number;
   expiresAt?: number;
   expectedLive: boolean;
   confirmLive: boolean;
@@ -60,6 +64,15 @@ export function validateGeneration(input: GenerationInput) {
   const redemptionsPerCode = input.redemptionsPerCode ?? 1;
   if (redemptionsPerCode !== 1 && redemptionsPerCode !== 2)
     throw new ConvexError("Each code can be redeemed once or twice only.");
+  const durationMonths = input.durationMonths ?? 1;
+  if (
+    !Number.isInteger(durationMonths) ||
+    durationMonths < 1 ||
+    durationMonths > MAX_DURATION_MONTHS
+  )
+    throw new ConvexError(
+      `Codes can apply for 1 to ${MAX_DURATION_MONTHS} months.`,
+    );
   const prefix = normalizeStripeCodePrefix(input.codePrefix);
   if (prefix === null) throw new ConvexError(STRIPE_CODE_PREFIX_ERROR);
   if (
@@ -87,6 +100,7 @@ export function validateGeneration(input: GenerationInput) {
     amountCents: input.amountCents,
     quantity: input.quantity,
     redemptionsPerCode,
+    durationMonths,
     expiresAt:
       input.expiresAt === undefined
         ? undefined
