@@ -62,11 +62,11 @@ test("confirmation shows a multi-month duration in the maximum discount", () => 
   expect(html).toContain("$400.00");
 });
 
-test.each([1, 2] as const)("CSV exports the saved %i-redemption limit for every code", (redemptionsPerCode) => {
+test.each([[1, 1], [2, 1], [1, 3]] as const)("CSV exports the saved %i-redemption limit and %i-month duration for every code", (redemptionsPerCode, durationMonths) => {
   const batchId = "a".repeat(32) as Id<"stripeBatches">;
   state.batch = {
     _id: batchId, _creationTime: 0, name: "Credits", prefix: "TEST", amountCents: 5000,
-    quantity: 2, redemptionsPerCode, durationMonths: 1, expiresAt: undefined, live: false, createdBy: "admin@example.com",
+    quantity: 2, redemptionsPerCode, durationMonths, expiresAt: undefined, live: false, createdBy: "admin@example.com",
     status: "complete", generatedCount: 2, couponId: "coupon_test", error: undefined,
     eventId: "e".repeat(32) as Id<"events">, targetEventId: undefined, codeType: undefined,
     eventName: null, expired: false, canRetry: false,
@@ -76,8 +76,8 @@ test.each([1, 2] as const)("CSV exports the saved %i-redemption limit for every 
   expect(state.download).toBeTypeOf("function");
   state.download!();
   expect(downloadCsv).toHaveBeenCalledWith("Credits-codes.csv", [
-    ["code", "promotion_code_id", "coupon_id", "amount_usd", "expires_at", "redemptions_per_code"],
-    ["TEST-ONE", "promo_one", "coupon_test", "50", "", String(redemptionsPerCode)],
-    ["TEST-TWO", "promo_two", "coupon_test", "50", "", String(redemptionsPerCode)],
+    ["code", "promotion_code_id", "coupon_id", "amount_usd", "expires_at", "redemptions_per_code", "duration_months"],
+    ["TEST-ONE", "promo_one", "coupon_test", "50", "", String(redemptionsPerCode), String(durationMonths)],
+    ["TEST-TWO", "promo_two", "coupon_test", "50", "", String(redemptionsPerCode), String(durationMonths)],
   ]);
 });

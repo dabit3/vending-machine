@@ -209,6 +209,7 @@ export default function StripeBatchDetails({
           "amount_usd",
           "expires_at",
           "redemptions_per_code",
+          "duration_months",
         ],
         ...batch.codes.map((code) => [
           code.code,
@@ -217,6 +218,7 @@ export default function StripeBatchDetails({
           String(batch.amountCents / 100),
           batch.expiresAt ? new Date(batch.expiresAt).toISOString() : "",
           String(batch.redemptionsPerCode),
+          String(batch.durationMonths),
         ]),
       ],
     );
