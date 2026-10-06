@@ -31,7 +31,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { activeCodeTypes, blockKey } from "@/convex/blockValues";
-import { blockValueSummary } from "@/lib/block-value";
+import { blockTermsSummary, type CodeTerms } from "@/lib/block-value";
 import { downloadCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
 import {
@@ -105,7 +105,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
-  const multiUseCodes = useQuery(api.codes.multiUseCodes, { eventId: id });
+  const codeTerms = useQuery(api.codes.codeTerms, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
@@ -1077,7 +1077,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <CodeBlocks
               types={blockTypes}
               codes={codes}
-              multiUseCodes={multiUseCodes}
+              codeTerms={codeTerms}
               values={event.codeTypeValues}
               onSetValue={(codeType, value) =>
                 setTypeValue({ eventId: id, codeType, value })
@@ -1244,7 +1244,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 function CodeBlocks({
   types,
   codes,
-  multiUseCodes,
+  codeTerms,
   values,
   onRename,
   onSetValue,
@@ -1252,7 +1252,7 @@ function CodeBlocks({
 }: {
   types: string[];
   codes: Doc<"codes">[] | undefined;
-  multiUseCodes: string[] | undefined;
+  codeTerms: (CodeTerms & { code: string })[] | undefined;
   values: Record<string, string> | undefined;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
   onSetValue: (
@@ -1264,7 +1264,7 @@ function CodeBlocks({
   ) => Promise<{ removed: number; kept: number }>;
 }) {
   if (types.length === 0) return null;
-  const twice = new Set(multiUseCodes);
+  const terms = new Map(codeTerms?.map((t) => [t.code, t]));
   return (
     <div className="flex flex-col gap-2">
       {types.map((type) => (
@@ -1272,7 +1272,7 @@ function CodeBlocks({
             key={type || "__unnamed"}
             type={type}
             codes={codes?.filter((c) => (c.codeType ?? "") === type) ?? []}
-            twice={twice}
+            terms={terms}
             value={values?.[blockKey(type)]}
             onRename={onRename}
             onSetValue={onSetValue}
@@ -1286,7 +1286,7 @@ function CodeBlocks({
 function CodeBlockRow({
   type,
   codes,
-  twice,
+  terms,
   value,
   onRename,
   onSetValue,
@@ -1294,7 +1294,7 @@ function CodeBlockRow({
 }: {
   type: string;
   codes: Doc<"codes">[];
-  twice: Set<string>;
+  terms: Map<string, CodeTerms>;
   value?: string;
   onRename: (from: string | undefined, to: string) => Promise<unknown>;
   onSetValue: (
@@ -1312,9 +1312,9 @@ function CodeBlockRow({
   const count = codes.length;
   const claimed = codes.filter((c) => c.claimedBy !== undefined).length;
   const available = count - claimed;
-  const twiceCount = codes.filter((c) => twice.has(c.code)).length;
+  const blockTerms = codes.flatMap((c) => terms.get(c.code) ?? []);
   const valueSummary = value
-    ? blockValueSummary(value, count, twiceCount)
+    ? blockTermsSummary(value, count, blockTerms)
     : null;
   const unclaimed = codes.filter((c) => c.claimedBy === undefined);
   const expiry = blockExpirySummary(

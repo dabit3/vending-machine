@@ -100,6 +100,7 @@ export function SavedBatchPicker({
           <NativeSelectOption key={batch._id} value={batch._id}>
             {batch.name} · {batch.quantity} × {usd(batch.amountCents)} ·{" "}
             Redeem {batch.redemptionsPerCode === 2 ? "twice" : "once"} per code ·{" "}
+            {batch.durationMonths > 1 && `${batch.durationMonths} months · `}
             {batch.live ? "LIVE" : "Test"}
           </NativeSelectOption>
         ))}
@@ -228,7 +229,7 @@ export default function StripeBatchDetails({
         <CardTitle>{batch?.name ?? "Your codes"}</CardTitle>
         <CardDescription>
           {batch
-            ? `${usd(batch.amountCents)} per redemption · Redeem ${batch.redemptionsPerCode === 2 ? "twice" : "once"} per code · Code prefix: ${batch.prefix || "None"} · ${batch.expiresAt ? `Expires ${new Date(batch.expiresAt).toLocaleString()}` : "No expiration"}`
+            ? `${usd(batch.amountCents)} per redemption · Redeem ${batch.redemptionsPerCode === 2 ? "twice" : "once"} per code · ${batch.durationMonths > 1 ? `Applies for ${batch.durationMonths} months` : "Applies once"} · Code prefix: ${batch.prefix || "None"} · ${batch.expiresAt ? `Expires ${new Date(batch.expiresAt).toLocaleString()}` : "No expiration"}`
             : "Generate a batch or choose one from your history."}
         </CardDescription>
         {batch && (

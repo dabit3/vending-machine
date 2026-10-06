@@ -12,6 +12,8 @@ export default defineSchema({
     amountCents: v.number(),
     quantity: v.number(),
     redemptionsPerCode: v.optional(v.union(v.literal(1), v.literal(2))),
+    // Months the discount repeats on a subscription; missing means once.
+    durationMonths: v.optional(v.number()),
     expiresAt: v.optional(v.number()),
     live: v.boolean(),
     createdBy: v.string(),

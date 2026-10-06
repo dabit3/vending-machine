@@ -46,10 +46,11 @@ export async function startBatch(
   const identity = await requireAdmin(ctx);
   const createdBy = identity.email!.trim().toLowerCase();
   const values = validateGeneration(input);
-  const { redemptionsPerCode, ...fingerprintValues } = values;
+  const { redemptionsPerCode, durationMonths, ...fingerprintValues } = values;
   const requestFingerprint = JSON.stringify({
     ...fingerprintValues,
     ...(redemptionsPerCode === 2 && { redemptionsPerCode }),
+    ...(durationMonths > 1 && { durationMonths }),
     targetEventId,
     codeType: codeType?.trim(),
   });
@@ -89,6 +90,7 @@ export async function startBatch(
   await requireBatchCapacity(ctx);
   const batchId = await ctx.db.insert("stripeBatches", {
     ...values,
+    durationMonths: durationMonths > 1 ? durationMonths : undefined,
     prefix: values.prefix || generateStripeCodePrefix(),
     createdBy,
     requestId: input.requestId,
@@ -211,6 +213,7 @@ export function batchSummary(batch: Doc<"stripeBatches">) {
     amountCents: batch.amountCents,
     quantity: batch.quantity,
     redemptionsPerCode: batch.redemptionsPerCode ?? 1,
+    durationMonths: batch.durationMonths ?? 1,
     expiresAt: batch.expiresAt,
     live: batch.live,
     createdBy: batch.createdBy,

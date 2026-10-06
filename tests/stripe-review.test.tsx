@@ -53,11 +53,20 @@ test.each([undefined, 1, 2])("confirmation includes the %j-redemption limit in t
   expect(html).toContain("These codes have real value");
 });
 
+test("confirmation shows a multi-month duration in the maximum discount", () => {
+  const html = renderToStaticMarkup(<ConfirmStripeGeneration
+    input={{ name: "Credits", amountCents: 20000, quantity: 1, redemptionsPerCode: 1, durationMonths: 2, expectedLive: false, confirmLive: false, requestId: "request-1234567890" }}
+    busy={false} error={null} onCancel={() => {}} onConfirm={() => {}}
+  />);
+  expect(html).toContain("<dd>2 months</dd>");
+  expect(html).toContain("$400.00");
+});
+
 test.each([1, 2] as const)("CSV exports the saved %i-redemption limit for every code", (redemptionsPerCode) => {
   const batchId = "a".repeat(32) as Id<"stripeBatches">;
   state.batch = {
     _id: batchId, _creationTime: 0, name: "Credits", prefix: "TEST", amountCents: 5000,
-    quantity: 2, redemptionsPerCode, expiresAt: undefined, live: false, createdBy: "admin@example.com",
+    quantity: 2, redemptionsPerCode, durationMonths: 1, expiresAt: undefined, live: false, createdBy: "admin@example.com",
     status: "complete", generatedCount: 2, couponId: "coupon_test", error: undefined,
     eventId: "e".repeat(32) as Id<"events">, targetEventId: undefined, codeType: undefined,
     eventName: null, expired: false, canRetry: false,

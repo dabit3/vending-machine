@@ -62,7 +62,12 @@ export const generate = internalAction({
             name,
             amount_off: batch.amountCents,
             currency: "usd",
-            duration: "once",
+            ...((batch.durationMonths ?? 1) > 1
+              ? {
+                  duration: "repeating" as const,
+                  duration_in_months: batch.durationMonths,
+                }
+              : { duration: "once" as const }),
             max_redemptions: batch.quantity * (batch.redemptionsPerCode ?? 1),
             ...(batch.expiresAt !== undefined && {
               redeem_by: batch.expiresAt / 1000,

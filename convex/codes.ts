@@ -60,6 +60,32 @@ export const multiUseCodes = query({
   },
 });
 
+// Per-code terms for attached Stripe batches whose codes redeem twice or
+// repeat monthly. Codes absent from the result redeem once for one invoice.
+export const codeTerms = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const batches = await ctx.db
+      .query("stripeBatches")
+      .withIndex("by_target_event", (q) => q.eq("targetEventId", args.eventId))
+      .collect();
+    return batches
+      .filter(
+        (b) =>
+          b.eventId === args.eventId &&
+          ((b.redemptionsPerCode ?? 1) > 1 || (b.durationMonths ?? 1) > 1)
+      )
+      .flatMap((b) =>
+        b.codes.map((c) => ({
+          code: c.code,
+          redemptions: b.redemptionsPerCode ?? 1,
+          months: b.durationMonths ?? 1,
+        }))
+      );
+  },
+});
+
 export const add = mutation({
   args: {
     eventId: v.id("events"),

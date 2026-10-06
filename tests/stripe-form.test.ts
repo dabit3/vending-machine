@@ -96,3 +96,14 @@ test.each(["ABCDE", "A1", "1234", "A-B", "A B", "é", "ß", "AB_CD"])(
 test.each(["", "   "])("leaves a blank prefix for server-side generation", (prefix) => {
   expect(generationInput({ ...form, prefix }, false, requestId).codePrefix).toBe("");
 });
+
+test("defaults to a one-time discount and accepts multiple months", () => {
+  expect(emptyStripeForm.durationMonths).toBe("1");
+  expect(generationInput(form, false, requestId).durationMonths).toBe(1);
+  expect(generationInput({ ...form, durationMonths: "2" }, false, requestId).durationMonths).toBe(2);
+  expect(generationInput({ ...form, durationMonths: "12" }, false, requestId).durationMonths).toBe(12);
+});
+
+test.each(["", "0", "13", "1.5", "NaN"])("rejects invalid month count %j", (durationMonths) => {
+  expect(() => generationInput({ ...form, durationMonths }, false, requestId)).toThrow("months");
+});

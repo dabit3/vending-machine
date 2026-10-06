@@ -3,7 +3,8 @@
 import { useId } from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import type { GenerationInput } from "@/convex/stripeValidation";
-import { usd, type StripeForm } from "@/lib/stripe-form";
+import { MAX_DURATION_MONTHS } from "@/convex/stripeValidation";
+import { durationLabel, usd, type StripeForm } from "@/lib/stripe-form";
 import {
   STRIPE_BATCH_NAME_MAX_LENGTH,
   STRIPE_CODE_PREFIX_MAX_LENGTH,
@@ -70,6 +71,7 @@ export function StripeGenerationFields({
   const set = (field: keyof StripeForm, next: string) =>
     onChange({ ...value, [field]: next });
   const prefix = normalizeStripeCodePrefix(value.prefix);
+  const repeating = value.durationMonths !== "1";
   return (
     <FieldGroup>
       <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
@@ -158,7 +160,47 @@ export function StripeGenerationFields({
           <ToggleGroupItem value="2" variant="outline">Twice</ToggleGroupItem>
         </ToggleGroup>
         <FieldDescription id={`${id}-redemptions-description`}>
-          Each code can be redeemed {value.redemptionsPerCode === "2" ? "twice" : "once"} in total at checkout. Each redemption discounts one invoice.
+          Each code can be redeemed {value.redemptionsPerCode === "2" ? "twice" : "once"} in total at checkout.
+        </FieldDescription>
+      </Field>
+      <Field>
+        <FieldLabel id={`${id}-duration-label`}>Duration</FieldLabel>
+        <div className="flex flex-wrap items-center gap-3">
+          <ToggleGroup
+            aria-labelledby={`${id}-duration-label`}
+            aria-describedby={`${id}-duration-description`}
+            value={[repeating ? "repeating" : "once"]}
+            onValueChange={(next) => {
+              if (next[0] === "once") set("durationMonths", "1");
+              else if (next[0] === "repeating" && !repeating)
+                set("durationMonths", "2");
+            }}
+          >
+            <ToggleGroupItem value="once" variant="outline">Once</ToggleGroupItem>
+            <ToggleGroupItem value="repeating" variant="outline">Multiple months</ToggleGroupItem>
+          </ToggleGroup>
+          {repeating && (
+            <div className="flex items-center gap-2">
+              <Input
+                id={`${id}-months`}
+                aria-label="Number of months"
+                type="number"
+                min="2"
+                max={MAX_DURATION_MONTHS}
+                step="1"
+                required
+                className="w-20"
+                value={value.durationMonths}
+                onChange={(e) => set("durationMonths", e.target.value)}
+              />
+              <span className="text-sm text-muted-foreground">months</span>
+            </div>
+          )}
+        </div>
+        <FieldDescription id={`${id}-duration-description`}>
+          {repeating
+            ? `Each redemption takes the value off every monthly invoice for ${Number(value.durationMonths) > 1 ? value.durationMonths : "the chosen number of"} months, up to ${MAX_DURATION_MONTHS}. Unused value does not carry over.`
+            : "Each redemption takes the value off one invoice."}
         </FieldDescription>
       </Field>
       <Field>
@@ -230,9 +272,16 @@ export function ConfirmStripeGeneration({
               </dd>
               <dt className="text-muted-foreground">Redemptions per code</dt>
               <dd>{input.redemptionsPerCode === 2 ? "Twice" : "Once"}</dd>
+              <dt className="text-muted-foreground">Duration</dt>
+              <dd>{durationLabel(input.durationMonths)}</dd>
               <dt className="text-muted-foreground">Maximum total discount</dt>
               <dd className="font-medium">
-                {usd(input.quantity * input.amountCents * (input.redemptionsPerCode ?? 1))}
+                {usd(
+                  input.quantity *
+                    input.amountCents *
+                    (input.redemptionsPerCode ?? 1) *
+                    (input.durationMonths ?? 1),
+                )}
               </dd>
               <dt className="text-muted-foreground">Expires</dt>
               <dd>
