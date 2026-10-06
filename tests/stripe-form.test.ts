@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { emptyStripeForm, generationInput } from "../lib/stripe-form";
+import { capDurationMonths, emptyStripeForm, generationInput } from "../lib/stripe-form";
 
 const form = { ...emptyStripeForm, name: "Credits", amount: "19.99" };
 const requestId = "request-1234567890";
@@ -106,4 +106,8 @@ test("defaults to a one-time discount and accepts multiple months", () => {
 
 test.each(["", "0", "13", "1.5", "NaN"])("rejects invalid month count %j", (durationMonths) => {
   expect(() => generationInput({ ...form, durationMonths }, false, requestId)).toThrow("months");
+});
+
+test.each([["13", "12"], ["99", "12"], ["12", "12"], ["3", "3"], ["", ""], ["0", "0"]])("caps typed month count %j at 12", (raw, expected) => {
+  expect(capDurationMonths(raw)).toBe(expected);
 });

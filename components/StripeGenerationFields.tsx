@@ -4,7 +4,12 @@ import { useId } from "react";
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { MAX_DURATION_MONTHS } from "@/convex/stripeValidation";
-import { durationLabel, usd, type StripeForm } from "@/lib/stripe-form";
+import {
+  capDurationMonths,
+  durationLabel,
+  usd,
+  type StripeForm,
+} from "@/lib/stripe-form";
 import {
   STRIPE_BATCH_NAME_MAX_LENGTH,
   STRIPE_CODE_PREFIX_MAX_LENGTH,
@@ -191,7 +196,7 @@ export function StripeGenerationFields({
                 required
                 className="w-20"
                 value={value.durationMonths}
-                onChange={(e) => set("durationMonths", e.target.value)}
+                onChange={(e) => set("durationMonths", capDurationMonths(e.target.value))}
               />
               <span className="text-sm text-muted-foreground">months</span>
             </div>
@@ -199,7 +204,7 @@ export function StripeGenerationFields({
         </div>
         <FieldDescription id={`${id}-duration-description`}>
           {repeating
-            ? `Each redemption takes the value off every monthly invoice for ${Number(value.durationMonths) > 1 ? value.durationMonths : "the chosen number of"} months, up to ${MAX_DURATION_MONTHS}. Unused value does not carry over.`
+            ? `Each redemption takes the value off every monthly invoice for ${Number(value.durationMonths) > 1 ? value.durationMonths : "the chosen number of"} months (2–${MAX_DURATION_MONTHS}). Unused value does not carry over.`
             : "Each redemption takes the value off one invoice."}
         </FieldDescription>
       </Field>
