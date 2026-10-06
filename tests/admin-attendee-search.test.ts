@@ -103,3 +103,51 @@ test("invalid queries and anonymous callers get no results", async () => {
     await stranger.query(api.events.searchByAttendee, { query: "ada@example.com" })
   ).toEqual({ key: "ada@example.com", results: [] });
 });
+
+test("history includes blocked rows and blacklist rejections, past events too", async () => {
+  const { t, ids } = await setup();
+  const past = await t.run(async (ctx) => {
+    const past = await ctx.db.insert("events", {
+      name: "Past",
+      slug: "past",
+      eventDate: "2020-01-01",
+    });
+    const rejected = await ctx.db.insert("events", { name: "Rejected", slug: "rejected" });
+    await ctx.db.insert("emails", {
+      eventId: past,
+      email: "ada@example.com",
+      blockedAt: 1,
+    });
+    await ctx.db.insert("blacklistedEmails", { email: "ada@example.com" });
+    await ctx.db.insert("blacklistHits", { eventId: rejected, email: "ada@example.com" });
+    await ctx.db.insert("blacklistHits", { eventId: ids.listed, email: "ada@example.com" });
+    return past;
+  });
+  const admin = t.withIdentity(adminIdentity);
+  const found = await admin.query(api.events.searchByAttendee, {
+    query: "ada@example.com",
+  });
+  const byName = Object.fromEntries(
+    (found?.results ?? []).map((r) => [r.name, r])
+  );
+  expect(Object.keys(byName).sort()).toEqual([
+    "Claimed",
+    "Listed",
+    "Other",
+    "Past",
+    "Rejected",
+  ]);
+  expect(byName.Past).toMatchObject({ _id: past, participant: true, blocked: true });
+  expect(byName.Rejected).toMatchObject({
+    participant: false,
+    blacklistRejected: true,
+  });
+  expect(byName.Listed).toMatchObject({ blocked: false, blacklistRejected: true });
+
+  const helper = t.withIdentity(eventAdminIdentity);
+  const scoped = await helper.query(api.events.searchByAttendee, {
+    query: "ada@example.com",
+  });
+  expect(scoped?.results.map((r) => r.name)).toEqual(["Listed"]);
+  expect(scoped?.results[0]).toMatchObject({ blacklistRejected: true });
+});

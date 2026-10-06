@@ -283,7 +283,7 @@ export const searchByAttendee = query({
       lookup: (eventId: Id<"events">) => Promise<T[]>
     ) => (await Promise.all((eventIds ?? []).map(lookup))).flat();
 
-    const [participants, claims, flagged, requests] = await Promise.all([
+    const [participants, claims, flagged, requests, hits] = await Promise.all([
       eventIds
         ? perEvent((eventId) =>
             ctx.db
@@ -336,25 +336,49 @@ export const searchByAttendee = query({
             .query("accessRequests")
             .withIndex("by_email", (q) => q.eq("email", key))
             .collect(),
+      eventIds
+        ? perEvent((eventId) =>
+            ctx.db
+              .query("blacklistHits")
+              .withIndex("by_event_email", (q) =>
+                q.eq("eventId", eventId).eq("email", key)
+              )
+              .collect()
+          )
+        : ctx.db
+            .query("blacklistHits")
+            .withIndex("by_email", (q) => q.eq("email", key))
+            .collect(),
     ]);
 
     type Match = {
       participant: boolean;
+      blocked: boolean;
       claimedCode?: string;
       claimedAt?: number;
       flagged: boolean;
+      blacklistRejected: boolean;
       accessRequest?: Doc<"accessRequests">["status"];
     };
     const matches = new Map<Id<"events">, Match>();
     const entry = (eventId: Id<"events">) => {
       let match = matches.get(eventId);
       if (!match) {
-        match = { participant: false, flagged: false };
+        match = {
+          participant: false,
+          blocked: false,
+          flagged: false,
+          blacklistRejected: false,
+        };
         matches.set(eventId, match);
       }
       return match;
     };
-    for (const row of participants) entry(row.eventId).participant = true;
+    for (const row of participants) {
+      const match = entry(row.eventId);
+      match.participant = true;
+      match.blocked = row.blockedAt !== undefined;
+    }
     for (const row of claims) {
       const match = entry(row.eventId);
       match.claimedCode = row.code;
@@ -362,6 +386,7 @@ export const searchByAttendee = query({
     }
     for (const row of flagged) entry(row.eventId).flagged = true;
     for (const row of requests) entry(row.eventId).accessRequest = row.status;
+    for (const row of hits) entry(row.eventId).blacklistRejected = true;
 
     const events = await Promise.all(
       [...matches.keys()].map((id) => ctx.db.get(id))

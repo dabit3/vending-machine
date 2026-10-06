@@ -14,6 +14,9 @@ import {
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
+import AttendeeMatchBadges, {
+  type AttendeeMatch,
+} from "@/components/AttendeeMatchBadges";
 import {
   daysSinceEventEnded,
   eventLastDay,
@@ -54,39 +57,6 @@ interface ManagedEventItem {
   createdBy?: string;
 }
 
-interface AttendeeMatch {
-  participant: boolean;
-  claimedCode?: string;
-  claimedAt?: number;
-  flagged: boolean;
-  accessRequest?: "pending" | "approved" | "denied";
-}
-
-function MatchBadges({ match }: { match: AttendeeMatch }) {
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-      {match.claimedCode ? (
-        <span>
-          Claimed <span className="font-mono">{match.claimedCode}</span>
-          {match.claimedAt
-            ? ` · ${new Date(match.claimedAt).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}`
-            : null}
-        </span>
-      ) : match.participant ? (
-        <span>On the list, not claimed</span>
-      ) : null}
-      {match.flagged ? <Badge variant="outline">Flagged</Badge> : null}
-      {match.accessRequest ? (
-        <Badge variant="outline">Access request {match.accessRequest}</Badge>
-      ) : null}
-    </div>
-  );
-}
-
 function AdminEventRow({
   event,
   past,
@@ -114,7 +84,7 @@ function AdminEventRow({
             ) : null}
           </div>
           {match ? (
-            <MatchBadges match={match} />
+            <AttendeeMatchBadges match={match} />
           ) : event.createdBy ? (
             <div className="truncate text-xs text-muted-dim">
               Created by {event.createdBy}
