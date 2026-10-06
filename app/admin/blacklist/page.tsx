@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Ban, Search, ShieldAlert, X } from "lucide-react";
+import { Ban, ChevronDown, Search, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -20,7 +20,13 @@ import {
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { formatEventDateRange } from "@/lib/event-date";
+import AttendeeMatchBadges from "@/components/AttendeeMatchBadges";
+import { cn } from "@/lib/utils";
+import {
+  daysSinceEventEnded,
+  formatEventDateRange,
+  newestEventsFirst,
+} from "@/lib/event-date";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -28,7 +34,7 @@ export default function BlacklistPage() {
   const access = useQuery(api.admins.accessLevel);
   const entries = useQuery(
     api.blacklist.list,
-    access?.isGlobalAdmin ? {} : "skip"
+    access?.isGlobalAdmin ? {} : "skip",
   );
   const addEmail = useMutation(api.blacklist.add);
   const removeEmail = useMutation(api.blacklist.remove);
@@ -38,13 +44,25 @@ export default function BlacklistPage() {
   const [submitting, setSubmitting] = useState(false);
   const [addingEmail, setAddingEmail] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<Id<"blacklistedEmails"> | null>(
-    null
+    null,
   );
+  const [expanded, setExpanded] = useState<Set<Id<"blacklistedEmails">>>(
+    () => new Set(),
+  );
+
+  function toggleExpanded(id: Id<"blacklistedEmails">) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const normalizedSearch = search.trim().toLowerCase();
   const visibleEntries = (entries ?? []).filter(
     (entry) =>
-      normalizedSearch === "" || entry.email.includes(normalizedSearch)
+      normalizedSearch === "" || entry.email.includes(normalizedSearch),
   );
   const blacklisted = new Set(entries?.map((entry) => entry.email));
 
@@ -54,13 +72,13 @@ export default function BlacklistPage() {
   useEffect(() => {
     const timer = setTimeout(
       () => setHistoryQuery(normalizedSearch),
-      SEARCH_DEBOUNCE_MS
+      SEARCH_DEBOUNCE_MS,
     );
     return () => clearTimeout(timer);
   }, [normalizedSearch]);
   const history = useQuery(
     api.emails.searchAttendees,
-    access?.isGlobalAdmin && historyQuery ? { query: historyQuery } : "skip"
+    access?.isGlobalAdmin && historyQuery ? { query: historyQuery } : "skip",
   );
   const historyLoading =
     history === undefined || historyQuery !== normalizedSearch;
@@ -72,7 +90,7 @@ export default function BlacklistPage() {
       return true;
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to blacklist email"
+        err instanceof Error ? err.message : "Failed to blacklist email",
       );
       return false;
     }
@@ -98,7 +116,7 @@ export default function BlacklistPage() {
       toast.success("Removed from blacklist");
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to remove from blacklist"
+        err instanceof Error ? err.message : "Failed to remove from blacklist",
       );
     } finally {
       setRemovingId(null);
@@ -143,29 +161,52 @@ export default function BlacklistPage() {
     ) : (
       <ul className="divide-y divide-border border-y border-border">
         {visibleEntries.map((entry) => (
-          <li
-            key={entry._id}
-            className="flex min-h-12 items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
-          >
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-sm">{entry.email}</span>
-              {entry.addedBy ? (
-                <span className="truncate text-xs text-muted-dim">
-                  Added by {entry.addedBy}
-                </span>
-              ) : null}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Remove ${entry.email} from blacklist`}
-              onClick={() => handleRemove(entry._id)}
-              disabled={removingId === entry._id}
-              aria-busy={removingId === entry._id}
-              className="shrink-0 text-muted-foreground"
-            >
-              {removingId === entry._id ? <Spinner /> : <X />}
-            </Button>
+          <li key={entry._id}>
+            <div className="flex min-h-12 items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface">
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-sm">{entry.email}</span>
+                {entry.addedBy ? (
+                  <span className="truncate text-xs text-muted-dim">
+                    Added by {entry.addedBy}
+                  </span>
+                ) : null}
+              </span>
+              <span className="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  aria-expanded={expanded.has(entry._id)}
+                  aria-controls={`blacklist-events-${entry._id}`}
+                  onClick={() => toggleExpanded(entry._id)}
+                  className="text-muted-foreground"
+                >
+                  Events
+                  <ChevronDown
+                    data-icon="inline-end"
+                    className={cn(
+                      "transition-transform",
+                      expanded.has(entry._id) && "rotate-180",
+                    )}
+                  />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Remove ${entry.email} from blacklist`}
+                  onClick={() => handleRemove(entry._id)}
+                  disabled={removingId === entry._id}
+                  aria-busy={removingId === entry._id}
+                  className="shrink-0 text-muted-foreground"
+                >
+                  {removingId === entry._id ? <Spinner /> : <X />}
+                </Button>
+              </span>
+            </div>
+            {expanded.has(entry._id) ? (
+              <div id={`blacklist-events-${entry._id}`} className="px-1 pb-3">
+                <BlacklistedEventHistory email={entry.email} />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -179,8 +220,8 @@ export default function BlacklistPage() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Blacklisted emails are rejected whenever they would be added to any
-          event: uploads, flagged-email approvals, and access-request
-          approvals all skip them.
+          event: uploads, flagged-email approvals, and access-request approvals
+          all skip them.
         </p>
       </div>
 
@@ -319,7 +360,7 @@ export default function BlacklistPage() {
                                 <span className="shrink-0 text-muted-dim">
                                   {formatEventDateRange(
                                     event.eventDate,
-                                    event.eventEndDate ?? undefined
+                                    event.eventEndDate ?? undefined,
                                   )}
                                 </span>
                               ) : null}
@@ -337,8 +378,8 @@ export default function BlacklistPage() {
                       {attendee.eligibilityTruncated ||
                       attendee.claimsTruncated ? (
                         <p className="mt-2 text-xs text-muted-dim">
-                          History is too long to show in full; some events
-                          may be missing.
+                          History is too long to show in full; some events may
+                          be missing.
                         </p>
                       ) : null}
                     </li>
@@ -356,6 +397,53 @@ export default function BlacklistPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Every event the address has been listed on, claimed at, flagged for,
+// requested access to, or been rejected from by the blacklist.
+function BlacklistedEventHistory({ email }: { email: string }) {
+  const found = useQuery(api.events.searchByAttendee, { query: email });
+  if (found === undefined) {
+    return <Skeleton className="h-12 rounded-md" />;
+  }
+  const results = newestEventsFirst(found?.results ?? []);
+  if (results.length === 0) {
+    return (
+      <p className="rounded-md bg-surface px-3 py-2.5 text-xs text-muted-foreground">
+        Not on any event.
+      </p>
+    );
+  }
+  return (
+    <ul className="divide-y divide-border rounded-md bg-surface">
+      {results.map((event) => (
+        <li
+          key={event._id}
+          className={cn(
+            "px-3 py-2.5",
+            event.eventDate &&
+              daysSinceEventEnded(event.eventDate, event.eventEndDate) > 0 &&
+              "opacity-70",
+          )}
+        >
+          <div className="flex items-baseline justify-between gap-3 text-sm">
+            <Link
+              href={`/admin/events/${event._id}`}
+              className="truncate font-medium underline-offset-4 hover:underline"
+            >
+              {event.name}
+            </Link>
+            {event.eventDate ? (
+              <span className="shrink-0 text-xs text-muted-dim tabular-nums">
+                {formatEventDateRange(event.eventDate, event.eventEndDate)}
+              </span>
+            ) : null}
+          </div>
+          <AttendeeMatchBadges match={event} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
