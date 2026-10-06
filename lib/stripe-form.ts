@@ -43,6 +43,15 @@ export function capDurationMonths(raw: string): string {
   return Number(raw) > MAX_DURATION_MONTHS ? String(MAX_DURATION_MONTHS) : raw;
 }
 
+// A typed month count only reaches the form once it is a valid repeat count,
+// so partial input like the "1" of "10" never switches the duration to Once.
+export function committableDurationMonths(raw: string): string | undefined {
+  const months = Number(raw);
+  return raw !== "" && Number.isInteger(months) && months >= 2 && months <= MAX_DURATION_MONTHS
+    ? raw
+    : undefined;
+}
+
 export function generationInput(
   form: StripeForm,
   live: boolean,
