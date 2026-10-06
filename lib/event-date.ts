@@ -69,3 +69,12 @@ export function daysSinceEventEnded(
 export function isEventLive(start: string, end?: string, now?: Date): boolean {
   return daysUntilEvent(start, now) <= 0 && daysSinceEventEnded(start, end, now) <= 0;
 }
+
+// Newest first: dated events by start date, undated ones by creation time.
+export function newestEventsFirst<
+  T extends { eventDate?: string; _creationTime?: number },
+>(events: T[]): T[] {
+  const time = (e: T) =>
+    e.eventDate ? Date.parse(`${e.eventDate}T00:00:00Z`) : (e._creationTime ?? 0);
+  return [...events].sort((a, b) => time(b) - time(a));
+}

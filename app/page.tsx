@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, LogIn, Ticket } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -7,7 +8,11 @@ import { SignInButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
-import { daysSinceEventEnded, formatEventDateRange } from "@/lib/event-date";
+import {
+  daysSinceEventEnded,
+  formatEventDateRange,
+  newestEventsFirst,
+} from "@/lib/event-date";
 import { markdownToPlainText } from "@/lib/markdown-plain";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -32,6 +37,7 @@ const HERO_BUTTON =
 
 interface EventItem {
   _id: string;
+  _creationTime?: number;
   name: string;
   slug: string;
   description?: string;
@@ -39,6 +45,8 @@ interface EventItem {
   eventEndDate?: string;
   claimed: boolean;
 }
+
+const RECENT_EVENT_COUNT = 3;
 
 // Events are never listed publicly: attendees arrive through the claim URL or
 // QR code their organizer shares. The page introduces the app to visitors and,
@@ -163,6 +171,7 @@ export default function Home() {
 }
 
 function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
+  const [showAll, setShowAll] = useState(false);
   if (events === undefined) {
     return (
       <div
@@ -201,16 +210,31 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
       </Empty>
     );
   }
+  const sorted = newestEventsFirst(events);
+  const hasMore = sorted.length > RECENT_EVENT_COUNT;
+  const shown = showAll ? sorted : sorted.slice(0, RECENT_EVENT_COUNT);
   return (
     <div className="relative grid w-full max-w-md gap-3">
       <h2 className="px-1 text-sm font-medium text-muted-foreground">
         Your events
       </h2>
-      <ul className="grid min-w-0 gap-3">
-        {events.map((event, index) => (
+      <ul id="your-events" className="grid min-w-0 gap-3">
+        {shown.map((event, index) => (
           <EventCard key={event._id} event={event} index={index} />
         ))}
       </ul>
+      {hasMore ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="justify-self-center text-muted-foreground"
+          aria-controls="your-events"
+          aria-expanded={showAll}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? "Show fewer" : `View all ${sorted.length} events`}
+        </Button>
+      ) : null}
     </div>
   );
 }
