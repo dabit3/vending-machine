@@ -868,6 +868,46 @@ describe("batch assignment", () => {
     expect(await user.query(api.codes.mine)).toMatchObject([{ event: { creditAmount: "50" } }]);
   });
 
+  test("dispensed codes carry their batch's redemption and duration terms", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Terms event" });
+    await admin.mutation(api.stripeBatches.create, {
+      ...input, amountCents: 20000, name: "Pro", eventId: event.id, quantity: 1,
+      durationMonths: 2, redemptionsPerCode: 2,
+    });
+    await drain(t);
+    const terms = { redemptions: 2, months: 2 };
+    const anon = await t.query(api.events.getBySlug, { slug: event.slug });
+    expect(anon?.codeTypeTerms).toEqual({ [blockKey("Pro")]: terms });
+    const attendee = { subject: "attendee", email: "attendee@example.com", emailVerified: true };
+    await t.run((ctx) => ctx.db.insert("emails", { eventId: event.id, email: attendee.email }));
+    const user = t.withIdentity(attendee);
+    expect(await user.mutation(api.claims.claim, { slug: event.slug, codeType: "Pro" })).toMatchObject({
+      ok: true, alreadyClaimed: false, creditAmount: "200", terms,
+    });
+    expect(await user.mutation(api.claims.claim, { slug: event.slug, codeType: "Pro" })).toMatchObject({
+      ok: true, alreadyClaimed: true, terms,
+    });
+    expect(await user.query(api.claims.eligibility, { slug: event.slug })).toMatchObject({
+      claimed: { creditAmount: "200", terms },
+    });
+    expect(await user.query(api.codes.mine)).toMatchObject([{ terms, event: { creditAmount: "200" } }]);
+  });
+
+  test("legacy single-use codes have no terms", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Legacy terms" });
+    await admin.mutation(api.stripeBatches.create, { ...input, name: "Basic", eventId: event.id, quantity: 1 });
+    await drain(t);
+    const attendee = { subject: "attendee", email: "attendee@example.com", emailVerified: true };
+    await t.run((ctx) => ctx.db.insert("emails", { eventId: event.id, email: attendee.email }));
+    const user = t.withIdentity(attendee);
+    const result = await user.mutation(api.claims.claim, { slug: event.slug, codeType: "Basic" });
+    expect(result).toMatchObject({ ok: true, creditAmount: "50" });
+    expect(result).not.toHaveProperty("terms");
+    expect((await user.query(api.codes.mine))?.[0]?.terms).toBeUndefined();
+  });
+
   test("manual Unicode blocks keep their values through renaming and cleanup", async () => {
     const { admin } = await setup();
     const event = await admin.mutation(api.events.create, { name: "Manual blocks" });

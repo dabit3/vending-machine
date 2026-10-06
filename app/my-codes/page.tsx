@@ -39,14 +39,7 @@ import {
 } from "@/components/ui/empty";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Block values are free text: numeric values ("100") render as dollar
-// credits ("$100 in credits"); anything else ("Team plan", "$200") renders
-// as-is.
-function formatValue(value: string) {
-  const trimmed = value.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
-}
+import { codeValueSummary } from "@/lib/block-value";
 
 interface EventInfo {
   _id: string;
@@ -60,7 +53,6 @@ interface EventInfo {
 function eventMeta(event: EventInfo) {
   const parts: string[] = [];
   if (event.eventDate) parts.push(formatEventDateRange(event.eventDate, event.eventEndDate));
-  if (event.creditAmount) parts.push(formatValue(event.creditAmount));
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -179,6 +171,9 @@ export default function MyCodesPage() {
               {codes.map((item) => {
                 const meta = item.event ? eventMeta(item.event) : null;
                 const expiry = codeExpiry(item.expiresAt);
+                const value = item.event?.creditAmount
+                  ? codeValueSummary(item.event.creditAmount, item.terms)
+                  : null;
                 return (
                   <Card key={item._id}>
                     <CardHeader>
@@ -199,6 +194,20 @@ export default function MyCodesPage() {
                         )}
                       </CardTitle>
                       {meta ? <CardDescription>{meta}</CardDescription> : null}
+                      {value ? (
+                        <CardDescription>
+                          <span
+                            className={
+                              value.detail ? "font-medium text-foreground" : undefined
+                            }
+                          >
+                            {value.headline}
+                          </span>
+                          {value.detail ? (
+                            <span className="block">{value.detail}</span>
+                          ) : null}
+                        </CardDescription>
+                      ) : null}
                     </CardHeader>
                   <CardContent className="flex-1 pt-2 pb-1">
                     {item.codeType ? (

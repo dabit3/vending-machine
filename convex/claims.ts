@@ -10,6 +10,7 @@ import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 import { isBlacklisted } from "./blacklist";
 import { blockValue } from "./blockValues";
+import { codeTermsFor, eventCodeTerms } from "./codeTerms";
 import { dropTypeIfEmpty } from "./codes";
 import { notExpired } from "./codeExpiry";
 import { resolveViewer } from "./identity";
@@ -106,11 +107,16 @@ export const eligibility = query({
     if (previewing) {
       const codeTypes = event.codeTypes ?? [];
       const options = codeTypes.length > 1 ? codeTypes : [undefined];
+      const terms = await eventCodeTerms(ctx, event._id);
       const previewCodes = await Promise.all(
-        options.map(async (codeType) => ({
-          codeType,
-          expiresAt: (await nextAvailable(ctx, event, codeType))?.expiresAt,
-        }))
+        options.map(async (codeType) => {
+          const next = await nextAvailable(ctx, event, codeType);
+          return {
+            codeType,
+            expiresAt: next?.expiresAt,
+            terms: next ? terms.get(next.code) : undefined,
+          };
+        })
       );
       return {
         eligible: true as const,
@@ -141,6 +147,7 @@ export const eligibility = query({
           code: claimed.code,
           codeType: claimed.codeType,
           creditAmount: blockValue(event, claimed.codeType),
+          terms: await codeTermsFor(ctx, event._id, claimed.code),
           expiresAt: claimed.expiresAt,
         },
       };
@@ -257,6 +264,7 @@ export const claim = mutation({
         codeType: alreadyClaimed.codeType,
         alreadyClaimed: true,
         creditAmount: blockValue(event, alreadyClaimed.codeType),
+        terms: await codeTermsFor(ctx, event._id, alreadyClaimed.code),
         expiresAt: alreadyClaimed.expiresAt,
       };
     }
@@ -303,6 +311,7 @@ export const claim = mutation({
       codeType: available.codeType,
       alreadyClaimed: false,
       creditAmount: blockValue(event, available.codeType),
+      terms: await codeTermsFor(ctx, event._id, available.code),
       expiresAt: available.expiresAt,
     };
   },

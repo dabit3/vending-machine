@@ -30,6 +30,7 @@ import {
 } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { blockKey } from "@/convex/blockValues";
+import { codeValueSummary, type CodeTerms } from "@/lib/block-value";
 import {
   eventCountdownLabel,
   formatEventDateRange,
@@ -79,17 +80,10 @@ type ClaimResult =
       codeType?: string;
       alreadyClaimed: boolean;
       creditAmount?: string;
+      terms?: CodeTerms;
       expiresAt?: number;
     }
   | { ok: false; error: string };
-
-// Block values are free text: numeric values ("100") render as dollar
-// credits ("$100 in credits"); anything else ("Team plan", "$200") renders
-// as-is.
-function formatValue(value: string) {
-  const trimmed = value.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
-}
 
 function subscribeNoop() {
   return () => {};
@@ -225,6 +219,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
         alreadyClaimed: false,
         creditAmount:
           event.codeTypeValues?.[blockKey(type)] ?? event.creditAmount,
+        terms: next?.terms,
         expiresAt: next?.expiresAt,
       });
       return;
@@ -310,6 +305,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               eventName={event.name}
               instructions={event.claimInstructions}
               creditAmount={result.creditAmount}
+              terms={result.terms}
               code={result.code}
               codeType={result.codeType}
               expiresAt={result.expiresAt}
@@ -322,6 +318,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               eventName={event.name}
               instructions={event.claimInstructions}
               creditAmount={eligibility.claimed.creditAmount}
+              terms={eligibility.claimed.terms}
               code={eligibility.claimed.code}
               codeType={eligibility.claimed.codeType}
               expiresAt={eligibility.claimed.expiresAt}
@@ -589,6 +586,12 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                             const value =
                               event.codeTypeValues?.[blockKey(type)] ??
                               event.creditAmount;
+                            const summary = value
+                              ? codeValueSummary(
+                                  value,
+                                  event.codeTypeTerms?.[blockKey(type)],
+                                )
+                              : null;
                             return (
                               <Button
                                 key={type}
@@ -603,9 +606,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                                 )}
                               >
                                 <span>{type}</span>
-                                {value ? (
+                                {summary ? (
                                   <span className="text-xs font-normal text-muted-foreground">
-                                    {formatValue(value)}
+                                    {summary.headline}
+                                  </span>
+                                ) : null}
+                                {summary?.detail ? (
+                                  <span className="text-[11px] font-normal text-muted-dim">
+                                    {summary.detail}
                                   </span>
                                 ) : null}
                               </Button>
@@ -811,6 +819,7 @@ function Receipt({
   eventName,
   instructions,
   creditAmount,
+  terms,
   code,
   codeType,
   expiresAt,
@@ -821,6 +830,7 @@ function Receipt({
   eventName: string;
   instructions?: string;
   creditAmount?: string;
+  terms?: CodeTerms;
   code: string;
   codeType?: string;
   expiresAt?: number;
@@ -829,6 +839,7 @@ function Receipt({
   onCopy: (code: string) => void;
 }) {
   const expiry = codeExpiry(expiresAt);
+  const value = creditAmount ? codeValueSummary(creditAmount, terms) : null;
   return (
     <div
       className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
@@ -849,10 +860,20 @@ function Receipt({
           <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
             {eventName}
           </h1>
-          {creditAmount ? (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {formatValue(creditAmount)}
+          {value ? (
+            <p
+              className={cn(
+                "mt-1 text-sm",
+                value.detail
+                  ? "font-medium text-foreground"
+                  : "text-muted-foreground",
+              )}
+            >
+              {value.headline}
             </p>
+          ) : null}
+          {value?.detail ? (
+            <p className="text-sm text-muted-foreground">{value.detail}</p>
           ) : null}
         </div>
 
