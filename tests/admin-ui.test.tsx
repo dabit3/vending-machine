@@ -501,6 +501,6 @@ test("missing Stripe setup disables generation without removing the other event 
 test("sign-in message shows the default hint with a customize button", () => {
   const form = renderToStaticMarkup(<NewEventForm />);
   expect(form).toContain("Customize sign-in message");
-  expect(form).toContain("Sign in with the email you registered for this event with");
+  expect(form).toContain("Sign in with the email you used for this event");
   expect(form).not.toContain("replacing the default sign-in hint");
 });
