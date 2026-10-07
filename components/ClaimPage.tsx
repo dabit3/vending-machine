@@ -607,7 +607,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                               >
                                 <span>{type}</span>
                                 {summary ? (
-                                  <span className="text-xs font-normal text-muted-foreground">
+                                  <span className="text-sm font-normal text-muted-foreground">
                                     {summary.headline}
                                   </span>
                                 ) : null}
@@ -863,7 +863,7 @@ function Receipt({
           {value ? (
             <p
               className={cn(
-                "mt-1 text-sm",
+                "mt-1 text-lg",
                 value.detail
                   ? "font-medium text-foreground"
                   : "text-muted-foreground",

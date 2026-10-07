@@ -18,6 +18,7 @@ import { api } from "@/convex/_generated/api";
 import { formatEventDateRange } from "@/lib/event-date";
 import { codeExpiry } from "@/lib/code-expiry";
 import { copyText } from "@/lib/clipboard";
+import { cn } from "@/lib/utils";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { Alert, AlertTitle } from "@/components/ui/alert";
@@ -197,9 +198,10 @@ export default function MyCodesPage() {
                       {value ? (
                         <CardDescription>
                           <span
-                            className={
-                              value.detail ? "font-medium text-foreground" : undefined
-                            }
+                            className={cn(
+                              "text-base",
+                              value.detail && "font-medium text-foreground",
+                            )}
                           >
                             {value.headline}
                           </span>
