@@ -198,6 +198,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   // (possibly unnamed) pool claims without a choice.
   const codeTypes = (event?.codeTypes ?? []).filter((t) => t !== "");
   const mustChoose = (event?.codeTypes.length ?? 0) > 1;
+  const valueFor = (type: string) => {
+    const value = event?.codeTypeValues?.[blockKey(type)] ?? event?.creditAmount;
+    return value
+      ? codeValueSummary(value, event?.codeTypeTerms?.[blockKey(type)])
+      : null;
+  };
+  const singleValue =
+    event && !mustChoose ? valueFor(event.codeTypes[0] ?? "") : null;
 
   async function handleClaim() {
     if (previewMode && event) {
@@ -512,7 +520,21 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                   </div>
                 ) : mustReadInstructions ? (
                   <div className="flex flex-col gap-5">
-                    <p className="text-sm leading-relaxed text-muted-foreground">
+                    {singleValue ? (
+                      <CodeValue summary={singleValue} />
+                    ) : mustChoose ? (
+                      <ul className="flex flex-col gap-3">
+                        {codeTypes.map((type) => {
+                          const summary = valueFor(type);
+                          return summary ? (
+                            <li key={type}>
+                              <CodeValue label={type} summary={summary} />
+                            </li>
+                          ) : null;
+                        })}
+                      </ul>
+                    ) : null}
+                    <p className="text-base leading-relaxed text-muted-foreground">
                       {event.dynamic ? "You're in." : "You're on the list."}{" "}
                       Before your code is dispensed, take a moment to read how
                       to redeem it.
@@ -576,6 +598,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         <AlertTitle>{result.error}</AlertTitle>
                       </Alert>
                     ) : null}
+                    {singleValue ? <CodeValue summary={singleValue} /> : null}
                     {mustChoose ? (
                       <fieldset className="flex flex-col gap-2">
                         <legend className="mb-2 text-xs font-medium text-muted-foreground">
@@ -583,15 +606,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         </legend>
                         <div className="grid grid-cols-2 gap-2">
                           {codeTypes.map((type) => {
-                            const value =
-                              event.codeTypeValues?.[blockKey(type)] ??
-                              event.creditAmount;
-                            const summary = value
-                              ? codeValueSummary(
-                                  value,
-                                  event.codeTypeTerms?.[blockKey(type)],
-                                )
-                              : null;
+                            const summary = valueFor(type);
                             return (
                               <Button
                                 key={type}
@@ -812,6 +827,28 @@ function QrPanel({
         </span>
       </CardContent>
     </Card>
+  );
+}
+
+function CodeValue({
+  label,
+  summary,
+}: {
+  label?: string;
+  summary: { headline: string; detail?: string };
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      {label ? (
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      ) : null}
+      <span className="font-heading text-2xl font-semibold tracking-tight tabular-nums">
+        {summary.headline}
+      </span>
+      {summary.detail ? (
+        <span className="text-sm text-muted-foreground">{summary.detail}</span>
+      ) : null}
+    </div>
   );
 }
 
