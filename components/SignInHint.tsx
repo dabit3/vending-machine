@@ -48,7 +48,7 @@ export function SignInHint({
   ) : (
     <Alert>
       <Mail />
-      <AlertTitle>Sign in with the email you registered for this event with</AlertTitle>
+      <AlertTitle>Sign in with the email you used for this event</AlertTitle>
       <AlertDescription>
         Codes are only dispensed to the addresses your organizer added. A
         different email won&apos;t be on the list, even if it&apos;s yours.
