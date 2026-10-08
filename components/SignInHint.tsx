@@ -3,6 +3,8 @@ import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import { MarkdownText } from "@/components/MarkdownText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const hintSpacing = "gap-1 px-3 py-3.5";
+
 // The hint above the claim page's sign-in button: the event's custom
 // message when set, otherwise the default copy for its identity mode.
 export function SignInHint({
@@ -17,7 +19,7 @@ export function SignInHint({
   const byHandle = identity === "x";
   if (message) {
     return (
-      <Alert>
+      <Alert className={hintSpacing}>
         {byHandle ? <AtSign /> : <Mail />}
         <AlertDescription>
           <MarkdownText value={message} />
@@ -35,7 +37,7 @@ export function SignInHint({
     );
   }
   return byHandle ? (
-    <Alert>
+    <Alert className={hintSpacing}>
       <AtSign />
       <AlertTitle>
         Sign in with the X account you registered for this event with
@@ -46,7 +48,7 @@ export function SignInHint({
       </AlertDescription>
     </Alert>
   ) : (
-    <Alert>
+    <Alert className={hintSpacing}>
       <Mail />
       <AlertTitle>Sign in with the email you used for this event</AlertTitle>
       <AlertDescription>
