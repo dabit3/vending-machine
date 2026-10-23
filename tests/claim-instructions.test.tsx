@@ -121,13 +121,17 @@ test.each([
   expect(html).not.toMatch(/href=|<script|<img|onerror=/i);
 });
 
-test("previews formatted presets and hides the custom preview until requested", () => {
+test("keeps the mode tabs visible but folds the preset text and custom editor behind Show details", () => {
   const render = (value: string) => renderToStaticMarkup(<ClaimInstructionsField id="instructions" value={value} onChange={() => {}} description="Read before claiming." />);
-  expect(render(CLAIM_INSTRUCTION_PRESETS.pro.text)).toContain('href="https://app.devin.ai/"');
-  const html = render("Go to [checkout](https://app.devin.ai/).");
-  expect(html).toContain("Markdown");
-  expect(html).toContain("Show preview");
-  expect(html).not.toContain(">checkout</a>");
+  const pro = render(CLAIM_INSTRUCTION_PRESETS.pro.text);
+  expect(pro).toContain(">Max<");
+  expect(pro).toContain("Show details");
+  expect(pro).not.toContain('href="https://app.devin.ai/"');
+  const custom = render("Go to [checkout](https://app.devin.ai/).");
+  expect(custom).toContain("Show details");
+  expect(custom).not.toContain("<textarea");
+  expect(custom).not.toContain(">checkout</a>");
+  expect(render("")).not.toContain("Show details");
 });
 
 test("copy text resolves presets and flattens Markdown links and emphasis", () => {

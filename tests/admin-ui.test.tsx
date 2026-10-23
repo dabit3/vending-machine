@@ -535,7 +535,7 @@ test("optional settings with a value render expanded with a clear action", () =>
   expect(html).not.toContain("Set contact / support email");
 });
 
-test("saved redemption instructions fold into a summary row until edited", () => {
+test("saved redemption instructions show the chosen mode in the title with details folded", () => {
   const props = {
     idPrefix: "t",
     description: "",
@@ -548,20 +548,22 @@ test("saved redemption instructions fold into a summary row until edited", () =>
     contactEmail: "",
     onContactEmailChange: () => {},
   };
-  const pro = renderToStaticMarkup(
+  const max = renderToStaticMarkup(
     <EventOptionalSettings
       {...props}
-      instructions={CLAIM_INSTRUCTION_PRESETS.pro.text}
+      instructions={CLAIM_INSTRUCTION_PRESETS.max.text}
     />,
   );
-  expect(pro).toContain("Pro preset");
-  expect(pro).toContain("View / edit");
-  expect(pro).not.toContain(">None</button>");
-  expect(pro).not.toContain("Set redemption instructions");
+  expect(max).toContain("· Max");
+  expect(max).toContain(">None<");
+  expect(max).toContain("Show details");
+  expect(max).toContain("Remove");
+  expect(max).not.toContain('href="https://app.devin.ai/"');
+  expect(max).not.toContain("Set redemption instructions");
 
   const custom = renderToStaticMarkup(
     <EventOptionalSettings {...props} instructions="Go to billing." />,
   );
-  expect(custom).toContain("Custom");
+  expect(custom).toContain("· Custom");
   expect(custom).not.toContain("Go to billing.");
 });

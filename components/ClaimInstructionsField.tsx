@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import {
   CLAIM_INSTRUCTION_PRESETS,
   claimInstructionsMode,
@@ -36,18 +36,23 @@ export function ClaimInstructionsField({
   className?: string;
 }) {
   const [mode, setMode] = useState<ClaimInstructionsMode>(() =>
-    claimInstructionsMode(value)
+    claimInstructionsMode(value),
   );
   const [customDraft, setCustomDraft] = useState(() =>
-    claimInstructionsMode(value) === "custom" ? value : ""
+    claimInstructionsMode(value) === "custom" ? value : "",
   );
   const [showPreview, setShowPreview] = useState(false);
+  // The preset text or custom editor stays folded until asked for; picking
+  // Custom unfolds it, since there is nothing to see until it is written.
+  const [showDetails, setShowDetails] = useState(false);
 
   function selectMode(next: ClaimInstructionsMode) {
     if (mode === "custom") setCustomDraft(value);
     setMode(next);
+    setShowDetails(next === "custom");
     if (next === "none") onChange("");
-    else if (next === "custom") onChange(mode === "custom" ? value : customDraft);
+    else if (next === "custom")
+      onChange(mode === "custom" ? value : customDraft);
     else onChange(CLAIM_INSTRUCTION_PRESETS[next].text);
   }
 
@@ -65,8 +70,26 @@ export function ClaimInstructionsField({
           ))}
         </TabsList>
       </Tabs>
-      {mode === "custom" ? (
-        <>
+      {mode !== "none" ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start text-muted-foreground"
+          onClick={() => setShowDetails((v) => !v)}
+          aria-expanded={showDetails}
+          aria-controls={`${id}-details`}
+        >
+          {showDetails ? (
+            <ChevronUp data-icon="inline-start" />
+          ) : (
+            <ChevronDown data-icon="inline-start" />
+          )}
+          {showDetails ? "Hide details" : "Show details"}
+        </Button>
+      ) : null}
+      {!showDetails ? null : mode === "custom" ? (
+        <div id={`${id}-details`} className="flex flex-col gap-2">
           <Textarea
             id={id}
             value={value}
@@ -78,7 +101,8 @@ export function ClaimInstructionsField({
           />
           <div className="flex items-start justify-between gap-3">
             <FieldDescription id={`${id}-markdown-help`}>
-              Markdown is supported. Use [link text](https://app.devin.ai/) for a link, or paste a URL. Add a blank line between paragraphs.
+              Markdown is supported. Use [link text](https://app.devin.ai/) for
+              a link, or paste a URL. Add a blank line between paragraphs.
             </FieldDescription>
             {value.trim() && (
               <Button
@@ -106,10 +130,10 @@ export function ClaimInstructionsField({
               className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground"
             />
           )}
-        </>
+        </div>
       ) : mode !== "none" ? (
         <ClaimInstructions
-          id={id}
+          id={`${id}-details`}
           value={CLAIM_INSTRUCTION_PRESETS[mode].text}
           className="rounded-md border bg-muted/40 px-3 py-2 text-muted-foreground"
         />

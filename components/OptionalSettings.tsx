@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check, Pencil, Plus, X, type LucideIcon } from "lucide-react";
+import { Plus, X, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -14,12 +14,11 @@ export type OptionalSetting = {
   // Button text while the setting is collapsed, e.g. "Set contact email".
   addLabel: string;
   icon: LucideIcon;
+  // A setting with a value stays expanded until it is cleared.
   set: boolean;
   onClear: () => void;
   clearLabel?: string;
-  // A collapsible setting folds its saved value into a one-line summary row
-  // with an edit button instead of staying expanded.
-  collapsible?: boolean;
+  // Short state shown next to the title, e.g. the chosen preset.
   summary?: ReactNode;
   // `focus` is true when the admin just expanded the setting.
   render: (focus: boolean) => ReactNode;
@@ -27,7 +26,7 @@ export type OptionalSetting = {
 
 // Optional form settings stay out of the way until needed: each shows as a
 // small "+ Add …" button, and expands into a panel once clicked or when it
-// already has a value. Collapsible settings fold away again once saved.
+// already has a value.
 export function OptionalSettings({
   settings,
   className,
@@ -36,28 +35,17 @@ export function OptionalSettings({
   className?: string;
 }) {
   const [opened, setOpened] = useState<string[]>(() =>
-    settings
-      .filter((s) => s.set && !s.collapsible)
-      .map((s) => s.key)
+    settings.filter((s) => s.set).map((s) => s.key),
   );
   const [focused, setFocused] = useState<string[]>([]);
   // A setting that gains a value elsewhere joins the open set, and stays open
   // while the admin edits it down to empty; only its Remove button closes it.
-  const newlySet = settings.filter(
-    (s) => s.set && !s.collapsible && !opened.includes(s.key)
-  );
+  const newlySet = settings.filter((s) => s.set && !opened.includes(s.key));
   if (newlySet.length > 0) {
     setOpened([...opened, ...newlySet.map((s) => s.key)]);
   }
-  const expanded = settings.filter(
-    (s) => opened.includes(s.key) || (s.set && !s.collapsible)
-  );
-  const summarized = settings.filter(
-    (s) => s.set && !expanded.includes(s)
-  );
-  const collapsed = settings.filter(
-    (s) => !expanded.includes(s) && !summarized.includes(s)
-  );
+  const expanded = settings.filter((s) => s.set || opened.includes(s.key));
+  const collapsed = settings.filter((s) => !expanded.includes(s));
 
   function close(key: string) {
     setOpened((prev) => prev.filter((k) => k !== key));
@@ -73,66 +61,31 @@ export function OptionalSettings({
       {expanded.map((s) => (
         <Field key={s.key} className="rounded-lg border p-4">
           <div className="flex min-h-6 items-center justify-between gap-3">
-            <FieldLabel htmlFor={s.id}>{s.title}</FieldLabel>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="text-muted-foreground"
-                onClick={() => {
-                  s.onClear();
-                  close(s.key);
-                }}
-              >
-                <X data-icon="inline-start" />
-                {s.clearLabel ?? "Remove"}
-              </Button>
-              {s.collapsible ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={() => close(s.key)}
-                >
-                  <Check data-icon="inline-start" />
-                  Done
-                </Button>
-              ) : null}
-            </div>
-          </div>
-          {s.render(focused.includes(s.key))}
-        </Field>
-      ))}
-      {summarized.map((s) => {
-        const Icon = s.icon;
-        return (
-          <div
-            key={s.key}
-            className="flex min-h-10 items-center justify-between gap-3 rounded-lg border px-4 py-2 text-sm"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <Icon className="size-4 shrink-0 text-muted-foreground" />
-              <div className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
-                <span className="whitespace-nowrap font-medium">{s.title}</span>
-                <span className="truncate text-muted-foreground">
-                  {s.summary}
+            <FieldLabel htmlFor={s.id} className="min-w-0">
+              <span className="truncate">{s.title}</span>
+              {s.summary !== undefined ? (
+                <span className="truncate font-normal text-muted-foreground">
+                  · {s.summary}
                 </span>
-              </div>
-            </div>
+              ) : null}
+            </FieldLabel>
             <Button
               type="button"
               variant="ghost"
               size="xs"
-              className="shrink-0"
-              onClick={() => open(s.key)}
+              className="text-muted-foreground"
+              onClick={() => {
+                s.onClear();
+                close(s.key);
+              }}
             >
-              <Pencil data-icon="inline-start" />
-              View / edit
+              <X data-icon="inline-start" />
+              {s.clearLabel ?? "Remove"}
             </Button>
           </div>
-        );
-      })}
+          {s.render(focused.includes(s.key))}
+        </Field>
+      ))}
       {collapsed.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2">
           {collapsed.map((s) => {

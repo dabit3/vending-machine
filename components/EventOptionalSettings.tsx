@@ -17,7 +17,7 @@ function instructionsSummary(instructions: string) {
   const mode = claimInstructionsMode(instructions);
   if (mode === "none") return undefined;
   if (mode === "custom") return "Custom";
-  return `${CLAIM_INSTRUCTION_PRESETS[mode].label} preset`;
+  return CLAIM_INSTRUCTION_PRESETS[mode].label;
 }
 
 // The optional, attendee-facing event settings shared by the create and
@@ -87,7 +87,6 @@ export function EventOptionalSettings({
           icon: ListChecks,
           set: instructions !== "",
           onClear: () => onInstructionsChange(""),
-          collapsible: true,
           summary: instructionsSummary(instructions),
           render: () => (
             <ClaimInstructionsField
