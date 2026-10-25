@@ -321,7 +321,7 @@ export const claim = mutation({
     if (cooldown.eligibleAt !== undefined) {
       return {
         ok: false as const,
-        error: `You already claimed ${cooldown.recent} codes in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. You can claim again on ${formatClaimDate(cooldown.eligibleAt)}.`,
+        error: `You already claimed ${cooldown.recent} codes in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. Your limit lifts on ${formatClaimDate(cooldown.eligibleAt)}.`,
       };
     }
 

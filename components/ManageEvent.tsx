@@ -1111,7 +1111,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 <p className="text-xs text-muted-dim">
                   These {labels.plural} are on the list but hit the limit of 2
                   codes every 60 days. They already have credits from those
-                  claims and can claim here once their wait ends.
+                  claims.
                 </p>
                 <ul className="flex flex-col gap-1">
                   {cooldowns.results.map((c) => (
