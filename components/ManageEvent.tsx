@@ -31,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
@@ -59,6 +59,8 @@ import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { blockExpirySummary } from "@/lib/code-expiry";
 import { cooldownNotice } from "@/lib/claim-cooldown";
+
+const COOLDOWN_PAGE_SIZE = 500;
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -112,7 +114,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
-  const cooldowns = useQuery(api.emails.listCooldowns, { eventId: id });
+  const cooldowns = usePaginatedQuery(
+    api.emails.listCooldowns,
+    { eventId: id },
+    { initialNumItems: COOLDOWN_PAGE_SIZE }
+  );
   const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
   const codeTerms = useQuery(api.codes.codeTerms, { eventId: id });
@@ -1088,7 +1094,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </AlertDialog>
               </div>
             ) : null}
-            {cooldowns && cooldowns.entries.length > 0 ? (
+            {cooldowns.results.length > 0 ||
+            cooldowns.status === "CanLoadMore" ? (
               <section
                 aria-label="Waiting to claim again"
                 className="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
@@ -1097,8 +1104,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   <Hourglass className="size-4 text-amber-500" aria-hidden />
                   Waiting to claim again
                   <Badge variant="secondary">
-                    {cooldowns.entries.length}
-                    {cooldowns.hasMore ? "+" : ""}
+                    {cooldowns.results.length}
+                    {cooldowns.status === "CanLoadMore" ? "+" : ""}
                   </Badge>
                 </p>
                 <p className="text-xs text-muted-dim">
@@ -1107,7 +1114,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   claims and can claim here once their wait ends.
                 </p>
                 <ul className="flex flex-col gap-1">
-                  {cooldowns.entries.map((c) => (
+                  {cooldowns.results.map((c) => (
                     <li
                       key={c.email}
                       className="flex flex-col gap-0.5 rounded-md bg-background px-3 py-2"
@@ -1119,6 +1126,18 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     </li>
                   ))}
                 </ul>
+                {cooldowns.status === "CanLoadMore" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => cooldowns.loadMore(COOLDOWN_PAGE_SIZE)}
+                  >
+                    Check more {labels.plural}
+                  </Button>
+                ) : cooldowns.status === "LoadingMore" ? (
+                  <p className="text-xs text-muted-dim">Checking…</p>
+                ) : null}
               </section>
             ) : null}
             <RowList

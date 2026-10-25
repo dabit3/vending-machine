@@ -102,12 +102,13 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
 
   // The manage page lists the waiting attendee only on the event they
   // can't claim from yet.
-  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).toMatchObject({
-    entries: [{ email: attendeeKey, recent: 2 }],
-    hasMore: false,
+  const page = { numItems: 500, cursor: null };
+  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).toMatchObject({
+    page: [{ email: attendeeKey, recent: 2 }],
+    isDone: true,
   });
   expect(
-    (await admin.query(api.emails.listCooldowns, { eventId: ids[0] })).entries
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[0], paginationOpts: page })).page
   ).toEqual([]);
 
   // Blocked participants can't claim at all, so they aren't listed as waiting.
@@ -119,7 +120,7 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
     await ctx.db.patch(row!._id, { blockedAt: Date.now(), blockedBy: "admin@example.com" });
   });
   expect(
-    (await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).entries
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
   ).toEqual([]);
   await t.run(async (ctx) => {
     const row = await ctx.db
@@ -139,7 +140,7 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
   });
   expect(await user.query(api.claims.eligibility, { slug: "c" })).not.toHaveProperty("cooldown");
   expect(
-    (await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).entries
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
   ).toEqual([]);
   expect(await user.mutation(api.claims.claim, { slug: "c" })).toMatchObject({ ok: true, code: "c1" });
 });

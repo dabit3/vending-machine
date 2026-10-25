@@ -8,7 +8,7 @@ import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 import { normalizeIdentityKey } from "../lib/attendee-identity";
 import { claimHistory } from "./claimCooldown";
-import { claimCooldown } from "../lib/claim-cooldown";
+import { paginationOptsValidator } from "convex/server";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -127,23 +127,22 @@ export const add = mutation({
 // Listed participants who hit the cross-event claim limit and can't claim
 // here yet: how many codes they claimed recently and when the wait ends.
 // Blocked participants and those who already claimed from this event are
-// left out, since the list shows them as blocked or claimed. Reads are
-// bounded: only the first COOLDOWN_SCAN_LIMIT participants are checked.
-const COOLDOWN_SCAN_LIMIT = 500;
-const COOLDOWN_HISTORY_LIMIT = 20;
-
+// left out, since the list shows them as blocked or claimed. Paginated over
+// the participant list so large events stay within read limits; a page may
+// come back empty while more participants remain.
 export const listCooldowns = query({
-  args: { eventId: v.id("events") },
+  args: { eventId: v.id("events"), paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
-    const rows = await ctx.db
+    const result = await ctx.db
       .query("emails")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .take(COOLDOWN_SCAN_LIMIT + 1);
-    const hasMore = rows.length > COOLDOWN_SCAN_LIMIT;
-    const entries: { email: string; recent: number; eligibleAt: number }[] =
-      [];
-    for (const row of rows.slice(0, COOLDOWN_SCAN_LIMIT)) {
+      .paginate({
+        ...args.paginationOpts,
+        numItems: Math.min(args.paginationOpts.numItems, COOLDOWN_PAGE_SIZE),
+      });
+    const page: { email: string; recent: number; eligibleAt: number }[] = [];
+    for (const row of result.page) {
       if (row.blockedAt !== undefined) continue;
       const claimedHere = await ctx.db
         .query("codes")
@@ -152,21 +151,18 @@ export const listCooldowns = query({
         )
         .first();
       if (claimedHere) continue;
-      const claims = await ctx.db
-        .query("codes")
-        .withIndex("by_claimedBy", (q) => q.eq("claimedBy", row.email))
-        .take(COOLDOWN_HISTORY_LIMIT);
-      const history = claimCooldown(claims);
+      const history = await claimHistory(ctx, row.email);
       if (history.eligibleAt === undefined) continue;
-      entries.push({
+      page.push({
         email: row.email,
         recent: history.recent,
         eligibleAt: history.eligibleAt,
       });
     }
-    return { entries, hasMore };
+    return { ...result, page };
   },
 });
+const COOLDOWN_PAGE_SIZE = 500;
 
 const FLAGGED_PAGE_SIZE = 200;
 
