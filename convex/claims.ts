@@ -11,10 +11,12 @@ import { logAudit } from "./auditLog";
 import { isBlacklisted } from "./blacklist";
 import { blockValue, isArchivedType } from "./blockValues";
 import { codeTerms } from "./codeTerms";
+import { claimHistory } from "./claimCooldown";
 import { dropTypeIfEmpty } from "./codes";
 import { notExpired } from "./codeExpiry";
 import { resolveViewer } from "./identity";
 import { cleanClaimantName } from "../lib/claimant-name";
+import { CLAIM_WINDOW_DAYS, formatClaimDate } from "../lib/claim-cooldown";
 
 // Participant rows are keyed by the event's identity kind: a lowercased email
 // or an "@handle" (see lib/attendee-identity.ts). Includes blocked rows.
@@ -185,7 +187,16 @@ export const eligibility = query({
         },
       };
     }
-    return { eligible: true as const, identity: key, instructionsViewed };
+    const cooldown = await claimHistory(ctx, key);
+    return {
+      eligible: true as const,
+      identity: key,
+      instructionsViewed,
+      cooldown:
+        cooldown.eligibleAt !== undefined
+          ? { recent: cooldown.recent, eligibleAt: cooldown.eligibleAt }
+          : undefined,
+    };
   },
 });
 
@@ -303,6 +314,14 @@ export const claim = mutation({
         creditAmount: blockValue(event, alreadyClaimed.codeType),
         terms: await codeTerms(ctx, alreadyClaimed),
         expiresAt: alreadyClaimed.expiresAt,
+      };
+    }
+
+    const cooldown = await claimHistory(ctx, key);
+    if (cooldown.eligibleAt !== undefined) {
+      return {
+        ok: false as const,
+        error: `You already claimed ${cooldown.recent} codes in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. You can claim again on ${formatClaimDate(cooldown.eligibleAt)}.`,
       };
     }
 

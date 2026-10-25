@@ -7,6 +7,7 @@ import { logAudit } from "./auditLog";
 import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 import { normalizeIdentityKey } from "../lib/attendee-identity";
+import { claimHistory } from "./claimCooldown";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -122,6 +123,40 @@ export const add = mutation({
   },
 });
 
+// Listed participants who hit the cross-event claim limit and can't claim
+// here yet: how many codes they claimed recently and when the wait ends.
+// Participants who already claimed from this event are left out, since the
+// list shows them as claimed.
+export const listCooldowns = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const rows = await ctx.db
+      .query("emails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const cooldowns: { email: string; recent: number; eligibleAt: number }[] =
+      [];
+    for (const row of rows) {
+      const claimedHere = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", args.eventId).eq("claimedBy", row.email)
+        )
+        .first();
+      if (claimedHere) continue;
+      const history = await claimHistory(ctx, row.email);
+      if (history.eligibleAt === undefined) continue;
+      cooldowns.push({
+        email: row.email,
+        recent: history.recent,
+        eligibleAt: history.eligibleAt,
+      });
+    }
+    return cooldowns;
+  },
+});
+
 const FLAGGED_PAGE_SIZE = 200;
 
 export const listFlagged = query({
@@ -183,7 +218,14 @@ export const listFlagged = query({
           otherMatchCount++;
         }
       }
-      entries.push({ _id: f._id, email: f.email, matchedEvents, otherMatchCount });
+      const { total: claimCount } = await claimHistory(ctx, f.email);
+      entries.push({
+        _id: f._id,
+        email: f.email,
+        matchedEvents,
+        otherMatchCount,
+        claimCount,
+      });
     }
     return { entries, hasMore };
   },
