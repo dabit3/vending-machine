@@ -102,10 +102,32 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
 
   // The manage page lists the waiting attendee only on the event they
   // can't claim from yet.
-  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).toMatchObject([
-    { email: attendeeKey, recent: 2 },
-  ]);
-  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[0] })).toEqual([]);
+  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).toMatchObject({
+    entries: [{ email: attendeeKey, recent: 2 }],
+    hasMore: false,
+  });
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[0] })).entries
+  ).toEqual([]);
+
+  // Blocked participants can't claim at all, so they aren't listed as waiting.
+  await t.run(async (ctx) => {
+    const row = await ctx.db
+      .query("emails")
+      .withIndex("by_event_email", (q) => q.eq("eventId", ids[2]).eq("email", attendeeKey))
+      .unique();
+    await ctx.db.patch(row!._id, { blockedAt: Date.now(), blockedBy: "admin@example.com" });
+  });
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).entries
+  ).toEqual([]);
+  await t.run(async (ctx) => {
+    const row = await ctx.db
+      .query("emails")
+      .withIndex("by_event_email", (q) => q.eq("eventId", ids[2]).eq("email", attendeeKey))
+      .unique();
+    await ctx.db.patch(row!._id, { blockedAt: undefined, blockedBy: undefined });
+  });
 
   // Once one claim is older than 60 days the attendee can claim again.
   await t.run(async (ctx) => {
@@ -116,7 +138,9 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
     await ctx.db.patch(a1._id, { claimedAt: Date.now() - 61 * DAY });
   });
   expect(await user.query(api.claims.eligibility, { slug: "c" })).not.toHaveProperty("cooldown");
-  expect(await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).toEqual([]);
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2] })).entries
+  ).toEqual([]);
   expect(await user.mutation(api.claims.claim, { slug: "c" })).toMatchObject({ ok: true, code: "c1" });
 });
 

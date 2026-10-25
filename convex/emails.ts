@@ -8,6 +8,7 @@ import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 import { normalizeIdentityKey } from "../lib/attendee-identity";
 import { claimHistory } from "./claimCooldown";
+import { claimCooldown } from "../lib/claim-cooldown";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -125,8 +126,12 @@ export const add = mutation({
 
 // Listed participants who hit the cross-event claim limit and can't claim
 // here yet: how many codes they claimed recently and when the wait ends.
-// Participants who already claimed from this event are left out, since the
-// list shows them as claimed.
+// Blocked participants and those who already claimed from this event are
+// left out, since the list shows them as blocked or claimed. Reads are
+// bounded: only the first COOLDOWN_SCAN_LIMIT participants are checked.
+const COOLDOWN_SCAN_LIMIT = 500;
+const COOLDOWN_HISTORY_LIMIT = 20;
+
 export const listCooldowns = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -134,10 +139,12 @@ export const listCooldowns = query({
     const rows = await ctx.db
       .query("emails")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .collect();
-    const cooldowns: { email: string; recent: number; eligibleAt: number }[] =
+      .take(COOLDOWN_SCAN_LIMIT + 1);
+    const hasMore = rows.length > COOLDOWN_SCAN_LIMIT;
+    const entries: { email: string; recent: number; eligibleAt: number }[] =
       [];
-    for (const row of rows) {
+    for (const row of rows.slice(0, COOLDOWN_SCAN_LIMIT)) {
+      if (row.blockedAt !== undefined) continue;
       const claimedHere = await ctx.db
         .query("codes")
         .withIndex("by_event_claimedBy", (q) =>
@@ -145,15 +152,19 @@ export const listCooldowns = query({
         )
         .first();
       if (claimedHere) continue;
-      const history = await claimHistory(ctx, row.email);
+      const claims = await ctx.db
+        .query("codes")
+        .withIndex("by_claimedBy", (q) => q.eq("claimedBy", row.email))
+        .take(COOLDOWN_HISTORY_LIMIT);
+      const history = claimCooldown(claims);
       if (history.eligibleAt === undefined) continue;
-      cooldowns.push({
+      entries.push({
         email: row.email,
         recent: history.recent,
         eligibleAt: history.eligibleAt,
       });
     }
-    return cooldowns;
+    return { entries, hasMore };
   },
 });
 

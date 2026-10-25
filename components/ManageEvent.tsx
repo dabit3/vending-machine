@@ -1088,7 +1088,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </AlertDialog>
               </div>
             ) : null}
-            {cooldowns && cooldowns.length > 0 ? (
+            {cooldowns && cooldowns.entries.length > 0 ? (
               <section
                 aria-label="Waiting to claim again"
                 className="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
@@ -1096,7 +1096,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <Hourglass className="size-4 text-amber-500" aria-hidden />
                   Waiting to claim again
-                  <Badge variant="secondary">{cooldowns.length}</Badge>
+                  <Badge variant="secondary">
+                    {cooldowns.entries.length}
+                    {cooldowns.hasMore ? "+" : ""}
+                  </Badge>
                 </p>
                 <p className="text-xs text-muted-dim">
                   These {labels.plural} are on the list but hit the limit of 2
@@ -1104,7 +1107,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   claims and can claim here once their wait ends.
                 </p>
                 <ul className="flex flex-col gap-1">
-                  {cooldowns.map((c) => (
+                  {cooldowns.entries.map((c) => (
                     <li
                       key={c.email}
                       className="flex flex-col gap-0.5 rounded-md bg-background px-3 py-2"
