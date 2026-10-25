@@ -11,6 +11,7 @@ import {
   Check,
   Copy,
   Eye,
+  Hourglass,
   LogIn,
   Mail,
   OctagonX,
@@ -43,6 +44,7 @@ import {
   formatEventDateRange,
   isEventLive,
 } from "@/lib/event-date";
+import { CLAIM_WINDOW_DAYS, formatClaimDate } from "@/lib/claim-cooldown";
 import { copyText } from "@/lib/clipboard";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
@@ -546,6 +548,46 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       eventName={event.name}
                       identityNoun={identityNoun}
                     />
+                    {event.contactEmail ? (
+                      <GetInTouch
+                        email={event.contactEmail}
+                        eventName={event.name}
+                        variant="outline"
+                        className="self-start"
+                      />
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInAs ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={`/${slug}`}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
+                  </div>
+                ) : "cooldown" in eligibility && eligibility.cooldown ? (
+                  <div className="flex flex-col gap-5">
+                    <Alert>
+                      <Hourglass />
+                      <AlertTitle>You already have credits</AlertTitle>
+                      <AlertDescription>
+                        You claimed {eligibility.cooldown.recent} codes in the
+                        past {CLAIM_WINDOW_DAYS} days, so those credits should
+                        already be in your Devin account. Attendees can claim
+                        up to 2 codes every {CLAIM_WINDOW_DAYS} days; you can
+                        claim again on{" "}
+                        {formatClaimDate(eligibility.cooldown.eligibleAt)}.
+                      </AlertDescription>
+                    </Alert>
                     {event.contactEmail ? (
                       <GetInTouch
                         email={event.contactEmail}

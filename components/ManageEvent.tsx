@@ -13,6 +13,7 @@ import {
   Check,
   Download,
   Eye,
+  Hourglass,
   Inbox,
   Mail,
   Plus,
@@ -30,7 +31,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
@@ -57,6 +58,9 @@ import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { blockExpirySummary } from "@/lib/code-expiry";
+import { cooldownNotice } from "@/lib/claim-cooldown";
+
+const COOLDOWN_PAGE_SIZE = 500;
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -110,6 +114,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
   const emails = useQuery(api.emails.list, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
+  const cooldowns = usePaginatedQuery(
+    api.emails.listCooldowns,
+    { eventId: id },
+    { initialNumItems: COOLDOWN_PAGE_SIZE }
+  );
   const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
   const codes = useQuery(api.codes.list, { eventId: id });
   const codeTerms = useQuery(api.codes.codeTerms, { eventId: id });
@@ -821,7 +830,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   className="flex min-h-12 flex-wrap items-center justify-between gap-3 px-1 py-2 transition-colors hover:bg-surface"
                 >
                   <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm">{f.email}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-sm">{f.email}</span>
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 text-[10px]"
+                      >
+                        {f.claimCount === 0
+                          ? "Never claimed"
+                          : `Claimed ${f.claimCount} code${f.claimCount === 1 ? "" : "s"} before`}
+                      </Badge>
+                    </span>
                     <span className="truncate text-xs text-muted-dim">
                       Also in:{" "}
                       {[
@@ -1074,6 +1093,52 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
+            ) : null}
+            {cooldowns.results.length > 0 ||
+            cooldowns.status === "CanLoadMore" ? (
+              <section
+                aria-label="Waiting to claim again"
+                className="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
+              >
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  <Hourglass className="size-4 text-amber-500" aria-hidden />
+                  Waiting to claim again
+                  <Badge variant="secondary">
+                    {cooldowns.results.length}
+                    {cooldowns.status === "CanLoadMore" ? "+" : ""}
+                  </Badge>
+                </p>
+                <p className="text-xs text-muted-dim">
+                  These {labels.plural} are on the list but hit the limit of 2
+                  codes every 60 days. They already have credits from those
+                  claims and can claim here once their wait ends.
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {cooldowns.results.map((c) => (
+                    <li
+                      key={c.email}
+                      className="flex flex-col gap-0.5 rounded-md bg-background px-3 py-2"
+                    >
+                      <span className="truncate text-sm">{c.email}</span>
+                      <span className="text-xs text-muted-dim">
+                        {cooldownNotice(c)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {cooldowns.status === "CanLoadMore" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="self-start"
+                    onClick={() => cooldowns.loadMore(COOLDOWN_PAGE_SIZE)}
+                  >
+                    Check more {labels.plural}
+                  </Button>
+                ) : cooldowns.status === "LoadingMore" ? (
+                  <p className="text-xs text-muted-dim">Checking…</p>
+                ) : null}
+              </section>
             ) : null}
             <RowList
               fill
