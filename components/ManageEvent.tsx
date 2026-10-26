@@ -1099,7 +1099,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             cooldowns.status === "CanLoadMore" ? (
               <section
                 aria-label="Waiting to claim again"
-                className="mb-4 flex flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
+                // min-h-0 lets the section shrink inside the fixed-height
+                // card on lg, so the list scrolls instead of being clipped.
+                className="mb-4 flex min-h-0 flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
               >
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <Hourglass className="size-4 text-amber-500" aria-hidden />
@@ -1115,7 +1117,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   claims. Allow claim lets someone claim from this event
                   anyway and stays on until they claim here or you undo it.
                 </p>
-                <ul className="flex flex-col gap-1">
+                <ul className="flex max-h-72 min-h-0 flex-col gap-1 overflow-y-auto">
                   {cooldowns.results.map((c) => (
                     <li
                       key={c.email}
