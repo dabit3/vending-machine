@@ -974,7 +974,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               ) : null}
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow">
+          {/* Scroll the body rather than clip it when the sibling codes card is
+              shorter than the form, waiting section and list minimums. */}
+          <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow lg:overflow-y-auto">
             {isDynamic ? null : (
               <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
                 <Textarea
