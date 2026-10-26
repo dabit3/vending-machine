@@ -126,6 +126,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove);
   const setEmailBlocked = useMutation(api.emails.setBlocked);
+  const setCooldownWaived = useMutation(api.emails.setCooldownWaived);
   const removeAllEmails = useMutation(api.emails.removeAll);
   const removeUnclaimedEmails = useMutation(api.emails.removeUnclaimed);
   const approveFlagged = useMutation(api.emails.approveFlagged);
@@ -1111,18 +1112,54 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 <p className="text-xs text-muted-dim">
                   These {labels.plural} are on the list but hit the limit of 2
                   codes every 60 days. They already have credits from those
-                  claims.
+                  claims. Allow claim lets someone claim from this event
+                  anyway and stays on until they claim here or you undo it.
                 </p>
                 <ul className="flex flex-col gap-1">
                   {cooldowns.results.map((c) => (
                     <li
                       key={c.email}
-                      className="flex flex-col gap-0.5 rounded-md bg-background px-3 py-2"
+                      className="flex items-center justify-between gap-3 rounded-md bg-background px-3 py-2"
                     >
-                      <span className="truncate text-sm">{c.email}</span>
-                      <span className="text-xs text-muted-dim">
-                        {cooldownNotice(c)}
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm">{c.email}</span>
+                          {c.waived ? (
+                            <Badge className="shrink-0 text-[10px]">
+                              Allowed
+                            </Badge>
+                          ) : null}
+                        </span>
+                        <span className="text-xs text-muted-dim">
+                          {c.waived && c.eligibleAt === undefined
+                            ? "Their 60-day limit has lifted on its own, so Undo only removes the allowance"
+                            : cooldownNotice(c)}
+                        </span>
                       </span>
+                      <Button
+                        variant={c.waived ? "ghost" : "outline"}
+                        size="xs"
+                        className="shrink-0"
+                        onClick={async () => {
+                          try {
+                            await setCooldownWaived({
+                              id: c.id,
+                              waived: !c.waived,
+                            });
+                            toast.success(
+                              !c.waived
+                                ? `${c.email} can claim from this event`
+                                : c.eligibleAt === undefined
+                                  ? `Allowance removed for ${c.email}`
+                                  : `${c.email} must wait again`
+                            );
+                          } catch (err) {
+                            toast.error(mutationError(err, "Could not update"));
+                          }
+                        }}
+                      >
+                        {c.waived ? "Undo" : "Allow claim"}
+                      </Button>
                     </li>
                   ))}
                 </ul>

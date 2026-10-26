@@ -126,8 +126,10 @@ export const add = mutation({
 
 // Listed participants who hit the cross-event claim limit and can't claim
 // here yet: how many codes they claimed recently and when the wait ends.
-// Blocked participants and those who already claimed from this event are
-// left out, since the list shows them as blocked or claimed. Paginated over
+// Waived participants stay listed until they claim here, even once the wait
+// has run out on its own, so the waiver can still be undone. Blocked
+// participants and those who already claimed from this event are left out,
+// since the list shows them as blocked or claimed. Paginated over
 // the participant list so large events stay within read limits; a page may
 // come back empty while more participants remain.
 export const listCooldowns = query({
@@ -141,7 +143,13 @@ export const listCooldowns = query({
         ...args.paginationOpts,
         numItems: Math.min(args.paginationOpts.numItems, COOLDOWN_PAGE_SIZE),
       });
-    const page: { email: string; recent: number; eligibleAt: number }[] = [];
+    const page: {
+      id: Id<"emails">;
+      email: string;
+      recent: number;
+      eligibleAt?: number;
+      waived: boolean;
+    }[] = [];
     for (const row of result.page) {
       if (row.blockedAt !== undefined) continue;
       const claimedHere = await ctx.db
@@ -151,18 +159,44 @@ export const listCooldowns = query({
         )
         .first();
       if (claimedHere) continue;
+      const waived = row.cooldownWaivedAt !== undefined;
       const history = await claimHistory(ctx, row.email);
-      if (history.eligibleAt === undefined) continue;
+      if (history.eligibleAt === undefined && !waived) continue;
       page.push({
+        id: row._id,
         email: row.email,
         recent: history.recent,
         eligibleAt: history.eligibleAt,
+        waived,
       });
     }
     return { ...result, page };
   },
 });
 const COOLDOWN_PAGE_SIZE = 500;
+
+// Lets a listed attendee claim from this event despite the cross-event
+// limit of 2 codes every 60 days. Scoped to this event's participant row,
+// so the limit still applies everywhere else; undoing it restores the wait.
+export const setCooldownWaived = mutation({
+  args: { id: v.id("emails"), waived: v.boolean() },
+  handler: async (ctx, args) => {
+    const email = await ctx.db.get(args.id);
+    if (!email) throw new Error("Participant not found");
+    const actorEmail = await requireEventAdmin(ctx, email.eventId);
+    if (args.waived === (email.cooldownWaivedAt !== undefined)) return;
+    await ctx.db.patch(email._id, {
+      cooldownWaivedAt: args.waived ? Date.now() : undefined,
+      cooldownWaivedBy: args.waived ? (actorEmail ?? undefined) : undefined,
+    });
+    await logAudit(ctx, {
+      eventId: email.eventId,
+      action: args.waived ? "cooldown_waived" : "cooldown_restored",
+      actorEmail: actorEmail ?? undefined,
+      subjectEmail: email.email,
+    });
+  },
+});
 
 const FLAGGED_PAGE_SIZE = 200;
 
