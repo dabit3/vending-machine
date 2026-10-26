@@ -974,7 +974,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               ) : null}
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow">
+          {/* Scroll the body rather than clip it when the sibling codes card is
+              shorter than the form, the waiting section and the list minimum. */}
+          <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow lg:overflow-y-auto">
             {isDynamic ? null : (
               <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
                 <Textarea
@@ -1115,7 +1117,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   claims. Allow claim lets someone claim from this event
                   anyway and stays on until they claim here or you undo it.
                 </p>
-                <ul className="flex flex-col gap-1">
+                <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
                   {cooldowns.results.map((c) => (
                     <li
                       key={c.email}
