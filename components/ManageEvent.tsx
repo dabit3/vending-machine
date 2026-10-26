@@ -1113,7 +1113,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   These {labels.plural} are on the list but hit the limit of 2
                   codes every 60 days. They already have credits from those
                   claims. Allow claim lets someone claim from this event
-                  anyway.
+                  anyway and stays on until they claim here or you undo it.
                 </p>
                 <ul className="flex flex-col gap-1">
                   {cooldowns.results.map((c) => (
@@ -1131,7 +1131,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                           ) : null}
                         </span>
                         <span className="text-xs text-muted-dim">
-                          {cooldownNotice(c)}
+                          {c.waived && c.eligibleAt === undefined
+                            ? "Their 60-day limit has lifted on its own, so Undo only removes the allowance"
+                            : cooldownNotice(c)}
                         </span>
                       </span>
                       <Button
@@ -1145,9 +1147,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                               waived: !c.waived,
                             });
                             toast.success(
-                              c.waived
-                                ? `${c.email} must wait again`
-                                : `${c.email} can claim from this event`
+                              !c.waived
+                                ? `${c.email} can claim from this event`
+                                : c.eligibleAt === undefined
+                                  ? `Allowance removed for ${c.email}`
+                                  : `${c.email} must wait again`
                             );
                           } catch (err) {
                             toast.error(mutationError(err, "Could not update"));
