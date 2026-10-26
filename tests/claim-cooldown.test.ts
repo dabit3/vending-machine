@@ -191,6 +191,26 @@ test("organizers can let a waiting attendee claim from one event anyway", async 
   await t.run((ctx) => ctx.db.insert("emails", { eventId: d.id, email: attendeeKey }));
   expect((await user.mutation(api.claims.claim, { slug: "d" })).ok).toBe(false);
 
+  // A waived attendee stays listed (so the waiver can be undone) even once
+  // the wait has run out on its own.
+  await t.run(async (ctx) => {
+    const [a1] = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) => q.eq("eventId", ids[0]).eq("claimedBy", attendeeKey))
+      .collect();
+    await ctx.db.patch(a1._id, { claimedAt: Date.now() - 61 * DAY });
+  });
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
+  ).toMatchObject([{ email: attendeeKey, recent: 1, waived: true }]);
+  await t.run(async (ctx) => {
+    const [a1] = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) => q.eq("eventId", ids[0]).eq("claimedBy", attendeeKey))
+      .collect();
+    await ctx.db.patch(a1._id, { claimedAt: Date.now() - DAY });
+  });
+
   // Undo restores the wait before they claim.
   await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: false });
   expect((await user.mutation(api.claims.claim, { slug: "c" })).ok).toBe(false);

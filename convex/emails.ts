@@ -126,8 +126,10 @@ export const add = mutation({
 
 // Listed participants who hit the cross-event claim limit and can't claim
 // here yet: how many codes they claimed recently and when the wait ends.
-// Blocked participants and those who already claimed from this event are
-// left out, since the list shows them as blocked or claimed. Paginated over
+// Waived participants stay listed until they claim here, even once the wait
+// has run out on its own, so the waiver can still be undone. Blocked
+// participants and those who already claimed from this event are left out,
+// since the list shows them as blocked or claimed. Paginated over
 // the participant list so large events stay within read limits; a page may
 // come back empty while more participants remain.
 export const listCooldowns = query({
@@ -145,7 +147,7 @@ export const listCooldowns = query({
       id: Id<"emails">;
       email: string;
       recent: number;
-      eligibleAt: number;
+      eligibleAt?: number;
       waived: boolean;
     }[] = [];
     for (const row of result.page) {
@@ -157,14 +159,15 @@ export const listCooldowns = query({
         )
         .first();
       if (claimedHere) continue;
+      const waived = row.cooldownWaivedAt !== undefined;
       const history = await claimHistory(ctx, row.email);
-      if (history.eligibleAt === undefined) continue;
+      if (history.eligibleAt === undefined && !waived) continue;
       page.push({
         id: row._id,
         email: row.email,
         recent: history.recent,
         eligibleAt: history.eligibleAt,
-        waived: row.cooldownWaivedAt !== undefined,
+        waived,
       });
     }
     return { ...result, page };
