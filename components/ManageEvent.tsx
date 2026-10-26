@@ -1100,7 +1100,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <section
                 aria-label="Waiting to claim again"
                 // min-h-0 lets the section shrink inside the fixed-height
-                // card on lg, so the list scrolls instead of being clipped.
+                // card on lg, so the list scrolls instead of being clipped;
+                // the list's own min-h keeps a few rows visible when it does.
                 className="mb-4 flex min-h-0 flex-col gap-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3"
               >
                 <p className="flex items-center gap-2 text-sm font-medium">
@@ -1117,7 +1118,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   claims. Allow claim lets someone claim from this event
                   anyway and stays on until they claim here or you undo it.
                 </p>
-                <ul className="flex max-h-72 min-h-0 flex-col gap-1 overflow-y-auto">
+                <ul className="flex max-h-72 min-h-28 flex-col gap-1 overflow-y-auto">
                   {cooldowns.results.map((c) => (
                     <li
                       key={c.email}
