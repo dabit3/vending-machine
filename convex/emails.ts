@@ -141,7 +141,13 @@ export const listCooldowns = query({
         ...args.paginationOpts,
         numItems: Math.min(args.paginationOpts.numItems, COOLDOWN_PAGE_SIZE),
       });
-    const page: { email: string; recent: number; eligibleAt: number }[] = [];
+    const page: {
+      id: Id<"emails">;
+      email: string;
+      recent: number;
+      eligibleAt: number;
+      waived: boolean;
+    }[] = [];
     for (const row of result.page) {
       if (row.blockedAt !== undefined) continue;
       const claimedHere = await ctx.db
@@ -154,15 +160,40 @@ export const listCooldowns = query({
       const history = await claimHistory(ctx, row.email);
       if (history.eligibleAt === undefined) continue;
       page.push({
+        id: row._id,
         email: row.email,
         recent: history.recent,
         eligibleAt: history.eligibleAt,
+        waived: row.cooldownWaivedAt !== undefined,
       });
     }
     return { ...result, page };
   },
 });
 const COOLDOWN_PAGE_SIZE = 500;
+
+// Lets a listed attendee claim from this event despite the cross-event
+// limit of 2 codes every 60 days. Scoped to this event's participant row,
+// so the limit still applies everywhere else; undoing it restores the wait.
+export const setCooldownWaived = mutation({
+  args: { id: v.id("emails"), waived: v.boolean() },
+  handler: async (ctx, args) => {
+    const email = await ctx.db.get(args.id);
+    if (!email) throw new Error("Participant not found");
+    const actorEmail = await requireEventAdmin(ctx, email.eventId);
+    if (args.waived === (email.cooldownWaivedAt !== undefined)) return;
+    await ctx.db.patch(email._id, {
+      cooldownWaivedAt: args.waived ? Date.now() : undefined,
+      cooldownWaivedBy: args.waived ? (actorEmail ?? undefined) : undefined,
+    });
+    await logAudit(ctx, {
+      eventId: email.eventId,
+      action: args.waived ? "cooldown_waived" : "cooldown_restored",
+      actorEmail: actorEmail ?? undefined,
+      subjectEmail: email.email,
+    });
+  },
+});
 
 const FLAGGED_PAGE_SIZE = 200;
 

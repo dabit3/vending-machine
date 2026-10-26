@@ -133,6 +133,10 @@ export default defineSchema({
     // them on the list; only system admins can delete participant rows.
     blockedAt: v.optional(v.number()),
     blockedBy: v.optional(v.string()),
+    // Set by an organizer to let this attendee claim here even though they
+    // hit the cross-event limit of 2 codes every 60 days.
+    cooldownWaivedAt: v.optional(v.number()),
+    cooldownWaivedBy: v.optional(v.string()),
   })
     .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"])

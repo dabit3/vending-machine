@@ -109,6 +109,11 @@ async function findOrEnrollParticipant(
   return await ctx.db.get(id);
 }
 
+// Organizers can waive the cross-event claim limit for a listed attendee.
+function cooldownWaived(row: Doc<"emails"> | null) {
+  return row?.cooldownWaivedAt !== undefined;
+}
+
 // Whether the signed-in viewer is on the participant list for the event,
 // so the claim UI can hold back code options until eligibility is confirmed.
 // With `preview`, event admins see the flow as a fresh eligible attendee
@@ -187,13 +192,15 @@ export const eligibility = query({
         },
       };
     }
-    const cooldown = await claimHistory(ctx, key);
+    const cooldown = cooldownWaived(allowed)
+      ? undefined
+      : await claimHistory(ctx, key);
     return {
       eligible: true as const,
       identity: key,
       instructionsViewed,
       cooldown:
-        cooldown.eligibleAt !== undefined
+        cooldown?.eligibleAt !== undefined
           ? { recent: cooldown.recent, eligibleAt: cooldown.eligibleAt }
           : undefined,
     };
@@ -317,8 +324,10 @@ export const claim = mutation({
       };
     }
 
-    const cooldown = await claimHistory(ctx, key);
-    if (cooldown.eligibleAt !== undefined) {
+    const cooldown = cooldownWaived(allowed)
+      ? undefined
+      : await claimHistory(ctx, key);
+    if (cooldown?.eligibleAt !== undefined) {
       return {
         ok: false as const,
         error: `You already claimed ${cooldown.recent} codes in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. Your limit lifts on ${formatClaimDate(cooldown.eligibleAt)}.`,

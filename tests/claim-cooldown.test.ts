@@ -158,3 +158,51 @@ test("flagged entries report how many codes the identity has claimed before", as
   expect(flagged.entries).toHaveLength(1);
   expect(flagged.entries[0]).toMatchObject({ email: attendeeKey, claimCount: 2 });
 });
+
+test("organizers can let a waiting attendee claim from one event anyway", async () => {
+  const { t, admin, user, ids } = await setup();
+  await user.mutation(api.claims.claim, { slug: "a" });
+  await user.mutation(api.claims.claim, { slug: "b" });
+  const page = { numItems: 500, cursor: null };
+  const [waiting] = (
+    await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })
+  ).page;
+  expect(waiting).toMatchObject({ email: attendeeKey, waived: false });
+
+  // An event admin (not a system admin) can waive it too.
+  await t.run((ctx) =>
+    ctx.db.insert("eventAdmins", { eventId: ids[2], email: "org@example.com" })
+  );
+  const organizer = t.withIdentity({
+    subject: "org",
+    email: "org@example.com",
+    emailVerified: true,
+  });
+  await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: true });
+
+  // Still listed so the waiver can be undone, but the attendee can now claim.
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
+  ).toMatchObject([{ email: attendeeKey, waived: true }]);
+  expect(await user.query(api.claims.eligibility, { slug: "c" })).not.toHaveProperty("cooldown");
+  // The waiver is per event: nowhere else.
+  const d = await admin.mutation(api.events.create, { name: "D", slug: "d" });
+  await admin.mutation(api.codes.add, { eventId: d.id, codes: ["d1"] });
+  await t.run((ctx) => ctx.db.insert("emails", { eventId: d.id, email: attendeeKey }));
+  expect((await user.mutation(api.claims.claim, { slug: "d" })).ok).toBe(false);
+
+  // Undo restores the wait before they claim.
+  await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: false });
+  expect((await user.mutation(api.claims.claim, { slug: "c" })).ok).toBe(false);
+  await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: true });
+  expect(await user.mutation(api.claims.claim, { slug: "c" })).toMatchObject({ ok: true, code: "c1" });
+  // Claimed here now, so they leave the waiting list.
+  expect(
+    (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
+  ).toEqual([]);
+
+  // Attendees can't waive their own wait.
+  await expect(
+    user.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: false })
+  ).rejects.toThrow();
+});
