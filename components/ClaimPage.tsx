@@ -135,6 +135,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const [claimantName, setClaimantName] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
   const [previewRead, setPreviewRead] = useState(false);
+  // Where Clerk sends the viewer after the sign-in / sign-up modal; keeps the
+  // admin preview flag so an admin does not land in the live claim flow.
+  const returnUrl = preview ? `/${slug}?preview=1` : `/${slug}`;
   const qrTriggerRef = useRef<HTMLButtonElement>(null);
   const qrBackRef = useRef<HTMLButtonElement>(null);
   const wasShowingQr = useRef(false);
@@ -440,8 +443,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     />
                     <SignInButton
                       mode="modal"
-                      forceRedirectUrl={`/${slug}`}
-                      signUpForceRedirectUrl={`/${slug}`}
+                      forceRedirectUrl={returnUrl}
+                      signUpForceRedirectUrl={returnUrl}
                     >
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />
@@ -456,8 +459,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       New here?{" "}
                       <SignUpButton
                         mode="modal"
-                        forceRedirectUrl={`/${slug}`}
-                        signInForceRedirectUrl={`/${slug}`}
+                        forceRedirectUrl={returnUrl}
+                        signInForceRedirectUrl={returnUrl}
                       >
                         <button
                           type="button"
@@ -539,7 +542,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -571,7 +574,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -611,7 +614,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -692,7 +695,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -827,7 +830,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
