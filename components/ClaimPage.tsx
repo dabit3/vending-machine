@@ -135,6 +135,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const [claimantName, setClaimantName] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
   const [previewRead, setPreviewRead] = useState(false);
+  // Where Clerk sends the viewer after the sign-in / sign-up modal; keeps the
+  // admin preview flag so an admin does not land in the live claim flow.
+  const returnUrl = preview ? `/${slug}?preview=1` : `/${slug}`;
   const qrTriggerRef = useRef<HTMLButtonElement>(null);
   const qrBackRef = useRef<HTMLButtonElement>(null);
   const wasShowingQr = useRef(false);
@@ -438,7 +441,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       dynamic={event.dynamic}
                       message={event.signInMessage}
                     />
-                    <SignInButton mode="modal">
+                    <SignInButton
+                      mode="modal"
+                      forceRedirectUrl={returnUrl}
+                      signUpForceRedirectUrl={returnUrl}
+                    >
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />
                         {event.soldOut
@@ -450,7 +457,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     </SignInButton>
                     <p className="text-center text-sm text-muted-foreground">
                       New here?{" "}
-                      <SignUpButton mode="modal">
+                      <SignUpButton
+                        mode="modal"
+                        forceRedirectUrl={returnUrl}
+                        signInForceRedirectUrl={returnUrl}
+                      >
                         <button
                           type="button"
                           className="font-medium text-foreground underline-offset-4 hover:underline"
@@ -531,7 +542,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -563,7 +574,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -603,7 +614,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -684,7 +695,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"
@@ -819,7 +830,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           {signedInAs ?? "verified user"}
                         </span>
                       </span>
-                      <SignOutButton redirectUrl={`/${slug}`}>
+                      <SignOutButton redirectUrl={returnUrl}>
                         <Button
                           variant="ghost"
                           size="xs"

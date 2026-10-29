@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { SignInButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -16,6 +17,9 @@ export default function HeaderAuth({
   showSignIn?: boolean;
 }) {
   const { authReady, signedIn, canQuery } = useViewerAuth();
+  // Return to the page the modal was opened from (e.g. a dynamic event's
+  // claim URL) instead of the home page.
+  const pathname = usePathname();
   const access = useQuery(api.admins.accessLevel, canQuery ? {} : "skip");
 
   // Hold the skeleton until `access` resolves too, otherwise the header renders
@@ -27,7 +31,11 @@ export default function HeaderAuth({
   if (!signedIn) {
     if (!showSignIn) return null;
     return (
-      <SignInButton mode="modal">
+      <SignInButton
+        mode="modal"
+        forceRedirectUrl={pathname}
+        signUpForceRedirectUrl={pathname}
+      >
         <Button
           variant="ghost"
           size="sm"
