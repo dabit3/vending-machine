@@ -136,7 +136,11 @@ export default function MyCodesPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <SignInButton mode="modal">
+                <SignInButton
+                  mode="modal"
+                  forceRedirectUrl="/my-codes"
+                  signUpForceRedirectUrl="/my-codes"
+                >
                   <Button variant="brand" size="lg" className="w-full">
                     <LogIn data-icon="inline-start" />
                     Sign in
@@ -144,7 +148,11 @@ export default function MyCodesPage() {
                 </SignInButton>
                 <p className="mt-3 text-center text-sm text-muted-foreground">
                   New here?{" "}
-                  <SignUpButton mode="modal">
+                  <SignUpButton
+                    mode="modal"
+                    forceRedirectUrl="/my-codes"
+                    signInForceRedirectUrl="/my-codes"
+                  >
                     <button
                       type="button"
                       className="font-medium text-foreground underline-offset-4 hover:underline"

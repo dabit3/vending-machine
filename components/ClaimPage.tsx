@@ -438,7 +438,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       dynamic={event.dynamic}
                       message={event.signInMessage}
                     />
-                    <SignInButton mode="modal">
+                    <SignInButton
+                      mode="modal"
+                      forceRedirectUrl={`/${slug}`}
+                      signUpForceRedirectUrl={`/${slug}`}
+                    >
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />
                         {event.soldOut
@@ -450,7 +454,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     </SignInButton>
                     <p className="text-center text-sm text-muted-foreground">
                       New here?{" "}
-                      <SignUpButton mode="modal">
+                      <SignUpButton
+                        mode="modal"
+                        forceRedirectUrl={`/${slug}`}
+                        signInForceRedirectUrl={`/${slug}`}
+                      >
                         <button
                           type="button"
                           className="font-medium text-foreground underline-offset-4 hover:underline"
