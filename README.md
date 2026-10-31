@@ -88,7 +88,7 @@ Use `npx convex deploy --cmd 'npm run build'` as the build command (with `CONVEX
 
 Clerk production instances require a domain you own, but the **development instance works from any origin** — so a vercel.app deploy runs fine on dev keys (with the "Development mode" badge and dev usage limits):
 
-1. In Vercel, set the dev keys (`pk_test_...`, `sk_test_...`), `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, and `CONVEX_DEPLOY_KEY` (production deploy key), with `npx convex deploy --cmd 'npm run build'` as the build command.
+1. In Vercel, set the dev keys (`pk_test_...`, `sk_test_...`), `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`, and `CONVEX_DEPLOY_KEY` (production deploy key), with `npx convex deploy --cmd 'npm run build'` as the build command.
 2. Point the prod Convex deployment at the dev Clerk issuer:
    ```bash
    npx convex env set CLERK_JWT_ISSUER_DOMAIN https://<your-app>.clerk.accounts.dev --prod
@@ -104,7 +104,7 @@ Dev and prod are fully separate instances in both Clerk and Convex — none of t
 1. Set your production domain; add the DNS records Clerk asks for (`clerk.<domain>` Frontend API CNAME, plus the email DNS records if you use email-code sign-in). This must be a domain you own — `*.vercel.app` domains can't be used because you can't create DNS records under them. A subdomain you control (e.g. `credits.yourdomain.com`) works. Enter it bare, without `https://`.
 2. Google OAuth in production requires your own credentials: create a Google OAuth client and paste its ID/secret into Clerk's Google connection (dev instances use Clerk's shared ones).
 3. Recreate the `convex` JWT template on the production instance (same claims as dev — see Clerk + Convex auth above).
-4. In Vercel, set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_live_...`), `CLERK_SECRET_KEY` (`sk_live_...`), and `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`.
+4. In Vercel, set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (`pk_live_...`), `CLERK_SECRET_KEY` (`sk_live_...`), `NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in`, and `NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up`.
 
 **Convex (prod deployment):**
 
