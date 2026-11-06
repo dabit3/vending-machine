@@ -2,6 +2,10 @@ import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
+import {
+  MAX_ORGANIZERS_ON_CREATE,
+  parseOrganizerEmails,
+} from "../lib/organizer-emails";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
@@ -463,11 +467,24 @@ export const create = mutation({
     hidden: v.optional(v.boolean()),
     stripeGeneration: v.optional(v.object(generationFields)),
     stripeBatchId: v.optional(v.id("stripeBatches")),
+    // Organizers (event admins) to assign as soon as the event exists.
+    adminEmails: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const identity = await requireAdmin(ctx);
     const creator = identity.email!.trim().toLowerCase();
     if (args.stripeGeneration && args.stripeBatchId) throw new ConvexError("Choose one code source.");
+    const organizers = parseOrganizerEmails((args.adminEmails ?? []).join("\n"));
+    if (organizers.invalid.length > 0) {
+      throw new ConvexError(
+        `Enter valid organizer email addresses: ${organizers.invalid.join(", ")}`
+      );
+    }
+    if (organizers.emails.length > MAX_ORGANIZERS_ON_CREATE) {
+      throw new ConvexError(
+        `Add up to ${MAX_ORGANIZERS_ON_CREATE} organizers here; more can be added on the manage page.`
+      );
+    }
     const base = slugify(args.slug?.trim() || args.name);
     if (!base) throw new Error("Event name must contain letters or numbers");
     let slug = base;
@@ -493,6 +510,9 @@ export const create = mutation({
       contactEmail: resolveContactEmail(args.contactEmail),
       createdBy: creator,
     });
+    for (const email of organizers.emails) {
+      await ctx.db.insert("eventAdmins", { eventId: id, email });
+    }
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
     if (args.stripeBatchId) {
       const batch = await ctx.db.get(args.stripeBatchId);

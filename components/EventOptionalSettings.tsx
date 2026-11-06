@@ -8,7 +8,10 @@ import {
 } from "@/lib/claim-instructions";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
 import { ContactEmailField } from "@/components/ContactEmailField";
-import { OptionalSettings } from "@/components/OptionalSettings";
+import {
+  OptionalSettings,
+  type OptionalSetting,
+} from "@/components/OptionalSettings";
 import { SignInMessageField } from "@/components/SignInMessageField";
 import { Field, FieldDescription } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +38,7 @@ export function EventOptionalSettings({
   identity,
   contactEmail,
   onContactEmailChange,
+  extraSettings = [],
   className,
 }: {
   idPrefix: string;
@@ -48,6 +52,8 @@ export function EventOptionalSettings({
   identity: AttendeeIdentity;
   contactEmail: string;
   onContactEmailChange: (value: string) => void;
+  // Form-specific settings shown after the shared ones.
+  extraSettings?: OptionalSetting[];
   className?: string;
 }) {
   return (
@@ -133,6 +139,7 @@ export function EventOptionalSettings({
             />
           ),
         },
+        ...extraSettings,
       ]}
     />
   );
