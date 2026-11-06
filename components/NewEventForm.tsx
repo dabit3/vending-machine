@@ -10,12 +10,14 @@ import {
   CalendarPlus,
   ChevronDown,
   SlidersHorizontal,
+  UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
+import { parseOrganizerEmails } from "@/lib/organizer-emails";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
   emptyStripeForm,
@@ -25,6 +27,7 @@ import {
 } from "@/lib/stripe-form";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
+import { Textarea } from "@/components/ui/textarea";
 import {
   EventDatesField,
   DynamicToggle,
@@ -79,6 +82,7 @@ export default function NewEventForm({
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
   const [contactEmail, setContactEmail] = useState("");
+  const [organizers, setOrganizers] = useState("");
   const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
@@ -90,9 +94,16 @@ export default function NewEventForm({
   const lock = useRef(false);
   const request = useRef<string | null>(null);
   const claimSlug = slugify(slug || name);
+  const organizerList = parseOrganizerEmails(organizers);
 
   async function submit(generation?: GenerationInput) {
     if (lock.current) return;
+    if (organizerList.invalid.length > 0) {
+      setError(
+        `Enter valid organizer email addresses: ${organizerList.invalid.join(", ")}`,
+      );
+      return;
+    }
     lock.current = true;
     setBusy(true);
     setError(null);
@@ -108,6 +119,8 @@ export default function NewEventForm({
         identity,
         signInMessage: signInMessage || undefined,
         contactEmail: contactEmail || undefined,
+        adminEmails:
+          organizerList.emails.length > 0 ? organizerList.emails : undefined,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
       });
@@ -228,6 +241,44 @@ export default function NewEventForm({
                   identity={identity}
                   contactEmail={contactEmail}
                   onContactEmailChange={setContactEmail}
+                  extraSettings={[
+                    {
+                      key: "organizers",
+                      id: "event-organizers",
+                      title: "Organizers",
+                      addLabel: "Add organizers",
+                      icon: UserPlus,
+                      set: organizers !== "",
+                      onClear: () => setOrganizers(""),
+                      summary:
+                        organizerList.emails.length > 0
+                          ? `${organizerList.emails.length} ${organizerList.emails.length === 1 ? "person" : "people"}`
+                          : undefined,
+                      render: (focus) => (
+                        <Field>
+                          <Textarea
+                            id="event-organizers"
+                            value={organizers}
+                            onChange={(e) => setOrganizers(e.target.value)}
+                            rows={2}
+                            className="resize-y"
+                            autoFocus={focus}
+                            placeholder="organizer@example.com, another@example.com"
+                          />
+                          <FieldDescription>
+                            Organizers can edit this event and manage its
+                            attendees and codes. Separate emails with commas or
+                            new lines; you can add more on the manage page.
+                          </FieldDescription>
+                          {organizerList.invalid.length > 0 ? (
+                            <FieldDescription className="text-destructive">
+                              Not a valid email: {organizerList.invalid.join(", ")}
+                            </FieldDescription>
+                          ) : null}
+                        </Field>
+                      ),
+                    },
+                  ]}
                 />
                 <details className="group rounded-lg border bg-muted/30 open:bg-transparent">
                   <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 transition-colors outline-none select-none hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">

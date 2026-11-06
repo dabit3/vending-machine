@@ -355,6 +355,7 @@ test("new event form exposes all three code sources and keeps page settings opti
     "Set redemption instructions",
     "Set custom sign-in message",
     "Set contact / support email",
+    "Add organizers",
     "Create event",
   ])
     expect(html).toContain(label);
