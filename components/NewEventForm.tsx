@@ -10,6 +10,7 @@ import {
   CalendarPlus,
   ChevronDown,
   SlidersHorizontal,
+  Trash2,
   UserPlus,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,7 +28,6 @@ import {
 } from "@/lib/stripe-form";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
-import { Textarea } from "@/components/ui/textarea";
 import {
   EventDatesField,
   DynamicToggle,
@@ -82,7 +82,9 @@ export default function NewEventForm({
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [organizers, setOrganizers] = useState("");
+  const [organizers, setOrganizers] = useState<string[]>([]);
+  const [organizerDraft, setOrganizerDraft] = useState("");
+  const [organizerError, setOrganizerError] = useState<string | null>(null);
   const [source, setSource] = useState(initialBatchId ? "saved" : "later");
   const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
     initialBatchId ?? "",
@@ -94,14 +96,39 @@ export default function NewEventForm({
   const lock = useRef(false);
   const request = useRef<string | null>(null);
   const claimSlug = slugify(slug || name);
-  const organizerList = parseOrganizerEmails(organizers);
+
+  // Adds the draft (one email, or several pasted ones) as organizer rows and
+  // returns the resulting list, or null when the draft has an invalid entry.
+  function addOrganizer(): string[] | null {
+    if (organizerDraft.trim() === "") return organizers;
+    const parsed = parseOrganizerEmails(organizerDraft);
+    if (parsed.invalid.length > 0) {
+      setOrganizerError(
+        parsed.invalid.length === 1
+          ? "Enter a valid email address"
+          : `Not a valid email: ${parsed.invalid.join(", ")}`,
+      );
+      return null;
+    }
+    const next = [
+      ...organizers,
+      ...parsed.emails.filter((email) => !organizers.includes(email)),
+    ];
+    setOrganizers(next);
+    setOrganizerDraft("");
+    setOrganizerError(null);
+    return next;
+  }
+
+  function removeOrganizer(email: string) {
+    setOrganizers((current) => current.filter((item) => item !== email));
+  }
 
   async function submit(generation?: GenerationInput) {
     if (lock.current) return;
-    if (organizerList.invalid.length > 0) {
-      setError(
-        `Enter valid organizer email addresses: ${organizerList.invalid.join(", ")}`,
-      );
+    const adminEmails = addOrganizer();
+    if (!adminEmails) {
+      setError("Fix the organizer email before creating the event.");
       return;
     }
     lock.current = true;
@@ -119,8 +146,7 @@ export default function NewEventForm({
         identity,
         signInMessage: signInMessage || undefined,
         contactEmail: contactEmail || undefined,
-        adminEmails:
-          organizerList.emails.length > 0 ? organizerList.emails : undefined,
+        adminEmails: adminEmails.length > 0 ? adminEmails : undefined,
         stripeGeneration: generation,
         stripeBatchId: source === "saved" && batchId ? batchId : undefined,
       });
@@ -244,38 +270,99 @@ export default function NewEventForm({
                   extraSettings={[
                     {
                       key: "organizers",
-                      id: "event-organizers",
+                      id: "event-organizer-email",
                       title: "Organizers",
                       addLabel: "Add organizers",
                       icon: UserPlus,
-                      set: organizers !== "",
-                      onClear: () => setOrganizers(""),
+                      set: organizers.length > 0 || organizerDraft !== "",
+                      onClear: () => {
+                        setOrganizers([]);
+                        setOrganizerDraft("");
+                        setOrganizerError(null);
+                      },
                       summary:
-                        organizerList.emails.length > 0
-                          ? `${organizerList.emails.length} ${organizerList.emails.length === 1 ? "person" : "people"}`
+                        organizers.length > 0
+                          ? `${organizers.length} ${organizers.length === 1 ? "person" : "people"}`
                           : undefined,
                       render: (focus) => (
-                        <Field>
-                          <Textarea
-                            id="event-organizers"
-                            value={organizers}
-                            onChange={(e) => setOrganizers(e.target.value)}
-                            rows={2}
-                            className="resize-y"
-                            autoFocus={focus}
-                            placeholder="organizer@example.com, another@example.com"
-                          />
-                          <FieldDescription>
-                            Organizers can edit this event and manage its
-                            attendees and codes. Separate emails with commas or
-                            new lines; you can add more on the manage page.
-                          </FieldDescription>
-                          {organizerList.invalid.length > 0 ? (
-                            <FieldDescription className="text-destructive">
-                              Not a valid email: {organizerList.invalid.join(", ")}
-                            </FieldDescription>
+                        <div className="flex flex-col gap-3">
+                          <Field>
+                            <div className="flex flex-col gap-2 sm:flex-row">
+                              <Input
+                                id="event-organizer-email"
+                                type="text"
+                                inputMode="email"
+                                autoComplete="off"
+                                value={organizerDraft}
+                                onChange={(e) => {
+                                  setOrganizerDraft(e.target.value);
+                                  if (organizerError) setOrganizerError(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    addOrganizer();
+                                  }
+                                }}
+                                autoFocus={focus}
+                                placeholder="organizer@example.com"
+                                className="sm:max-w-sm"
+                                aria-invalid={organizerError ? true : undefined}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => addOrganizer()}
+                                disabled={organizerDraft.trim() === ""}
+                                className="sm:w-auto"
+                              >
+                                <UserPlus data-icon="inline-start" />
+                                Add organizer
+                              </Button>
+                            </div>
+                            {organizerError ? (
+                              <FieldDescription className="text-destructive">
+                                {organizerError}
+                              </FieldDescription>
+                            ) : (
+                              <FieldDescription>
+                                Organizers can edit this event and manage its
+                                attendees and codes. They sign in with this
+                                email and find the event under Admin.
+                              </FieldDescription>
+                            )}
+                          </Field>
+                          {organizers.length > 0 ? (
+                            <ul className="flex flex-col gap-2">
+                              {organizers.map((email) => (
+                                <li
+                                  key={email}
+                                  className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+                                >
+                                  <span
+                                    aria-hidden
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground uppercase"
+                                  >
+                                    {email.charAt(0)}
+                                  </span>
+                                  <span className="min-w-0 flex-1 truncate text-sm">
+                                    {email}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="ghost"
+                                    className="shrink-0 text-muted-foreground"
+                                    aria-label={`Remove ${email}`}
+                                    onClick={() => removeOrganizer(email)}
+                                  >
+                                    <Trash2 />
+                                  </Button>
+                                </li>
+                              ))}
+                            </ul>
                           ) : null}
-                        </Field>
+                        </div>
                       ),
                     },
                   ]}
