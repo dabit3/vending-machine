@@ -18,7 +18,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
-import { normalizeEmail } from "@/lib/attendee-identity";
+import { parseOrganizerEmails } from "@/lib/organizer-emails";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
   emptyStripeForm,
@@ -97,17 +97,23 @@ export default function NewEventForm({
   const request = useRef<string | null>(null);
   const claimSlug = slugify(slug || name);
 
-  // Returns the organizer list including a pending, valid draft, or null when
-  // the draft is not an email.
+  // Adds the draft (one email, or several pasted ones) as organizer rows and
+  // returns the resulting list, or null when the draft has an invalid entry.
   function addOrganizer(): string[] | null {
-    const draft = organizerDraft.trim();
-    if (!draft) return organizers;
-    const email = normalizeEmail(draft);
-    if (!email) {
-      setOrganizerError("Enter a valid email address");
+    if (organizerDraft.trim() === "") return organizers;
+    const parsed = parseOrganizerEmails(organizerDraft);
+    if (parsed.invalid.length > 0) {
+      setOrganizerError(
+        parsed.invalid.length === 1
+          ? "Enter a valid email address"
+          : `Not a valid email: ${parsed.invalid.join(", ")}`,
+      );
       return null;
     }
-    const next = organizers.includes(email) ? organizers : [...organizers, email];
+    const next = [
+      ...organizers,
+      ...parsed.emails.filter((email) => !organizers.includes(email)),
+    ];
     setOrganizers(next);
     setOrganizerDraft("");
     setOrganizerError(null);
