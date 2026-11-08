@@ -290,7 +290,9 @@ export default function NewEventForm({
                             <div className="flex flex-col gap-2 sm:flex-row">
                               <Input
                                 id="event-organizer-email"
-                                type="email"
+                                type="text"
+                                inputMode="email"
+                                autoComplete="off"
                                 value={organizerDraft}
                                 onChange={(e) => {
                                   setOrganizerDraft(e.target.value);
