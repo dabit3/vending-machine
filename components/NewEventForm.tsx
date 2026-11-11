@@ -314,6 +314,15 @@ export default function NewEventForm({
       if (first && first === second) {
         return "Give the two code blocks different names.";
       }
+      if (blocks.every((block) => block.source === "paste")) {
+        const firstCodes = new Set(pastedCodes(blocks[0].codes));
+        const shared = pastedCodes(blocks[1].codes).find((code) =>
+          firstCodes.has(code),
+        );
+        if (shared) {
+          return `The code "${shared}" is in both blocks. Each code can only be in one.`;
+        }
+      }
       if (blocks[0].batchId && blocks[0].batchId === blocks[1].batchId) {
         return "Choose a different saved batch for each code block.";
       }

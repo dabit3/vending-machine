@@ -515,6 +515,21 @@ async function codeBlockNames(
     }
     names.push(name);
   }
+  // A code belongs to one block: inserting the second block would silently
+  // drop any code the first already holds, leaving it short or empty.
+  const pasted = new Set<string>();
+  for (const block of blocks) {
+    const own = new Set((block.codes ?? []).map((code) => code.trim()));
+    own.delete("");
+    for (const code of own) {
+      if (pasted.has(code)) {
+        throw new ConvexError(
+          `The code "${code}" is in both blocks. Each code can only be in one.`
+        );
+      }
+      pasted.add(code);
+    }
+  }
   if (blocks.length === 2) {
     if (names.some((name) => name === "")) {
       throw new ConvexError(

@@ -210,6 +210,10 @@ test("code block validation at creation", async () => {
     create([{ name: "A", codes: ["1"] }, { name: "A", codes: ["2"] }]),
   ).rejects.toThrow(/different names/);
   await expect(create([{ name: "A", codes: ["  "] }])).rejects.toThrow(/at least one code/);
+  // A shared code would be dropped from the second block on insert.
+  await expect(
+    create([{ name: "A", codes: ["1", "2"] }, { name: "B", codes: [" 2 ", "3"] }]),
+  ).rejects.toThrow(/"2" is in both blocks/);
   await expect(create([{ name: "A" }])).rejects.toThrow(/one source/);
   // A failed creation leaves no event behind.
   expect(await admin.query(api.events.listManaged, {})).toHaveLength(1);
