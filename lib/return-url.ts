@@ -11,7 +11,9 @@ export function safeReturnPath(
   if (!value) return undefined;
   let path: string;
   if (value.startsWith("/")) {
-    path = value;
+    // Fragments never reach the server and would let "/sign-in#x" slip past
+    // the auth-route check below.
+    path = value.split("#")[0];
   } else {
     try {
       const url = new URL(value);
