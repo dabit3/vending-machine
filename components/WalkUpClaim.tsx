@@ -21,6 +21,11 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { identityLabels, normalizeIdentityKey } from "@/lib/attendee-identity";
+import {
+  CLAIM_LIMIT,
+  CLAIM_WINDOW_DAYS,
+  formatClaimDate,
+} from "@/lib/claim-cooldown";
 import { cn } from "@/lib/utils";
 
 function subscribeNoop() {
@@ -84,11 +89,12 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
     }
     setSubmitting(true);
     try {
-      const { added, skipped, flagged, blacklisted } = await addEmails({
-        eventId: id,
-        emails: [trimmed],
-        walkUp: true,
-      });
+      const { added, skipped, flagged, blacklisted, cooldownEligibleAt } =
+        await addEmails({
+          eventId: id,
+          emails: [trimmed],
+          walkUp: true,
+        });
       if (blacklisted > 0) {
         toast.error(`${trimmed} is blacklisted`, {
           description: `This ${labels.noun} is on the app-wide blacklist and cannot claim a code.`,
@@ -99,6 +105,16 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
         toast.warning(`${trimmed} needs organizer approval`, {
           description: `This ${labels.noun} signed up for a previous event. Approve it under Flagged for review on the manage event page.`,
         });
+        return;
+      }
+      if (cooldownEligibleAt !== undefined) {
+        toast.warning(
+          `${trimmed} already claimed ${CLAIM_LIMIT} codes in the past ${CLAIM_WINDOW_DAYS} days`,
+          {
+            description: `${added > 0 ? "They are on the list, but their" : "Their"} limit lifts on ${formatClaimDate(cooldownEligibleAt)} and they already have credits from those claims. To let them claim here anyway, use Allow claim under Waiting to claim again on the manage event page.`,
+            duration: 10000,
+          },
+        );
         return;
       }
       if (added === 0 && skipped > 0) {
