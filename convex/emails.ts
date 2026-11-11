@@ -25,7 +25,14 @@ export const list = query({
 // email events and X handles ("@handle", or a profile URL) for X events;
 // anything that doesn't parse as the event's identity kind is skipped.
 export const add = mutation({
-  args: { eventId: v.id("events"), emails: v.array(v.string()) },
+  args: {
+    eventId: v.id("events"),
+    emails: v.array(v.string()),
+    // Set by the walk-up page. Combined with the event's
+    // `walkUpSkipsReview` flag, addresses seen in other events are added
+    // directly instead of being held for review.
+    walkUp: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
     if (args.emails.length > UPLOAD_CHUNK_SIZE) {
@@ -36,6 +43,7 @@ export const add = mutation({
     const event = await ctx.db.get(args.eventId);
     if (!event) throw new Error("Event not found");
     const identity = eventIdentity(event);
+    const skipReview = args.walkUp === true && event.walkUpSkipsReview === true;
     let added = 0;
     let skipped = 0;
     let flagged = 0;
@@ -75,13 +83,16 @@ export const add = mutation({
         continue;
       }
       // Emails already signed up for other events are held for manual
-      // review instead of being added directly.
-      const otherEvents = (
-        await ctx.db
-          .query("emails")
-          .withIndex("by_email", (q) => q.eq("email", email))
-          .collect()
-      ).filter((e) => e.eventId !== args.eventId);
+      // review instead of being added directly, unless this event lets
+      // walk-up additions skip that review.
+      const otherEvents = skipReview
+        ? []
+        : (
+            await ctx.db
+              .query("emails")
+              .withIndex("by_email", (q) => q.eq("email", email))
+              .collect()
+          ).filter((e) => e.eventId !== args.eventId);
       if (otherEvents.length > 0) {
         const alreadyFlagged = await ctx.db
           .query("flaggedEmails")

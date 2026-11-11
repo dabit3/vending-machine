@@ -106,6 +106,7 @@ import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
   EventDatesField,
   DynamicToggle,
+  WalkUpReviewToggle,
   IdentityPicker,
   SlugInput,
 } from "@/components/EventFormFields";
@@ -2432,6 +2433,9 @@ function EventDetailsForm({
     event.claimInstructions ?? ""
   );
   const [dynamic, setDynamic] = useState(event.dynamic ?? false);
+  const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(
+    event.walkUpSkipsReview ?? false
+  );
   const [identity, setIdentity] = useState<AttendeeIdentity>(
     event.identity ?? "email"
   );
@@ -2448,6 +2452,7 @@ function EventDetailsForm({
     eventEndDate !== (event.eventEndDate ?? "") ||
     claimInstructions.trim() !== (event.claimInstructions ?? "") ||
     dynamic !== (event.dynamic ?? false) ||
+    walkUpSkipsReview !== (event.walkUpSkipsReview ?? false) ||
     identity !== (event.identity ?? "email") ||
     signInMessage.trim() !== (event.signInMessage ?? "") ||
     contactEmail.trim().toLowerCase() !== (event.contactEmail ?? "");
@@ -2465,6 +2470,7 @@ function EventDetailsForm({
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
+        walkUpSkipsReview,
         identity,
         signInMessage,
         contactEmail,
@@ -2562,7 +2568,16 @@ function EventDetailsForm({
               onChange={setDynamic}
               identity={identity}
             />
-            {dynamic ? <DynamicEventWarning className="sm:col-span-2" /> : null}
+            {dynamic ? (
+              <DynamicEventWarning className="sm:col-span-2" />
+            ) : (
+              <WalkUpReviewToggle
+                id="detail-walkup-review"
+                className="sm:col-span-2"
+                checked={walkUpSkipsReview}
+                onChange={setWalkUpSkipsReview}
+              />
+            )}
           </FieldGroup>
           <div className="flex items-center justify-between gap-4 border-t pt-5">
             <div className="flex items-center gap-3">

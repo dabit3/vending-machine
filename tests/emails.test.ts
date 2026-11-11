@@ -350,3 +350,54 @@ test("removeUnclaimed is scoped to the event and open to event admins of that ev
     actorEmail: "organizer@example.com",
   });
 });
+
+test("walk-up adds skip duplicate review only when the event allows it", async () => {
+  const { t, admin, event } = await setup();
+  const other = await admin.mutation(api.events.create, { name: "Other" });
+  await admin.mutation(api.emails.add, {
+    eventId: other.id,
+    emails: ["repeat@example.com"],
+  });
+
+  // Default: a walk-up add of an address seen elsewhere is held for review.
+  const held = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["repeat@example.com"],
+    walkUp: true,
+  });
+  expect(held).toMatchObject({ added: 0, flagged: 1 });
+
+  await admin.mutation(api.events.update, {
+    id: event.id,
+    name: "Meetup",
+    slug: "meetup",
+    walkUpSkipsReview: true,
+  });
+  const added = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["repeat@example.com"],
+    walkUp: true,
+  });
+  expect(added).toMatchObject({ added: 1, flagged: 0 });
+  const flags = await t.run((ctx) =>
+    ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_event", (q) => q.eq("eventId", event.id))
+      .collect(),
+  );
+  expect(flags).toEqual([]);
+  expect(
+    (await admin.query(api.emails.list, { eventId: event.id })).map((e) => e.email),
+  ).toEqual(["repeat@example.com"]);
+
+  // Bulk uploads (no walkUp) still flag even with the setting on.
+  await admin.mutation(api.emails.add, {
+    eventId: other.id,
+    emails: ["again@example.com"],
+  });
+  const bulk = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["again@example.com"],
+  });
+  expect(bulk).toMatchObject({ added: 0, flagged: 1 });
+});
