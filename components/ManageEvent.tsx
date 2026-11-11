@@ -2470,7 +2470,7 @@ function EventDetailsForm({
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
-        walkUpSkipsReview,
+        walkUpSkipsReview: dynamic ? false : walkUpSkipsReview,
         identity,
         signInMessage,
         contactEmail,
@@ -2565,7 +2565,12 @@ function EventDetailsForm({
               id="detail-dynamic"
               className="sm:col-span-2"
               checked={dynamic}
-              onChange={setDynamic}
+              onChange={(next) => {
+                setDynamic(next);
+                // Dynamic events have no review step; drop the hidden choice
+                // so it can't come back when switching to a list later.
+                if (next) setWalkUpSkipsReview(false);
+              }}
               identity={identity}
             />
             {dynamic ? (

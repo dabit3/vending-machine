@@ -507,7 +507,8 @@ export const create = mutation({
       eventEndDate: resolveEventEndDate(eventDate, args.eventEndDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
-      walkUpSkipsReview: args.walkUpSkipsReview || undefined,
+      walkUpSkipsReview:
+        !args.dynamic && args.walkUpSkipsReview ? true : undefined,
       identity: args.identity === "x" ? "x" : undefined,
       signInMessage: args.signInMessage?.trim() || undefined,
       contactEmail: resolveContactEmail(args.contactEmail),
@@ -604,10 +605,14 @@ export const update = mutation({
       ),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
-      // Absent means unchanged, so older admin forms don't clear it.
-      ...(args.walkUpSkipsReview !== undefined
-        ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined }
-        : {}),
+      // Absent means unchanged, so older admin forms don't clear it. Dynamic
+      // events have no review step, so turning dynamic on drops the flag
+      // rather than leaving it to resurface if the event goes back to a list.
+      ...(args.dynamic
+        ? { walkUpSkipsReview: undefined }
+        : args.walkUpSkipsReview !== undefined
+          ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined }
+          : {}),
       // Older admin forms don't send `identity`; leave the setting untouched
       // rather than resetting the event to email.
       ...(args.identity !== undefined

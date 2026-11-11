@@ -44,6 +44,9 @@ export const add = mutation({
     if (!event) throw new Error("Event not found");
     const identity = eventIdentity(event);
     const skipReview = args.walkUp === true && event.walkUpSkipsReview === true;
+    // Walk-up adds report whether the attendee is still inside the claim
+    // cooldown, so the page can warn instead of showing a QR that won't work.
+    let walkUpRow: { email: string; waived: boolean } | undefined;
     let added = 0;
     let skipped = 0;
     let flagged = 0;
@@ -63,6 +66,18 @@ export const add = mutation({
         )
         .unique();
       if (existing) {
+        // Someone who already claimed here keeps their code, so the
+        // cooldown is moot for them (same rule as listCooldowns).
+        const claimedHere = await ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.eventId).eq("claimedBy", email)
+          )
+          .first();
+        walkUpRow = {
+          email,
+          waived: existing.cooldownWaivedAt !== undefined || claimedHere !== null,
+        };
         skipped++;
         continue;
       }
@@ -129,9 +144,14 @@ export const add = mutation({
       if (staleFlag) {
         await ctx.db.delete(staleFlag._id);
       }
+      walkUpRow = { email, waived: false };
       added++;
     }
-    return { added, skipped, flagged, blacklisted };
+    let cooldownEligibleAt: number | undefined;
+    if (args.walkUp === true && walkUpRow && !walkUpRow.waived) {
+      cooldownEligibleAt = (await claimHistory(ctx, walkUpRow.email)).eligibleAt;
+    }
+    return { added, skipped, flagged, blacklisted, cooldownEligibleAt };
   },
 });
 
