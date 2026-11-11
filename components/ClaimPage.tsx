@@ -591,11 +591,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <Hourglass />
                       <AlertTitle>You already have credits</AlertTitle>
                       <AlertDescription>
-                        You claimed {eligibility.cooldown.recent} codes in the
-                        past {CLAIM_WINDOW_DAYS} days, so those credits should
-                        already be in your Devin account. Attendees can claim
-                        up to 2 codes every {CLAIM_WINDOW_DAYS} days; your
-                        limit lifts on{" "}
+                        You claimed codes at {eligibility.cooldown.recent}{" "}
+                        events in the past {CLAIM_WINDOW_DAYS} days, so those
+                        credits should already be in your Devin account.
+                        Attendees can claim at up to 2 events every{" "}
+                        {CLAIM_WINDOW_DAYS} days; your limit lifts on{" "}
                         {formatClaimDate(eligibility.cooldown.eligibleAt)}.
                       </AlertDescription>
                     </Alert>

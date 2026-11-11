@@ -45,7 +45,7 @@ test("claimCooldown counts recent claims and derives the next eligible date", ()
 
 test("cooldownNotice wording", () => {
   expect(cooldownNotice({ recent: 2, eligibleAt: Date.UTC(2026, 9, 20, 12) })).toBe(
-    "Already claimed 2 codes in the past 60 days, eligible again on Oct 20, 2026"
+    "Already claimed at 2 events in the past 60 days, eligible again on Oct 20, 2026"
   );
 });
 
@@ -82,7 +82,7 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
   const third = await user.mutation(api.claims.claim, { slug: "c" });
   expect(third.ok).toBe(false);
   if (!third.ok) {
-    expect(third.error).toMatch(/already claimed 2 codes in the past 60 days/);
+    expect(third.error).toMatch(/already claimed codes at 2 events in the past 60 days/);
     expect(third.error).toMatch(/already be in your account/);
   }
   await t.run(async (ctx) => {

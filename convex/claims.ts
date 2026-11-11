@@ -33,6 +33,87 @@ async function findParticipantRow(
     .unique();
 }
 
+// "all" mode: each attendee is owed one code from every open block.
+function dispensesAll(event: Doc<"events">) {
+  return event.claimMode === "all";
+}
+
+// The open blocks of an event (undefined = the unnamed pool), in the order
+// the blocks were created. Legacy events without a stored list have one pool.
+function openBlocks(event: Doc<"events">): (string | undefined)[] {
+  return (event.codeTypes ?? [""])
+    .filter((t) => !isArchivedType(event, t))
+    .map((t) => t || undefined);
+}
+
+// Every code the attendee holds from this event, in block order. One code
+// unless the event dispenses one per block.
+async function claimedHere(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  key: string
+) {
+  const rows = await ctx.db
+    .query("codes")
+    .withIndex("by_event_claimedBy", (q) =>
+      q.eq("eventId", event._id).eq("claimedBy", key)
+    )
+    .collect();
+  const order = event.codeTypes ?? [];
+  const rank = (c: Doc<"codes">) => {
+    const i = order.indexOf(c.codeType ?? "");
+    return i === -1 ? order.length : i;
+  };
+  return rows.sort(
+    (a, b) => rank(a) - rank(b) || a._creationTime - b._creationTime
+  );
+}
+
+// Unclaimed codes held for the attendee by a waitlist approval.
+async function reservedFor(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  key: string
+) {
+  const rows = await ctx.db
+    .query("codes")
+    .withIndex("by_event_reservedFor", (q) =>
+      q.eq("eventId", event._id).eq("reservedFor", key)
+    )
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("claimedBy"), undefined))
+    .collect();
+  return rows.filter((c) => !isArchivedType(event, c.codeType));
+}
+
+// "all" mode: the code the attendee would get from one block, preferring
+// one reserved for them.
+async function nextForBlock(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  block: string | undefined,
+  reserved: Doc<"codes">[]
+) {
+  return (
+    reserved.find((c) => block === undefined || c.codeType === block) ??
+    (await nextAvailable(ctx, event, block))
+  );
+}
+
+async function describeCode(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  code: Doc<"codes">
+) {
+  return {
+    code: code.code,
+    codeType: code.codeType,
+    creditAmount: blockValue(event, code.codeType),
+    terms: await codeTerms(ctx, code),
+    expiresAt: code.expiresAt,
+  };
+}
+
 // The unclaimed, unreserved, unexpired code an attendee would receive next,
 // optionally restricted to one block. Archived blocks never dispense. An
 // unrestricted request on an event with archived blocks probes each open
@@ -171,25 +252,34 @@ export const eligibility = query({
     if (!allowed && !walkUpEligible) {
       return { eligible: false as const, reason: "not_listed" as const, identity: key };
     }
-    const claimed = await ctx.db
-      .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", event._id).eq("claimedBy", key)
-      )
-      .unique();
+    const claimedRows = await claimedHere(ctx, event, key);
     const instructionsViewed = allowed?.instructionsViewedAt !== undefined;
-    if (claimed) {
+    if (claimedRows.length > 0) {
+      const claimedCodes = await Promise.all(
+        claimedRows.map((c) => describeCode(ctx, event, c))
+      );
+      // "all" mode: blocks the attendee has no code from yet that can
+      // dispense one now (restocked, or added after they claimed).
+      const pendingTypes: string[] = [];
+      if (dispensesAll(event)) {
+        const have = new Set(claimedRows.map((c) => c.codeType ?? ""));
+        const reserved = await reservedFor(ctx, event, key);
+        for (const block of openBlocks(event)) {
+          if (have.has(block ?? "")) continue;
+          if (await nextForBlock(ctx, event, block, reserved)) {
+            pendingTypes.push(block ?? "");
+          }
+        }
+      }
       return {
         eligible: true as const,
         identity: key,
         instructionsViewed,
-        claimed: {
-          code: claimed.code,
-          codeType: claimed.codeType,
-          creditAmount: blockValue(event, claimed.codeType),
-          terms: await codeTerms(ctx, claimed),
-          expiresAt: claimed.expiresAt,
-        },
+        // First code, for claim pages loaded before events could dispense
+        // several codes.
+        claimed: claimedCodes[0],
+        claimedCodes,
+        pendingTypes,
       };
     }
     const cooldown = cooldownWaived(allowed)
@@ -306,31 +396,25 @@ export const claim = mutation({
       };
     }
 
-    const alreadyClaimed = await ctx.db
-      .query("codes")
-      .withIndex("by_event_claimedBy", (q) =>
-        q.eq("eventId", event._id).eq("claimedBy", key)
-      )
-      .unique();
-    if (alreadyClaimed) {
-      return {
-        ok: true as const,
-        code: alreadyClaimed.code,
-        codeType: alreadyClaimed.codeType,
-        alreadyClaimed: true,
-        creditAmount: blockValue(event, alreadyClaimed.codeType),
-        terms: await codeTerms(ctx, alreadyClaimed),
-        expiresAt: alreadyClaimed.expiresAt,
-      };
+    const all = dispensesAll(event);
+    const claimedRows = await claimedHere(ctx, event, key);
+    if (claimedRows.length > 0 && !all) {
+      const codes = await Promise.all(
+        claimedRows.map((c) => describeCode(ctx, event, c))
+      );
+      return { ok: true as const, ...codes[0], alreadyClaimed: true, codes };
     }
 
-    const cooldown = cooldownWaived(allowed)
-      ? undefined
-      : await claimHistory(ctx, key);
+    // Collecting the rest of an event's codes is part of the same claim, so
+    // the cross-event limit only applies to a first claim here.
+    const cooldown =
+      cooldownWaived(allowed) || claimedRows.length > 0
+        ? undefined
+        : await claimHistory(ctx, key);
     if (cooldown?.eligibleAt !== undefined) {
       return {
         ok: false as const,
-        error: `You already claimed ${cooldown.recent} codes in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. Your limit lifts on ${formatClaimDate(cooldown.eligibleAt)}.`,
+        error: `You already claimed codes at ${cooldown.recent} events in the past ${CLAIM_WINDOW_DAYS} days, so those credits should already be in your account. Your limit lifts on ${formatClaimDate(cooldown.eligibleAt)}.`,
       };
     }
 
@@ -351,22 +435,54 @@ export const claim = mutation({
       };
     }
 
+    const reserved = await reservedFor(ctx, event, key);
+
+    if (all) {
+      // One code from every open block the attendee has none from yet. A
+      // block that is out of stock is skipped, not an error: they keep what
+      // is available and can come back for the rest.
+      const have = new Set(claimedRows.map((c) => c.codeType ?? ""));
+      const dispensed: Doc<"codes">[] = [];
+      for (const block of openBlocks(event)) {
+        if (have.has(block ?? "")) continue;
+        const next = await nextForBlock(ctx, event, block, reserved);
+        if (!next) continue;
+        await ctx.db.patch(next._id, {
+          claimedBy: key,
+          claimedAt: Date.now(),
+          reservedFor: undefined,
+        });
+        have.add(next.codeType ?? "");
+        dispensed.push(next);
+      }
+      if (dispensed.length === 0 && claimedRows.length === 0) {
+        return {
+          ok: false as const,
+          error: "All codes for this event have been claimed.",
+        };
+      }
+      if (name && name !== allowed.name) {
+        await ctx.db.patch(allowed._id, { name });
+      }
+      const codes = await Promise.all(
+        (await claimedHere(ctx, event, key)).map((c) =>
+          describeCode(ctx, event, c)
+        )
+      );
+      return {
+        ok: true as const,
+        ...codes[0],
+        alreadyClaimed: dispensed.length === 0,
+        codes,
+      };
+    }
+
     const requestedType = args.codeType?.trim() || undefined;
 
     // A code reserved for this attendee (via waitlist approval) takes priority;
     // otherwise take any unclaimed code that isn't reserved for someone else.
-    const reserved = await ctx.db
-      .query("codes")
-      .withIndex("by_event_reservedFor", (q) =>
-        q.eq("eventId", event._id).eq("reservedFor", key)
-      )
-      .filter(notExpired)
-      .filter((q) => q.eq(q.field("claimedBy"), undefined))
-      .first();
-    const usableReservation =
-      reserved && !isArchivedType(event, reserved.codeType) ? reserved : null;
     const available =
-      usableReservation ?? (await nextAvailable(ctx, event, requestedType));
+      reserved[0] ?? (await nextAvailable(ctx, event, requestedType));
     if (!available) {
       return {
         ok: false as const,
@@ -385,14 +501,7 @@ export const claim = mutation({
     if (name && name !== allowed.name) {
       await ctx.db.patch(allowed._id, { name });
     }
-    return {
-      ok: true as const,
-      code: available.code,
-      codeType: available.codeType,
-      alreadyClaimed: false,
-      creditAmount: blockValue(event, available.codeType),
-      terms: await codeTerms(ctx, available),
-      expiresAt: available.expiresAt,
-    };
+    const code = await describeCode(ctx, event, available);
+    return { ok: true as const, ...code, alreadyClaimed: false, codes: [code] };
   },
 });
