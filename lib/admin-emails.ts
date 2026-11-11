@@ -1,3 +1,4 @@
+import { EMAIL_SHAPE } from "./organizer-emails";
 import { extractEmails } from "./spreadsheet";
 
 // Pasted admin / organizer lists: any email-shaped token anywhere in the
@@ -19,4 +20,16 @@ export function bulkAddSummary(
   const parts = [`${added} ${added === 1 ? one : noun} added`];
   if (skipped > 0) parts.push(`${skipped} already added or invalid`);
   return parts.join(", ");
+}
+
+// A single typed address: wrapping punctuation is tolerated, but the rest
+// must be one whole address ("alice@example.com@other" is rejected rather
+// than trimmed to alice@example.com, since that may not be who was meant).
+export function singleAdminEmail(value: string): string | null {
+  const email = value
+    .trim()
+    .replace(/^[\[({<"']+/, "")
+    .replace(/[\])}>"'.,;]+$/, "")
+    .toLowerCase();
+  return EMAIL_SHAPE.test(email) ? email : null;
 }

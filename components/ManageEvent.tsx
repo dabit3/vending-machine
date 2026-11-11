@@ -56,7 +56,11 @@ import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
-import { bulkAddSummary, extractAdminEmails } from "@/lib/admin-emails";
+import {
+  bulkAddSummary,
+  extractAdminEmails,
+  singleAdminEmail,
+} from "@/lib/admin-emails";
 import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
@@ -2052,12 +2056,14 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     // A pasted list in the single box goes through the bulk add.
-    const found = extractAdminEmails(email);
+    const several = /[\s,;]/.test(email.trim());
+    const found = several
+      ? extractAdminEmails(email)
+      : [singleAdminEmail(email)].filter((e): e is string => e !== null);
     if (found.length === 0) {
       toast.error("Enter a valid email address");
       return;
     }
-    const several = found.length > 1 || /[\s,;]/.test(email.trim());
     if (found.length > MAX_BULK_ADMINS) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} organizers at a time`);
       return;

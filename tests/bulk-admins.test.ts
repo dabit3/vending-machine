@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
-import { bulkAddSummary, extractAdminEmails } from "../lib/admin-emails";
+import { bulkAddSummary, extractAdminEmails, singleAdminEmail } from "../lib/admin-emails";
 import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
 import { extractEmails } from "../lib/spreadsheet";
 
@@ -112,4 +112,15 @@ test("bulkAddSummary wording", () => {
   expect(bulkAddSummary({ added: 0, skipped: 1 }, "admins")).toBe(
     "0 admins added, 1 already added or invalid",
   );
+});
+
+test("singleAdminEmail accepts one whole address, tolerating wrapping punctuation only", () => {
+  expect(singleAdminEmail(" Alice@Example.com ")).toBe("alice@example.com");
+  expect(singleAdminEmail("(alice@example.com)")).toBe("alice@example.com");
+  expect(singleAdminEmail("<alice@example.com>.")).toBe("alice@example.com");
+  expect(singleAdminEmail("alice@example.com@other")).toBeNull();
+  expect(singleAdminEmail("alice@")).toBeNull();
+  expect(singleAdminEmail("alice@example")).toBeNull();
+  expect(singleAdminEmail("Alice <alice@example.com>")).toBeNull();
+  expect(singleAdminEmail("")).toBeNull();
 });

@@ -30,7 +30,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
-import { bulkAddSummary, extractAdminEmails } from "@/lib/admin-emails";
+import {
+  bulkAddSummary,
+  extractAdminEmails,
+  singleAdminEmail,
+} from "@/lib/admin-emails";
 import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 
 export default function AdminsPage() {
@@ -47,12 +51,14 @@ export default function AdminsPage() {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     // A pasted list in the single box goes through the bulk add.
-    const found = extractAdminEmails(email);
+    const several = /[\s,;]/.test(email.trim());
+    const found = several
+      ? extractAdminEmails(email)
+      : [singleAdminEmail(email)].filter((e): e is string => e !== null);
     if (found.length === 0) {
       toast.error("Enter a valid email address");
       return;
     }
-    const several = found.length > 1 || /[\s,;]/.test(email.trim());
     if (found.length > MAX_BULK_ADMINS) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} admins at a time`);
       return;
