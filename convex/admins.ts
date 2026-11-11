@@ -1,6 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
 
 export async function adminEmailStatus(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -113,6 +114,41 @@ export const add = mutation({
       .unique();
     if (existing) throw new Error(`${email} is already an admin`);
     await ctx.db.insert("admins", { email });
+  },
+});
+
+// Bulk add: invalid entries and existing admins are skipped, not errors.
+export const addMany = mutation({
+  args: { emails: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    if (args.emails.length > MAX_BULK_ADMINS) {
+      throw new Error(
+        `Add at most ${MAX_BULK_ADMINS} admins per request (got ${args.emails.length}).`
+      );
+    }
+    let added = 0;
+    let skipped = 0;
+    const seen = new Set<string>();
+    for (const raw of args.emails) {
+      const email = raw.trim().toLowerCase();
+      if (!email || !email.includes("@") || seen.has(email)) {
+        skipped++;
+        continue;
+      }
+      seen.add(email);
+      const existing = await ctx.db
+        .query("admins")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .unique();
+      if (existing) {
+        skipped++;
+        continue;
+      }
+      await ctx.db.insert("admins", { email });
+      added++;
+    }
+    return { added, skipped };
   },
 });
 

@@ -55,6 +55,7 @@ import {
 import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
+import BulkAdminAdd from "@/components/BulkAdminAdd";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { blockExpirySummary } from "@/lib/code-expiry";
@@ -2040,6 +2041,7 @@ function BlockStat({
 function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
   const admins = useQuery(api.eventAdmins.list, { eventId });
   const addAdmin = useMutation(api.eventAdmins.add);
+  const addAdmins = useMutation(api.eventAdmins.addMany);
   const removeAdmin = useMutation(api.eventAdmins.remove);
 
   const [email, setEmail] = useState("");
@@ -2110,6 +2112,10 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
             They sign in with this email and find the event under Admin.
           </p>
         </form>
+        <BulkAdminAdd
+          noun="organizers"
+          onAdd={(emails) => addAdmins({ eventId, emails })}
+        />
         {!admins ? (
           <div className="flex flex-col gap-2">
             <Skeleton className="h-12 rounded-lg" />

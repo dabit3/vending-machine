@@ -29,11 +29,13 @@ import {
 } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import BulkAdminAdd from "@/components/BulkAdminAdd";
 
 export default function AdminsPage() {
   const access = useQuery(api.admins.accessLevel);
   const admins = useQuery(api.admins.list, access?.isGlobalAdmin ? {} : "skip");
   const addAdmin = useMutation(api.admins.add);
+  const addAdmins = useMutation(api.admins.addMany);
   const removeAdmin = useMutation(api.admins.remove);
 
   const [email, setEmail] = useState("");
@@ -103,7 +105,7 @@ export default function AdminsPage() {
         </Alert>
       ) : null}
 
-      <form onSubmit={handleAdd} className="mb-10">
+      <form onSubmit={handleAdd} className="mb-4">
         <Field>
           <FieldLabel htmlFor="admin-email">Add an admin</FieldLabel>
           <InputGroup>
@@ -131,6 +133,11 @@ export default function AdminsPage() {
           </InputGroup>
         </Field>
       </form>
+      <BulkAdminAdd
+        noun="admins"
+        className="mb-10"
+        onAdd={(emails) => addAdmins({ emails })}
+      />
 
       {admins === undefined ? (
         <div className="flex flex-col gap-2">

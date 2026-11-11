@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
+import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -34,6 +35,43 @@ export const add = mutation({
       .unique();
     if (existing) throw new Error(`${email} is already an admin of this event`);
     await ctx.db.insert("eventAdmins", { eventId: args.eventId, email });
+  },
+});
+
+// Bulk add: invalid entries and existing organizers are skipped, not errors.
+export const addMany = mutation({
+  args: { eventId: v.id("events"), emails: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    if (args.emails.length > MAX_BULK_ADMINS) {
+      throw new Error(
+        `Add at most ${MAX_BULK_ADMINS} organizers per request (got ${args.emails.length}).`
+      );
+    }
+    let added = 0;
+    let skipped = 0;
+    const seen = new Set<string>();
+    for (const raw of args.emails) {
+      const email = raw.trim().toLowerCase();
+      if (!email || !email.includes("@") || seen.has(email)) {
+        skipped++;
+        continue;
+      }
+      seen.add(email);
+      const existing = await ctx.db
+        .query("eventAdmins")
+        .withIndex("by_event_email", (q) =>
+          q.eq("eventId", args.eventId).eq("email", email)
+        )
+        .unique();
+      if (existing) {
+        skipped++;
+        continue;
+      }
+      await ctx.db.insert("eventAdmins", { eventId: args.eventId, email });
+      added++;
+    }
+    return { added, skipped };
   },
 });
 
