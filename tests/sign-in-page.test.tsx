@@ -48,6 +48,9 @@ test("safeReturnPath keeps only same-site paths", () => {
   expect(safeReturnPath("/")).toBeUndefined();
   expect(safeReturnPath("/sign-in")).toBeUndefined();
   expect(safeReturnPath("/sign-up/continue")).toBeUndefined();
+  expect(safeReturnPath("/sign-in?redirect_url=%2Fadmin")).toBeUndefined();
+  expect(safeReturnPath("/sign-invite")).toBe("/sign-invite");
+  expect(safeReturnPath("/sign-upgrade?preview=1")).toBe("/sign-upgrade?preview=1");
   expect(safeReturnPath("//evil.example/admin")).toBeUndefined();
   expect(safeReturnPath("javascript:alert(1)")).toBeUndefined();
   expect(safeReturnPath("mailto:a@b.c")).toBeUndefined();

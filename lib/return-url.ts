@@ -22,8 +22,7 @@ export function safeReturnPath(
     }
   }
   if (path.startsWith("//") || /[\\\s]/.test(path)) return undefined;
-  if (path === "/" || path.startsWith("/sign-in") || path.startsWith("/sign-up")) {
-    return undefined;
-  }
+  // The auth routes themselves (but not an event slug like /sign-invite).
+  if (path === "/" || /^\/sign-(?:in|up)(?:[/?]|$)/.test(path)) return undefined;
   return path;
 }
