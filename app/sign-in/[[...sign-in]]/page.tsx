@@ -1,8 +1,18 @@
 import { SignIn } from "@clerk/nextjs";
+import { safeReturnPath } from "@/lib/return-url";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 
-export default function SignInPage() {
+// `redirect_url` is set by the admin route protection in proxy.ts (and by
+// Clerk's own hops between sign-in and sign-up). Passing it as the forced
+// redirect means the walk-up page, or any admin link, comes back after
+// signing in instead of the app-wide after-sign-in destination.
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}) {
+  const returnTo = safeReturnPath((await searchParams).redirect_url);
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
@@ -21,7 +31,10 @@ export default function SignInPage() {
           </h1>
         </div>
         <div className="relative">
-          <SignIn />
+          <SignIn
+            forceRedirectUrl={returnTo}
+            signUpForceRedirectUrl={returnTo}
+          />
         </div>
       </main>
       <SiteFooter />
