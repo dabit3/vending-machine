@@ -24,3 +24,7 @@ export function parseOrganizerEmails(input: string): {
   }
   return { emails, invalid };
 }
+
+// Admin lists can be added in bulk (see lib/admin-emails.ts). Bounded per
+// request so a pasted list can't become an unbounded mutation.
+export const MAX_BULK_ADMINS = 200;
