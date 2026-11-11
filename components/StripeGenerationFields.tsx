@@ -248,8 +248,11 @@ export function ConfirmStripeGeneration({
   onCancel,
   onConfirm,
   eventName,
+  more = [],
 }: {
   input: GenerationInput | null;
+  // Further batches created in the same step (an event with two blocks).
+  more?: GenerationInput[];
   busy: boolean;
   error: string | null;
   onCancel: () => void;
@@ -308,6 +311,38 @@ export function ConfirmStripeGeneration({
                   : "No expiration"}
               </dd>
             </dl>
+            {more.map((extra) => (
+              <dl
+                key={extra.requestId}
+                className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-4 text-sm"
+              >
+                <dt className="text-muted-foreground">Batch</dt>
+                <dd className="break-words">{extra.name}</dd>
+                <dt className="text-muted-foreground">Codes</dt>
+                <dd>
+                  {extra.quantity} × {usd(extra.amountCents)}
+                </dd>
+                <dt className="text-muted-foreground">Redemptions per code</dt>
+                <dd>{extra.redemptionsPerCode === 2 ? "Twice" : "Once"}</dd>
+                <dt className="text-muted-foreground">Duration</dt>
+                <dd>{durationLabel(extra.durationMonths)}</dd>
+                <dt className="text-muted-foreground">Maximum total discount</dt>
+                <dd className="font-medium">
+                  {usd(
+                    extra.quantity *
+                      extra.amountCents *
+                      (extra.redemptionsPerCode ?? 1) *
+                      (extra.durationMonths ?? 1),
+                  )}
+                </dd>
+                <dt className="text-muted-foreground">Expires</dt>
+                <dd>
+                  {extra.expiresAt
+                    ? new Date(extra.expiresAt).toLocaleString()
+                    : "No expiration"}
+                </dd>
+              </dl>
+            ))}
             {input.expectedLive && (
               <Alert variant="destructive">
                 <AlertTriangle />
