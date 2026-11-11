@@ -109,7 +109,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
       }
       if (cooldownEligibleAt !== undefined) {
         toast.warning(
-          `${trimmed} already claimed ${CLAIM_LIMIT} codes in the past ${CLAIM_WINDOW_DAYS} days`,
+          `${trimmed} already claimed at ${CLAIM_LIMIT} events in the past ${CLAIM_WINDOW_DAYS} days`,
           {
             description: `${added > 0 ? "They are on the list, but their" : "Their"} limit lifts on ${formatClaimDate(cooldownEligibleAt)} and they already have credits from those claims. To let them claim here anyway, use Allow claim under Waiting to claim again on the manage event page.`,
             duration: 10000,

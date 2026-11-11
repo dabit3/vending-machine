@@ -1,7 +1,13 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { claimCooldown, type ClaimCooldown } from "../lib/claim-cooldown";
+import {
+  claimCooldown,
+  claimsByEvent,
+  type ClaimCooldown,
+} from "../lib/claim-cooldown";
 
-// Every code an identity has claimed, across all events, via by_claimedBy.
+// An identity's claim history across all events, via by_claimedBy. The
+// cooldown counts events, not codes, so an event that hands each attendee
+// several codes uses one claim; `total` stays the number of codes.
 export async function claimHistory(
   ctx: QueryCtx | MutationCtx,
   key: string
@@ -10,5 +16,5 @@ export async function claimHistory(
     .query("codes")
     .withIndex("by_claimedBy", (q) => q.eq("claimedBy", key))
     .collect();
-  return claimCooldown(claims);
+  return { ...claimCooldown(claimsByEvent(claims)), total: claims.length };
 }

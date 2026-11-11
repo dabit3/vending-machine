@@ -7,6 +7,10 @@ import {
   parseOrganizerEmails,
 } from "../lib/organizer-emails";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
+import { addCodesToEvent } from "./codes";
+import { logAudit } from "./auditLog";
+import { truncateStripeBatchName } from "../lib/stripe-name";
+import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import { codeTerms } from "./codeTerms";
@@ -197,6 +201,8 @@ export const getBySlug = query({
       codeTypeValues: event.codeTypeValues,
       codeTypeTerms,
       dynamic: event.dynamic ?? false,
+      // "all": one claim dispenses a code from every block listed below.
+      claimMode: event.claimMode === "all" ? ("all" as const) : ("one" as const),
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,
       contactEmail: event.contactEmail,
@@ -245,6 +251,7 @@ export const get = query({
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
       walkUpSkipsReview: event.walkUpSkipsReview,
+      claimMode: event.claimMode,
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,
       contactEmail: event.contactEmail,
@@ -451,6 +458,114 @@ export const searchByAttendee = query({
   },
 });
 
+const claimModeValidator = v.union(v.literal("one"), v.literal("all"));
+
+const codeBlockFields = {
+  // Block label attendees see. Required for pasted codes when there are two
+  // blocks; generated and saved batches default to the batch name.
+  name: v.optional(v.string()),
+  // Free-text value for pasted codes, e.g. "5000".
+  value: v.optional(v.string()),
+  generation: v.optional(v.object(generationFields)),
+  batchId: v.optional(v.id("stripeBatches")),
+  codes: v.optional(v.array(v.string())),
+};
+
+// Validates the blocks named at event creation and returns the label each
+// will carry, in order.
+async function codeBlockNames(
+  ctx: { db: { get: (id: Id<"stripeBatches">) => Promise<Doc<"stripeBatches"> | null> } },
+  blocks: {
+    name?: string;
+    generation?: { name: string };
+    batchId?: Id<"stripeBatches">;
+    codes?: string[];
+  }[]
+): Promise<string[]> {
+  if (blocks.length > 2) {
+    throw new ConvexError("An event can have at most two code blocks.");
+  }
+  const names: string[] = [];
+  for (const block of blocks) {
+    const sources = [block.generation, block.batchId, block.codes].filter(
+      (source) => source !== undefined
+    );
+    if (sources.length !== 1) {
+      throw new ConvexError("Choose one source for each code block.");
+    }
+    if (block.codes) {
+      if (!block.codes.some((code) => code.trim() !== "")) {
+        throw new ConvexError("Paste at least one code, or remove the block.");
+      }
+      if (block.codes.length > UPLOAD_CHUNK_SIZE) {
+        throw new ConvexError(
+          `Paste up to ${UPLOAD_CHUNK_SIZE} codes here; more can be added on the manage page.`
+        );
+      }
+    }
+    let name = block.name?.trim() ?? "";
+    if (!name && block.generation) {
+      name = truncateStripeBatchName(block.generation.name.trim()).trimEnd();
+    }
+    if (!name && block.batchId) {
+      name = (await ctx.db.get(block.batchId))?.name ?? "";
+    }
+    if (name.length > 80) {
+      throw new ConvexError("Block names must be 80 characters or fewer.");
+    }
+    names.push(name);
+  }
+  // A code belongs to one block: inserting the second block would silently
+  // drop any code the first already holds, leaving it short or empty.
+  const pasted = new Set<string>();
+  for (const block of blocks) {
+    const own = new Set((block.codes ?? []).map((code) => code.trim()));
+    own.delete("");
+    for (const code of own) {
+      if (pasted.has(code)) {
+        throw new ConvexError(
+          `The code "${code}" is in both blocks. Each code can only be in one.`
+        );
+      }
+      pasted.add(code);
+    }
+  }
+  if (blocks.length === 2) {
+    if (names.some((name) => name === "")) {
+      throw new ConvexError(
+        "Name both code blocks so attendees can tell them apart."
+      );
+    }
+    if (names[0] === names[1]) {
+      throw new ConvexError("Give the two code blocks different names.");
+    }
+  }
+  return names;
+}
+
+// Switches a two-block event between giving each attendee one code from
+// every block ("all") and letting them pick one ("one").
+export const setClaimMode = mutation({
+  args: { id: v.id("events"), claimMode: claimModeValidator },
+  handler: async (ctx, args) => {
+    const actorEmail = await requireEventAdmin(ctx, args.id);
+    const event = await ctx.db.get(args.id);
+    if (!event) throw new ConvexError("Event not found.");
+    const next = args.claimMode === "all" ? ("all" as const) : undefined;
+    if (event.claimMode === next) return;
+    await ctx.db.patch(args.id, { claimMode: next });
+    await logAudit(ctx, {
+      eventId: args.id,
+      action: "claim_mode_changed",
+      actorEmail: actorEmail ?? undefined,
+      details:
+        next === "all"
+          ? "Attendees now receive one code from every block"
+          : "Attendees now choose one code",
+    });
+  },
+});
+
 export const create = mutation({
   args: {
     name: v.string(),
@@ -469,6 +584,13 @@ export const create = mutation({
     hidden: v.optional(v.boolean()),
     stripeGeneration: v.optional(v.object(generationFields)),
     stripeBatchId: v.optional(v.id("stripeBatches")),
+    // The event's code blocks (at most two), each from exactly one source:
+    // a new Stripe batch, a saved batch, or pasted codes. Replaces the two
+    // single-source args above, which older admin forms still send.
+    codeBlocks: v.optional(v.array(v.object(codeBlockFields))),
+    // With two blocks: "all" gives each attendee one code from every block,
+    // "one" (the default) lets them pick a block.
+    claimMode: v.optional(claimModeValidator),
     // Organizers (event admins) to assign as soon as the event exists.
     adminEmails: v.optional(v.array(v.string())),
   },
@@ -476,6 +598,11 @@ export const create = mutation({
     const identity = await requireAdmin(ctx);
     const creator = identity.email!.trim().toLowerCase();
     if (args.stripeGeneration && args.stripeBatchId) throw new ConvexError("Choose one code source.");
+    const blocks = args.codeBlocks ?? [];
+    if (blocks.length > 0 && (args.stripeGeneration || args.stripeBatchId)) {
+      throw new ConvexError("Choose one code source.");
+    }
+    const blockNames = await codeBlockNames(ctx, blocks);
     const organizers = parseOrganizerEmails((args.adminEmails ?? []).join("\n"));
     if (organizers.invalid.length > 0) {
       throw new ConvexError(
@@ -513,9 +640,43 @@ export const create = mutation({
       signInMessage: args.signInMessage?.trim() || undefined,
       contactEmail: resolveContactEmail(args.contactEmail),
       createdBy: creator,
+      claimMode: args.claimMode === "all" ? "all" : undefined,
+      // Two blocks keep the order they were entered in, whichever source
+      // finishes first.
+      codeTypes: blocks.length === 2 ? blockNames : undefined,
     });
     for (const email of organizers.emails) {
       await ctx.db.insert("eventAdmins", { eventId: id, email });
+    }
+    for (const [i, block] of blocks.entries()) {
+      // A lone block keeps the single-source behavior: the batch names it.
+      const codeType = blocks.length === 2 ? blockNames[i] : block.name?.trim();
+      if (block.generation) {
+        await startBatch(ctx, block.generation, id, codeType || undefined);
+      } else if (block.batchId) {
+        const batch = await ctx.db.get(block.batchId);
+        if (!batch) throw new ConvexError("Batch not found.");
+        const error = await attachBatchToEvent(
+          ctx,
+          batch,
+          id,
+          creator,
+          codeType || undefined
+        );
+        if (error) throw new ConvexError(error);
+      } else {
+        try {
+          await addCodesToEvent(ctx, id, {
+            codes: block.codes ?? [],
+            codeType,
+            value: block.value,
+          });
+        } catch (error) {
+          throw new ConvexError(
+            error instanceof Error ? error.message : "Could not add the codes."
+          );
+        }
+      }
     }
     if (args.stripeGeneration) await startBatch(ctx, args.stripeGeneration, id);
     if (args.stripeBatchId) {

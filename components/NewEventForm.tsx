@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CalendarPlus,
   ChevronDown,
+  Plus,
   SlidersHorizontal,
   Trash2,
   UserPlus,
@@ -25,13 +26,16 @@ import {
   generationInput,
   mutationError,
   usd,
+  type StripeForm,
 } from "@/lib/stripe-form";
+import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
   EventDatesField,
   DynamicToggle,
   WalkUpReviewToggle,
+  ClaimModeToggle,
   IdentityPicker,
   SlugInput,
 } from "@/components/EventFormFields";
@@ -64,6 +68,56 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+
+type BlockSource = "generate" | "saved" | "paste" | "later";
+
+// One code block being set up: its source and that source's fields.
+type BlockDraft = {
+  key: number;
+  source: BlockSource;
+  stripeForm: StripeForm;
+  batchId: Id<"stripeBatches"> | "";
+  label: string;
+  value: string;
+  codes: string;
+};
+
+const MAX_BLOCKS = 2;
+
+function newBlock(
+  key: number,
+  source: BlockSource,
+  batchId: Id<"stripeBatches"> | "" = "",
+): BlockDraft {
+  return {
+    key,
+    source,
+    stripeForm: emptyStripeForm,
+    batchId,
+    label: "",
+    value: "",
+    codes: "",
+  };
+}
+
+function pastedCodes(text: string): string[] {
+  return [...new Set(text.split(/[\s,;]+/).filter(Boolean))];
+}
+
+// One-line summary of a block for the footer.
+function blockSummary(block: BlockDraft): string {
+  if (block.source === "generate") {
+    const form = block.stripeForm;
+    return `${form.quantity || "0"} codes · Redeem ${form.redemptionsPerCode === "2" ? "twice" : "once"} each · ${usd(Math.round(Number(form.amount || 0) * 100))} per redemption${form.durationMonths !== "1" ? ` for ${form.durationMonths || "?"} months` : ""}`;
+  }
+  if (block.source === "saved") return "Use an existing saved batch";
+  if (block.source === "paste") {
+    const count = pastedCodes(block.codes).length;
+    return `${count} pasted code${count === 1 ? "" : "s"}`;
+  }
+  return "Add codes when you’re ready";
+}
 
 export default function NewEventForm({
   initialBatchId,
@@ -87,16 +141,34 @@ export default function NewEventForm({
   const [organizers, setOrganizers] = useState<string[]>([]);
   const [organizerDraft, setOrganizerDraft] = useState("");
   const [organizerError, setOrganizerError] = useState<string | null>(null);
-  const [source, setSource] = useState(initialBatchId ? "saved" : "later");
-  const [batchId, setBatchId] = useState<Id<"stripeBatches"> | "">(
-    initialBatchId ?? "",
-  );
-  const [stripeForm, setStripeForm] = useState(emptyStripeForm);
-  const [pending, setPending] = useState<GenerationInput | null>(null);
+  const [blocks, setBlocks] = useState<BlockDraft[]>(() => [
+    newBlock(0, initialBatchId ? "saved" : "later", initialBatchId ?? ""),
+  ]);
+  // With two blocks: one code from each, or the attendee's pick.
+  const [claimMode, setClaimMode] = useState<"one" | "all">("all");
+  const [pending, setPending] = useState<GenerationInput[] | null>(null);
+  const two = blocks.length === 2;
+  const generating = blocks.some((block) => block.source === "generate");
+
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const request = useRef<string | null>(null);
+
+  // Any change to the blocks invalidates a reviewed generation request.
+  function blocksChanged() {
+    request.current = null;
+    setError(null);
+  }
+
+  function updateBlock(key: number, patch: Partial<BlockDraft>) {
+    setBlocks((current) =>
+      current.map((block) =>
+        block.key === key ? { ...block, ...patch } : block,
+      ),
+    );
+    blocksChanged();
+  }
   const claimSlug = slugify(slug || name);
 
   // Adds the draft (one email, or several pasted ones) as organizer rows and
@@ -126,7 +198,7 @@ export default function NewEventForm({
     setOrganizers((current) => current.filter((item) => item !== email));
   }
 
-  async function submit(generation?: GenerationInput) {
+  async function submit(generations: GenerationInput[] = []) {
     if (lock.current) return;
     const adminEmails = addOrganizer();
     if (!adminEmails) {
@@ -150,11 +222,11 @@ export default function NewEventForm({
         signInMessage: signInMessage || undefined,
         contactEmail: contactEmail || undefined,
         adminEmails: adminEmails.length > 0 ? adminEmails : undefined,
-        stripeGeneration: generation,
-        stripeBatchId: source === "saved" && batchId ? batchId : undefined,
+        codeBlocks: codeBlocks(generations),
+        claimMode: two ? claimMode : undefined,
       });
       toast.success(`Event “${name}” created`, {
-        description: generation
+        description: generations.length > 0
           ? "Codes are generating in the background. Add your attendees while you wait."
           : "Add attendees to let them claim their codes.",
       });
@@ -178,18 +250,35 @@ export default function NewEventForm({
       setError("The event name must contain letters or numbers.");
       return;
     }
-    if (source !== "generate") {
+    const problem = blocksProblem();
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (!generating) {
       void submit();
       return;
     }
     if (!config?.configured) return;
     try {
       request.current ??= crypto.randomUUID();
+      const id = request.current;
       setPending(
-        generationInput(
-          { ...stripeForm, name: stripeForm.name || name },
-          config.live,
-          request.current,
+        blocks.flatMap((block, i) =>
+          block.source === "generate"
+            ? [
+                generationInput(
+                  {
+                    ...block.stripeForm,
+                    // A lone block may borrow the event name; two blocks
+                    // each need their own.
+                    name: block.stripeForm.name || (two ? "" : name),
+                  },
+                  config.live,
+                  i === 0 ? id : `${id}-${i + 1}`,
+                ),
+              ]
+            : [],
         ),
       );
     } catch (error) {
@@ -199,10 +288,83 @@ export default function NewEventForm({
     }
   }
 
+  // The label a block will carry, when it is known in the browser.
+  function blockLabel(block: BlockDraft): string {
+    return block.source === "generate"
+      ? block.stripeForm.name.trim()
+      : block.source === "paste"
+        ? block.label.trim()
+        : "";
+  }
+
+  function blocksProblem(): string | null {
+    for (const block of blocks) {
+      if (block.source !== "paste") continue;
+      const count = pastedCodes(block.codes).length;
+      if (count === 0) return "Paste at least one code, or pick another source.";
+      if (count > UPLOAD_CHUNK_SIZE) {
+        return `Paste up to ${UPLOAD_CHUNK_SIZE} codes here; more can be added on the manage page.`;
+      }
+      if (two && !block.label.trim()) {
+        return "Name both code blocks so attendees can tell them apart.";
+      }
+    }
+    if (two) {
+      const [first, second] = blocks.map(blockLabel);
+      if (first && first === second) {
+        return "Give the two code blocks different names.";
+      }
+      if (blocks.every((block) => block.source === "paste")) {
+        const firstCodes = new Set(pastedCodes(blocks[0].codes));
+        const shared = pastedCodes(blocks[1].codes).find((code) =>
+          firstCodes.has(code),
+        );
+        if (shared) {
+          return `The code "${shared}" is in both blocks. Each code can only be in one.`;
+        }
+      }
+      if (blocks[0].batchId && blocks[0].batchId === blocks[1].batchId) {
+        return "Choose a different saved batch for each code block.";
+      }
+    }
+    return null;
+  }
+
+  function codeBlocks(generations: GenerationInput[]) {
+    type Block = {
+      name?: string;
+      value?: string;
+      codes?: string[];
+      generation?: GenerationInput;
+      batchId?: Id<"stripeBatches">;
+    };
+    const queue = [...generations];
+    const list = blocks.flatMap((block): Block[] => {
+      if (block.source === "generate") {
+        const generation = queue.shift();
+        return generation ? [{ generation }] : [];
+      }
+      if (block.source === "saved") {
+        return block.batchId ? [{ batchId: block.batchId }] : [];
+      }
+      if (block.source === "paste") {
+        return [
+          {
+            name: block.label.trim() || undefined,
+            value: block.value.trim() || undefined,
+            codes: pastedCodes(block.codes),
+          },
+        ];
+      }
+      return [];
+    });
+    return list.length > 0 ? list : undefined;
+  }
+
   const blocked =
     busy ||
-    (source === "generate" && !config?.configured) ||
-    (source === "saved" && !batchId);
+    (generating && !config?.configured) ||
+    blocks.some((block) => block.source === "saved" && !block.batchId);
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-8">
       <header className="flex flex-col items-start gap-3">
@@ -433,58 +595,200 @@ export default function NewEventForm({
             <CardHeader>
               <CardTitle>2. Choose your codes</CardTitle>
               <CardDescription>
-                Generate a new batch, use saved codes, or start with an empty
-                pool.
+                Generate a new batch, use saved codes, paste your own, or
+                start with an empty pool. Add a second code to give attendees
+                two, for example a plan credit and usage credit.
               </CardDescription>
-              {source === "generate" && config?.configured && (
+              {generating && config?.configured && (
                 <CardAction>
                   <StripeModeBadge live={config.live} />
                 </CardAction>
               )}
             </CardHeader>
-            <CardContent>
-              <Tabs
-                value={source}
-                onValueChange={(value) => {
-                  setSource(String(value));
-                  setError(null);
-                }}
-              >
-                <TabsList className="w-full sm:w-fit">
-                  <TabsTrigger value="generate">Generate new</TabsTrigger>
-                  <TabsTrigger value="saved">Use saved</TabsTrigger>
-                  <TabsTrigger value="later">Add later</TabsTrigger>
-                </TabsList>
-                <TabsContent value="generate" className="pt-5">
-                  {config === undefined ? (
-                    <Skeleton className="h-48" />
-                  ) : config.configured ? (
-                    <StripeGenerationFields
-                      value={stripeForm}
-                      onChange={(next) => {
-                        setStripeForm(next);
-                        request.current = null;
-                      }}
-                      namePlaceholder={name || "Uses the event name"}
-                    />
-                  ) : (
-                    <StripeSetupNotice />
-                  )}
-                </TabsContent>
-                <TabsContent value="saved" className="pt-5">
-                  <SavedBatchPicker value={batchId} onChange={setBatchId} />
-                </TabsContent>
-                <TabsContent value="later" className="pt-5">
-                  <Alert>
-                    <CalendarPlus />
-                    <AlertTitle>Start with the event</AlertTitle>
-                    <AlertDescription>
-                      Create the claim page now. Then paste or upload existing
-                      codes, generate Stripe codes, and add your attendee list.
-                    </AlertDescription>
-                  </Alert>
-                </TabsContent>
-              </Tabs>
+            <CardContent className="flex flex-col gap-5">
+              {blocks.map((block, index) => (
+                <section
+                  key={block.key}
+                  aria-label={two ? `Code ${index + 1}` : "Codes"}
+                  className={
+                    two
+                      ? "flex flex-col gap-4 rounded-lg border border-border p-4"
+                      : "flex flex-col gap-4"
+                  }
+                >
+                  {two ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-sm font-medium">
+                        <span className="flex size-6 items-center justify-center rounded-full bg-muted text-xs tabular-nums text-muted-foreground">
+                          {index + 1}
+                        </span>
+                        {blockLabel(block) || `Code ${index + 1}`}
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground"
+                        onClick={() => {
+                          setBlocks((current) =>
+                            current.filter((item) => item.key !== block.key),
+                          );
+                          blocksChanged();
+                        }}
+                      >
+                        <Trash2 data-icon="inline-start" />
+                        Remove
+                      </Button>
+                    </div>
+                  ) : null}
+                  <Tabs
+                    value={block.source}
+                    onValueChange={(value) =>
+                      updateBlock(block.key, {
+                        source: String(value) as BlockSource,
+                      })
+                    }
+                  >
+                    <TabsList className="w-full sm:w-fit">
+                      <TabsTrigger value="generate">Generate new</TabsTrigger>
+                      <TabsTrigger value="saved">Use saved</TabsTrigger>
+                      <TabsTrigger value="paste">Paste codes</TabsTrigger>
+                      {two ? null : (
+                        <TabsTrigger value="later">Add later</TabsTrigger>
+                      )}
+                    </TabsList>
+                    <TabsContent value="generate" className="pt-5">
+                      {config === undefined ? (
+                        <Skeleton className="h-48" />
+                      ) : config.configured ? (
+                        <StripeGenerationFields
+                          value={block.stripeForm}
+                          onChange={(next) =>
+                            updateBlock(block.key, { stripeForm: next })
+                          }
+                          namePlaceholder={
+                            two ? undefined : name || "Uses the event name"
+                          }
+                        />
+                      ) : (
+                        <StripeSetupNotice />
+                      )}
+                    </TabsContent>
+                    <TabsContent value="saved" className="pt-5">
+                      <SavedBatchPicker
+                        value={block.batchId}
+                        onChange={(next) =>
+                          updateBlock(block.key, { batchId: next })
+                        }
+                      />
+                    </TabsContent>
+                    <TabsContent value="paste" className="pt-5">
+                      <FieldGroup>
+                        <FieldGroup className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+                          <Field>
+                            <FieldLabel htmlFor={`block-${block.key}-label`}>
+                              Label
+                            </FieldLabel>
+                            <Input
+                              id={`block-${block.key}-label`}
+                              maxLength={80}
+                              required={two}
+                              value={block.label}
+                              onChange={(e) =>
+                                updateBlock(block.key, { label: e.target.value })
+                              }
+                              placeholder={two ? "On-demand usage" : "Optional"}
+                            />
+                            <FieldDescription>
+                              Shown to attendees next to the code.
+                            </FieldDescription>
+                          </Field>
+                          <Field>
+                            <FieldLabel htmlFor={`block-${block.key}-value`}>
+                              Value
+                            </FieldLabel>
+                            <Input
+                              id={`block-${block.key}-value`}
+                              maxLength={80}
+                              value={block.value}
+                              onChange={(e) =>
+                                updateBlock(block.key, { value: e.target.value })
+                              }
+                              placeholder="5000"
+                            />
+                            <FieldDescription>
+                              A number shows as dollars.
+                            </FieldDescription>
+                          </Field>
+                        </FieldGroup>
+                        <Field>
+                          <FieldLabel htmlFor={`block-${block.key}-codes`}>
+                            Codes
+                          </FieldLabel>
+                          <Textarea
+                            id={`block-${block.key}-codes`}
+                            rows={5}
+                            value={block.codes}
+                            onChange={(e) =>
+                              updateBlock(block.key, { codes: e.target.value })
+                            }
+                            placeholder={"CODE-ONE\nCODE-TWO\nCODE-THREE"}
+                            className="font-mono text-xs"
+                          />
+                          <FieldDescription>
+                            One per line or separated by commas, up to{" "}
+                            {UPLOAD_CHUNK_SIZE} here.{" "}
+                            {pastedCodes(block.codes).length > 0
+                              ? `${pastedCodes(block.codes).length} found.`
+                              : "Add more on the manage page later."}
+                          </FieldDescription>
+                        </Field>
+                      </FieldGroup>
+                    </TabsContent>
+                    <TabsContent value="later" className="pt-5">
+                      <Alert>
+                        <CalendarPlus />
+                        <AlertTitle>Start with the event</AlertTitle>
+                        <AlertDescription>
+                          Create the claim page now. Then paste or upload
+                          existing codes, generate Stripe codes, and add your
+                          attendee list.
+                        </AlertDescription>
+                      </Alert>
+                    </TabsContent>
+                  </Tabs>
+                </section>
+              ))}
+              {blocks.length < MAX_BLOCKS && blocks[0].source !== "later" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="self-start"
+                  onClick={() => {
+                    setBlocks((current) => [
+                      ...current,
+                      newBlock(
+                        Math.max(...current.map((item) => item.key)) + 1,
+                        "generate",
+                      ),
+                    ]);
+                    blocksChanged();
+                  }}
+                >
+                  <Plus data-icon="inline-start" />
+                  Add another code
+                </Button>
+              ) : null}
+              {two ? (
+                <>
+                  <Separator />
+                  <ClaimModeToggle
+                    id="event-claim-mode"
+                    value={claimMode}
+                    onChange={setClaimMode}
+                  />
+                </>
+              ) : null}
             </CardContent>
           </Card>
         </fieldset>
@@ -497,13 +801,19 @@ export default function NewEventForm({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1 text-sm">
             <span className="font-medium">{name || "Your new event"}</span>
-            <span className="text-muted-foreground">
-              {source === "generate"
-                ? `${stripeForm.quantity || "0"} codes · Redeem ${stripeForm.redemptionsPerCode === "2" ? "twice" : "once"} each · ${usd(Math.round(Number(stripeForm.amount || 0) * 100))} per redemption${stripeForm.durationMonths !== "1" ? ` for ${stripeForm.durationMonths || "?"} months` : ""}`
-                : source === "saved"
-                  ? "Use an existing saved batch"
-                  : "Add codes when you’re ready"}
-            </span>
+            {blocks.map((block, index) => (
+              <span key={block.key} className="text-muted-foreground">
+                {two ? `${blockLabel(block) || `Code ${index + 1}`}: ` : ""}
+                {blockSummary(block)}
+              </span>
+            ))}
+            {two ? (
+              <span className="text-muted-foreground">
+                {claimMode === "all"
+                  ? "Each attendee gets both codes"
+                  : "Each attendee chooses one code"}
+              </span>
+            ) : null}
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="outline">System admin</Badge>
@@ -515,7 +825,7 @@ export default function NewEventForm({
               )}
               {busy
                 ? "Creating…"
-                : source === "generate"
+                : generating
                   ? "Review and create"
                   : "Create event"}
             </Button>
@@ -523,7 +833,8 @@ export default function NewEventForm({
         </div>
       </form>
       <ConfirmStripeGeneration
-        input={pending}
+        input={pending?.[0] ?? null}
+        more={pending?.slice(1)}
         busy={busy}
         error={error}
         eventName={name}

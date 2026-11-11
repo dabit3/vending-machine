@@ -405,14 +405,16 @@ test("walk-up adds skip duplicate review only when the event allows it", async (
 test("walk-up adds report an attendee still inside the claim cooldown", async () => {
   const { t, admin, event } = await setup();
   const other = await admin.mutation(api.events.create, { name: "Other" });
+  const another = await admin.mutation(api.events.create, { name: "Another" });
   const now = Date.now();
   await t.run(async (ctx) => {
-    for (const [code, claimedAt] of [
-      ["A", now - 5 * 24 * 60 * 60 * 1000],
-      ["B", now - 2 * 24 * 60 * 60 * 1000],
+    // The limit counts events, so the two claims come from different ones.
+    for (const [eventId, code, claimedAt] of [
+      [other.id, "A", now - 5 * 24 * 60 * 60 * 1000],
+      [another.id, "B", now - 2 * 24 * 60 * 60 * 1000],
     ] as const) {
       await ctx.db.insert("codes", {
-        eventId: other.id,
+        eventId,
         code,
         claimedBy: "busy@example.com",
         claimedAt,

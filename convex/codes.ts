@@ -103,6 +103,70 @@ export const codeTerms = query({
   },
 });
 
+// Adds codes to one of an event's blocks, creating the block when needed.
+// Shared by the manage page and event creation.
+export async function addCodesToEvent(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  input: { codes: string[]; codeType?: string; value?: string }
+) {
+  const event = await ctx.db.get(eventId);
+  if (!event) throw new Error("Event not found");
+  const codeType = input.codeType?.trim() || undefined;
+  if (isArchivedType(event, codeType)) {
+    throw new Error(
+      "This code block is archived. Unarchive it before adding codes."
+    );
+  }
+  const existing = await ctx.db
+    .query("codes")
+    .withIndex("by_event", (q) => q.eq("eventId", eventId))
+    .collect();
+  // Events support at most two code types, and both must be named so
+  // attendees can tell them apart on the claim page.
+  const ordered = [...activeCodeTypes(event, existing)];
+  const resultingTypes = new Set(ordered);
+  resultingTypes.add(codeType ?? "");
+  if (resultingTypes.size > 2) {
+    throw new Error("An event can have at most two code types.");
+  }
+  if (resultingTypes.size === 2 && resultingTypes.has("")) {
+    throw new Error(
+      "Both code blocks need a name so attendees can tell them apart. Name the existing block (next to its badge above the form), then add the new block."
+    );
+  }
+  const existingSet = new Set(existing.map((c) => c.code));
+  let added = 0;
+  let skipped = 0;
+  for (const raw of input.codes) {
+    const code = raw.trim();
+    if (!code || existingSet.has(code)) {
+      skipped++;
+      continue;
+    }
+    existingSet.add(code);
+    await ctx.db.insert("codes", { eventId, code, codeType });
+    added++;
+  }
+  // Keep the event's denormalized type list in sync so availability checks
+  // can probe per type instead of scanning the pool. Types are ordered by
+  // when each block was first created, not alphabetically.
+  if (added > 0) {
+    if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
+    await ctx.db.patch(eventId, { codeTypes: ordered });
+    const value = input.value?.trim();
+    if (value) {
+      await ctx.db.patch(eventId, {
+        codeTypeValues: {
+          ...(event.codeTypeValues ?? {}),
+          [blockKey(codeType)]: value,
+        },
+      });
+    }
+  }
+  return { added, skipped };
+}
+
 export const add = mutation({
   args: {
     eventId: v.id("events"),
@@ -112,61 +176,7 @@ export const add = mutation({
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
-    const event = await ctx.db.get(args.eventId);
-    if (!event) throw new Error("Event not found");
-    const codeType = args.codeType?.trim() || undefined;
-    if (isArchivedType(event, codeType)) {
-      throw new Error(
-        "This code block is archived. Unarchive it before adding codes."
-      );
-    }
-    const existing = await ctx.db
-      .query("codes")
-      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
-      .collect();
-    // Events support at most two code types, and both must be named so
-    // attendees can tell them apart on the claim page.
-    const ordered = [...activeCodeTypes(event, existing)];
-    const resultingTypes = new Set(ordered);
-    resultingTypes.add(codeType ?? "");
-    if (resultingTypes.size > 2) {
-      throw new Error("An event can have at most two code types.");
-    }
-    if (resultingTypes.size === 2 && resultingTypes.has("")) {
-      throw new Error(
-        "Both code blocks need a name so attendees can tell them apart. Name the existing block (next to its badge above the form), then add the new block."
-      );
-    }
-    const existingSet = new Set(existing.map((c) => c.code));
-    let added = 0;
-    let skipped = 0;
-    for (const raw of args.codes) {
-      const code = raw.trim();
-      if (!code || existingSet.has(code)) {
-        skipped++;
-        continue;
-      }
-      existingSet.add(code);
-      await ctx.db.insert("codes", { eventId: args.eventId, code, codeType });
-      added++;
-    }
-    // Keep the event's denormalized type list in sync so availability checks
-    // can probe per type instead of scanning the pool. Types are ordered by
-    // when each block was first created, not alphabetically.
-    if (added > 0) {
-      if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
-      await ctx.db.patch(args.eventId, { codeTypes: ordered });
-      const value = args.value?.trim();
-      if (value) {
-        await ctx.db.patch(args.eventId, {
-          codeTypeValues: {
-            ...(event.codeTypeValues ?? {}),
-            [blockKey(codeType)]: value,
-          },
-        });
-      }
-    }
-    return { added, skipped };
+    return await addCodesToEvent(ctx, args.eventId, args);
   },
 });
 

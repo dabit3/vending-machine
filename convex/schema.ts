@@ -82,6 +82,10 @@ export default defineSchema({
     // Normalized email of the admin who created the event; absent on events
     // created before it was recorded.
     createdBy: v.optional(v.string()),
+    // How many codes an attendee receives when the event has more than one
+    // code block: "all" dispenses one code from every open block in a single
+    // claim; absent means the attendee picks one block and gets one code.
+    claimMode: v.optional(v.literal("all")),
     // Distinct code types in this event's pool ("" = unnamed), maintained by
     // codes.add/remove so availability checks don't scan the pool.
     codeTypes: v.optional(v.array(v.string())),

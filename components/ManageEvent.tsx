@@ -114,12 +114,14 @@ import {
   EventDatesField,
   DynamicToggle,
   WalkUpReviewToggle,
+  ClaimModeToggle,
   IdentityPicker,
   SlugInput,
 } from "@/components/EventFormFields";
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
+  const setClaimMode = useMutation(api.events.setClaimMode);
   const emails = useQuery(api.emails.list, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const cooldowns = usePaginatedQuery(
@@ -1309,6 +1311,28 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
+            {blockTypes.length > 1 ? (
+              <ClaimModeToggle
+                id="manage-claim-mode"
+                value={event.claimMode === "all" ? "all" : "one"}
+                onChange={async (claimMode) => {
+                  try {
+                    await setClaimMode({ id, claimMode });
+                    toast.success(
+                      claimMode === "all"
+                        ? "Attendees now get both codes"
+                        : "Attendees now choose one code"
+                    );
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Could not change how codes are dispensed"
+                    );
+                  }
+                }}
+              />
+            ) : null}
             <CodeBlocks
               types={blockTypes}
               codes={codes}

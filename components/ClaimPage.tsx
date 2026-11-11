@@ -83,16 +83,22 @@ import { cn } from "@/lib/utils";
 import { codeExpiry } from "@/lib/code-expiry";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
 
+type ClaimedCode = {
+  code: string;
+  codeType?: string;
+  creditAmount?: string;
+  terms?: CodeTerms;
+  expiresAt?: number;
+};
+
 type ClaimResult =
-  | {
+  | (ClaimedCode & {
       ok: true;
-      code: string;
-      codeType?: string;
       alreadyClaimed: boolean;
-      creditAmount?: string;
-      terms?: CodeTerms;
-      expiresAt?: number;
-    }
+      // Every code the attendee holds from the event: one, or one per block
+      // when the event dispenses all of them.
+      codes?: ClaimedCode[];
+    })
   | { ok: false; error: string };
 
 function subscribeNoop() {
@@ -128,7 +134,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const [xSync, setXSync] = useState<XSyncState>("pending");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ClaimResult | null>(null);
-  const [copied, setCopied] = useState(false);
+  // The code whose Copy button was just pressed.
+  const [copied, setCopied] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   // Dynamic events ask who is claiming; prefilled from the Clerk profile.
@@ -211,8 +218,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
 
   // Two named pools means the user picks which one to draw from; a single
   // (possibly unnamed) pool claims without a choice.
+  // Events set to dispense every block hand over one code from each instead.
   const codeTypes = (event?.codeTypes ?? []).filter((t) => t !== "");
-  const mustChoose = (event?.codeTypes.length ?? 0) > 1;
+  const getsAll =
+    event?.claimMode === "all" && (event?.codeTypes.length ?? 0) > 1;
+  const mustChoose = !getsAll && (event?.codeTypes.length ?? 0) > 1;
   const valueFor = (type: string) => {
     const value = event?.codeTypeValues?.[blockKey(type)] ?? event?.creditAmount;
     return value
@@ -220,7 +230,15 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
       : null;
   };
   const singleValue =
-    event && !mustChoose ? valueFor(event.codeTypes[0] ?? "") : null;
+    event && !mustChoose && !getsAll
+      ? valueFor(event.codeTypes[0] ?? "")
+      : null;
+  // Blocks the attendee can still collect a code from after a partial claim.
+  const pendingTypes =
+    (eligibility?.eligible &&
+      "pendingTypes" in eligibility &&
+      eligibility.pendingTypes) ||
+    [];
   const nameValue = flattenClaimantName(
     claimantName ?? user?.fullName ?? ""
   ).slice(0, MAX_CLAIMANT_NAME);
@@ -237,23 +255,26 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
           "previewCodes" in eligibility &&
           eligibility.previewCodes) ||
         [];
-      const next =
-        previewCodes.find((p) => p.codeType === type) ??
-        (mustChoose ? undefined : previewCodes[0]);
-      setResult({
-        ok: true,
-        code: "PREVIEW-CODE",
-        codeType: type,
-        alreadyClaimed: false,
-        creditAmount:
-          event.codeTypeValues?.[blockKey(type)] ?? event.creditAmount,
-        terms: next?.terms,
-        expiresAt: next?.expiresAt,
-      });
+      const previewOf = (codeType: string | undefined): ClaimedCode => {
+        const next =
+          previewCodes.find((p) => p.codeType === codeType) ??
+          (mustChoose || getsAll ? undefined : previewCodes[0]);
+        return {
+          code: "PREVIEW-CODE",
+          codeType,
+          creditAmount:
+            event.codeTypeValues?.[blockKey(codeType)] ?? event.creditAmount,
+          terms: next?.terms,
+          expiresAt: next?.expiresAt,
+        };
+      };
+      const codes = getsAll ? codeTypes.map(previewOf) : [previewOf(type)];
+      setResult({ ok: true, ...codes[0], alreadyClaimed: false, codes });
       return;
     }
     setSubmitting(true);
-    setResult(null);
+    // Keep the receipt on screen while collecting a remaining code.
+    setResult((current) => (current?.ok ? current : null));
     try {
       const res = await claim({
         slug,
@@ -276,9 +297,12 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
       });
       return;
     }
-    setCopied(true);
+    setCopied(code);
     toast.success("Code copied to clipboard");
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(
+      () => setCopied((current) => (current === code ? null : current)),
+      2000,
+    );
   }
 
   return (
@@ -334,12 +358,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               eventName={event.name}
               instructions={event.claimInstructions}
               contactEmail={event.contactEmail}
-              creditAmount={result.creditAmount}
-              terms={result.terms}
-              code={result.code}
-              codeType={result.codeType}
-              expiresAt={result.expiresAt}
+              codes={result.codes ?? [result]}
               alreadyClaimed={result.alreadyClaimed}
+              pendingTypes={pendingTypes}
+              collecting={submitting}
+              onCollect={handleClaim}
               copied={copied}
               onCopy={copyCode}
             />
@@ -348,12 +371,16 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               eventName={event.name}
               instructions={event.claimInstructions}
               contactEmail={event.contactEmail}
-              creditAmount={eligibility.claimed.creditAmount}
-              terms={eligibility.claimed.terms}
-              code={eligibility.claimed.code}
-              codeType={eligibility.claimed.codeType}
-              expiresAt={eligibility.claimed.expiresAt}
+              codes={
+                // Absent only while an older backend is still being replaced.
+                (eligibility.claimedCodes as ClaimedCode[] | undefined) ?? [
+                  eligibility.claimed,
+                ]
+              }
               alreadyClaimed
+              pendingTypes={pendingTypes}
+              collecting={submitting}
+              onCollect={handleClaim}
               copied={copied}
               onCopy={copyCode}
             />
@@ -591,11 +618,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <Hourglass />
                       <AlertTitle>You already have credits</AlertTitle>
                       <AlertDescription>
-                        You claimed {eligibility.cooldown.recent} codes in the
-                        past {CLAIM_WINDOW_DAYS} days, so those credits should
-                        already be in your Devin account. Attendees can claim
-                        up to 2 codes every {CLAIM_WINDOW_DAYS} days; your
-                        limit lifts on{" "}
+                        You claimed codes at {eligibility.cooldown.recent}{" "}
+                        events in the past {CLAIM_WINDOW_DAYS} days, so those
+                        credits should already be in your Devin account.
+                        Attendees can claim at up to 2 events every{" "}
+                        {CLAIM_WINDOW_DAYS} days; your limit lifts on{" "}
                         {formatClaimDate(eligibility.cooldown.eligibleAt)}.
                       </AlertDescription>
                     </Alert>
@@ -629,6 +656,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                   <div className="flex flex-col gap-5">
                     {singleValue ? (
                       <CodeValue summary={singleValue} />
+                    ) : getsAll ? (
+                      <IncludedCodes types={codeTypes} valueFor={valueFor} />
                     ) : mustChoose ? (
                       <ul className="flex flex-col gap-3">
                         {codeTypes.map((type) => {
@@ -643,8 +672,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     ) : null}
                     <p className="text-base leading-relaxed text-muted-foreground">
                       {event.dynamic ? "You're in." : "You're on the list."}{" "}
-                      Before your code is dispensed, take a moment to read how
-                      to redeem it.
+                      Before your {getsAll ? "codes are" : "code is"}{" "}
+                      dispensed, take a moment to read how to redeem{" "}
+                      {getsAll ? "them" : "it"}.
                     </p>
                     <Dialog open={readOpen} onOpenChange={setReadOpen}>
                       <DialogTrigger
@@ -715,6 +745,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       </Alert>
                     ) : null}
                     {singleValue ? <CodeValue summary={singleValue} /> : null}
+                    {getsAll ? (
+                      <IncludedCodes types={codeTypes} valueFor={valueFor} />
+                    ) : null}
                     {mustChoose ? (
                       <fieldset className="flex flex-col gap-2">
                         <legend className="mb-2 text-xs font-medium text-muted-foreground">
@@ -792,6 +825,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           <Spinner data-icon="inline-start" />
                           Checking the list...
                         </>
+                      ) : getsAll ? (
+                        "Dispense my codes"
                       ) : (
                         "Dispense my code"
                       )}
@@ -1077,33 +1112,121 @@ function CodeValue({
   );
 }
 
+// What an attendee is about to receive when the event dispenses one code
+// from every block.
+function IncludedCodes({
+  types,
+  valueFor,
+}: {
+  types: string[];
+  valueFor: (type: string) => { headline: string; detail?: string } | null;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-xs font-medium text-muted-foreground">
+        You get {types.length === 2 ? "both codes" : `${types.length} codes`}
+      </span>
+      <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-surface">
+        {types.map((type) => {
+          const summary = valueFor(type);
+          return (
+            <li key={type} className="flex flex-col gap-0.5 px-4 py-3">
+              <span className="text-xs font-medium text-muted-foreground">
+                {type}
+              </span>
+              {summary ? (
+                <span className="font-heading text-xl font-semibold tracking-tight tabular-nums">
+                  {summary.headline}
+                </span>
+              ) : null}
+              {summary?.detail ? (
+                <span className="text-sm text-muted-foreground">
+                  {summary.detail}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function CopyCodeButton({
+  code,
+  copied,
+  onCopy,
+  label = "Copy code",
+}: {
+  code: string;
+  copied: boolean;
+  onCopy: (code: string) => void;
+  label?: string;
+}) {
+  return (
+    <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
+      {copied ? (
+        <>
+          <Check
+            data-icon="inline-start"
+            className="animate-in zoom-in-50 duration-200 motion-reduce:animate-none"
+          />
+          Copied
+        </>
+      ) : (
+        <>
+          <Copy data-icon="inline-start" />
+          {label}
+        </>
+      )}
+    </Button>
+  );
+}
+
+function CodeExpiry({ expiresAt }: { expiresAt?: number }) {
+  const expiry = codeExpiry(expiresAt);
+  return expiry ? (
+    <div
+      className={cn(
+        "mt-4 flex items-center gap-2 text-lg font-medium",
+        expiry.expired ? "text-destructive" : "text-foreground"
+      )}
+    >
+      <CalendarClock className="size-5 shrink-0" aria-hidden />
+      <span>{expiry.label}</span>
+    </div>
+  ) : null;
+}
+
 function Receipt({
   eventName,
   instructions,
   contactEmail,
-  creditAmount,
-  terms,
-  code,
-  codeType,
-  expiresAt,
+  codes,
   alreadyClaimed,
+  pendingTypes,
+  collecting,
+  onCollect,
   copied,
   onCopy,
 }: {
   eventName: string;
   instructions?: string;
   contactEmail?: string;
-  creditAmount?: string;
-  terms?: CodeTerms;
-  code: string;
-  codeType?: string;
-  expiresAt?: number;
+  // One code, or one per block when the event dispenses all of them.
+  codes: ClaimedCode[];
   alreadyClaimed: boolean;
-  copied: boolean;
+  // Blocks the attendee has no code from yet that can dispense one now.
+  pendingTypes: string[];
+  collecting: boolean;
+  onCollect: () => void;
+  copied: string | null;
   onCopy: (code: string) => void;
 }) {
-  const expiry = codeExpiry(expiresAt);
-  const value = creditAmount ? codeValueSummary(creditAmount, terms) : null;
+  const single = codes.length === 1 ? codes[0] : null;
+  const value = single?.creditAmount
+    ? codeValueSummary(single.creditAmount, single.terms)
+    : null;
   return (
     <div
       className="receipt-edge receipt-print rounded-t-xl border border-border bg-surface pb-10 motion-reduce:animate-none"
@@ -1112,10 +1235,10 @@ function Receipt({
       <div className="flex flex-col gap-6 p-6 sm:p-8">
         <div className="flex items-center justify-between">
           <span className="eyebrow text-muted-foreground">
-            Code dispensed
+            {single ? "Code dispensed" : `${codes.length} codes dispensed`}
           </span>
           <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none [animation-duration:2.5s] [animation-iteration-count:3]" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-brand opacity-60 motion-reduce:animate-none [animation-iteration-count:3]" />
             <span className="relative inline-flex size-2 rounded-full bg-brand" />
           </span>
         </div>
@@ -1146,47 +1269,106 @@ function Receipt({
             variant="secondary"
             className="animate-in fade-in fill-mode-both duration-500 delay-200 self-start motion-reduce:animate-none"
           >
-            Already claimed, here it is again
+            {single
+              ? "Already claimed, here it is again"
+              : "Already claimed, here they are again"}
           </Badge>
         ) : null}
 
-        <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 py-2 motion-reduce:animate-none">
-          <div className="text-xs text-muted-dim">
-            {codeType ? `Your “${codeType}” code` : "Your credit code"}
-          </div>
-          <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
-            {code}
-          </div>
-          {expiry ? (
-            <div
-              className={cn(
-                "mt-4 flex items-center gap-2 text-lg font-medium",
-                expiry.expired ? "text-destructive" : "text-foreground"
-              )}
-            >
-              <CalendarClock className="size-5 shrink-0" aria-hidden />
-              <span>{expiry.label}</span>
+        {single ? (
+          <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 py-2 motion-reduce:animate-none">
+            <div className="text-xs text-muted-dim">
+              {single.codeType
+                ? `Your “${single.codeType}” code`
+                : "Your credit code"}
             </div>
-          ) : null}
-        </div>
+            <div className="mt-2 font-mono text-3xl font-medium tracking-[0.06em] break-all select-all sm:text-4xl">
+              {single.code}
+            </div>
+            <CodeExpiry expiresAt={single.expiresAt} />
+          </div>
+        ) : (
+          <ol className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-300 flex flex-col gap-4 motion-reduce:animate-none">
+            {codes.map((item, index) => {
+              const summary = item.creditAmount
+                ? codeValueSummary(item.creditAmount, item.terms)
+                : null;
+              return (
+                <li
+                  key={`${index}-${item.code}`}
+                  className="flex flex-col gap-4 rounded-lg border border-border bg-background p-4 sm:p-5"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-sm font-medium wrap-anywhere">
+                        {item.codeType || `Code ${index + 1}`}
+                      </span>
+                      {summary ? (
+                        <span className="text-sm text-muted-foreground">
+                          {summary.headline}
+                          {summary.detail ? ` · ${summary.detail}` : ""}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 font-mono text-[10px] text-muted-dim">
+                      {index + 1}/{codes.length}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="font-mono text-2xl font-medium tracking-[0.06em] break-all select-all sm:text-3xl">
+                      {item.code}
+                    </div>
+                    <CodeExpiry expiresAt={item.expiresAt} />
+                  </div>
+                  <CopyCodeButton
+                    code={item.code}
+                    copied={copied === item.code}
+                    onCopy={onCopy}
+                    label={
+                      item.codeType ? `Copy ${item.codeType} code` : "Copy code"
+                    }
+                  />
+                </li>
+              );
+            })}
+          </ol>
+        )}
+
+        {pendingTypes.length > 0 ? (
+          <Alert>
+            <PackageOpen />
+            <AlertTitle>
+              {pendingTypes.length === 1 && pendingTypes[0]
+                ? `Your “${pendingTypes[0]}” code is ready`
+                : "More codes are ready for you"}
+            </AlertTitle>
+            <AlertDescription className="flex flex-col items-start gap-3">
+              <span>
+                This event gives you a code from each set, and one was not
+                available when you claimed.
+              </span>
+              <Button
+                variant="brand"
+                size="sm"
+                onClick={onCollect}
+                disabled={collecting}
+                aria-busy={collecting}
+              >
+                {collecting ? <Spinner data-icon="inline-start" /> : null}
+                Dispense it now
+              </Button>
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <div className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 delay-[450ms] flex flex-col gap-2 motion-reduce:animate-none">
-          <Button variant="brand" size="lg" onClick={() => onCopy(code)}>
-            {copied ? (
-              <>
-                <Check
-                  data-icon="inline-start"
-                  className="animate-in zoom-in-50 duration-200 motion-reduce:animate-none"
-                />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy data-icon="inline-start" />
-                Copy code
-              </>
-            )}
-          </Button>
+          {single ? (
+            <CopyCodeButton
+              code={single.code}
+              copied={copied === single.code}
+              onCopy={onCopy}
+            />
+          ) : null}
           {instructions ? (
             <RedeemInstructionsDialog
               eventName={eventName}
@@ -1228,7 +1410,7 @@ function Receipt({
         >
           <div className="h-6 flex-1 bg-[repeating-linear-gradient(90deg,var(--color-border-strong)_0_2px,transparent_2px_5px,var(--color-border-strong)_5px_6px,transparent_6px_11px)]" />
           <span className="shrink-0 font-mono text-[10px] text-muted-dim">
-            NO.{code.slice(-4).toUpperCase().padStart(4, "0")}
+            NO.{codes[0].code.slice(-4).toUpperCase().padStart(4, "0")}
           </span>
         </div>
       </div>
