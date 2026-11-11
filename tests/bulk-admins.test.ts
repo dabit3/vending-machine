@@ -4,6 +4,7 @@ import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
 import { extractAdminEmails } from "../lib/admin-emails";
 import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
+import { extractEmails } from "../lib/spreadsheet";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 const identity = { subject: "admin-user", email: "admin@example.com", emailVerified: true };
@@ -29,6 +30,29 @@ test("extractAdminEmails skips comments, names and blank lines between addresses
     ),
   ).toEqual(["alex@example.com", "sam@example.com", "pat@example.com", "jordan@example.com"]);
   expect(extractAdminEmails("")).toEqual([]);
+  // Wrapping punctuation and a trailing period are not part of the address.
+  expect(
+    extractAdminEmails("(alex@example.com) [sam@example.com] {pat@example.com} See jo@example.com."),
+  ).toEqual(["alex@example.com", "sam@example.com", "pat@example.com", "jo@example.com"]);
+});
+
+test("extractEmails keeps every address in a cell and strips wrapping punctuation", () => {
+  expect(
+    extractEmails([
+      ["Email", "Notes"],
+      ["a@example.com b@example.com", "(c@example.com)"],
+      ["Jo <d@example.com>, e@example.com.", "n/a"],
+    ]),
+  ).toEqual(["a@example.com", "b@example.com", "c@example.com", "d@example.com", "e@example.com"]);
+});
+
+test("addMany skips entries that don't look like a whole address", async () => {
+  const { t, admin } = setup();
+  await t.run((ctx) => ctx.db.insert("admins", { email: identity.email }));
+  const res = await admin.mutation(api.admins.addMany, {
+    emails: ["(alex@example.com)", "sam@example", "two words@example.com", "ok@example.com"],
+  });
+  expect(res).toEqual({ added: 1, skipped: 3 });
 });
 
 test("admins.addMany adds new system admins and skips repeats, existing and invalid", async () => {
