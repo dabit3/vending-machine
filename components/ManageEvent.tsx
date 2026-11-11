@@ -2470,7 +2470,7 @@ function EventDetailsForm({
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
         dynamic: dynamic || undefined,
-        walkUpSkipsReview,
+        walkUpSkipsReview: dynamic ? false : walkUpSkipsReview,
         identity,
         signInMessage,
         contactEmail,

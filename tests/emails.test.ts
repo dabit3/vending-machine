@@ -401,3 +401,100 @@ test("walk-up adds skip duplicate review only when the event allows it", async (
   });
   expect(bulk).toMatchObject({ added: 0, flagged: 1 });
 });
+
+test("walk-up adds report an attendee still inside the claim cooldown", async () => {
+  const { t, admin, event } = await setup();
+  const other = await admin.mutation(api.events.create, { name: "Other" });
+  const now = Date.now();
+  await t.run(async (ctx) => {
+    for (const [code, claimedAt] of [
+      ["A", now - 5 * 24 * 60 * 60 * 1000],
+      ["B", now - 2 * 24 * 60 * 60 * 1000],
+    ] as const) {
+      await ctx.db.insert("codes", {
+        eventId: other.id,
+        code,
+        claimedBy: "busy@example.com",
+        claimedAt,
+      });
+    }
+  });
+
+  // Adds without walkUp (uploads) don't look at the cooldown.
+  const upload = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["fresh@example.com"],
+  });
+  expect(upload.cooldownEligibleAt).toBeUndefined();
+
+  const added = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["busy@example.com"],
+    walkUp: true,
+  });
+  expect(added.added).toBe(1);
+  expect(added.cooldownEligibleAt).toBeGreaterThan(now);
+
+  // Re-adding someone already on the list reports it too.
+  const again = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["busy@example.com"],
+    walkUp: true,
+  });
+  expect(again).toMatchObject({ added: 0, skipped: 1 });
+  expect(again.cooldownEligibleAt).toBe(added.cooldownEligibleAt);
+
+  // A waived participant is not reported.
+  const row = (await admin.query(api.emails.list, { eventId: event.id })).find(
+    (e) => e.email === "busy@example.com",
+  )!;
+  await admin.mutation(api.emails.setCooldownWaived, { id: row._id, waived: true });
+  const waived = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["busy@example.com"],
+    walkUp: true,
+  });
+  expect(waived.cooldownEligibleAt).toBeUndefined();
+
+  // Someone under the limit is not reported either.
+  const ok = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["new@example.com"],
+    walkUp: true,
+  });
+  expect(ok).toMatchObject({ added: 1 });
+  expect(ok.cooldownEligibleAt).toBeUndefined();
+});
+
+test("turning an event dynamic drops the walk-up review bypass", async () => {
+  const { t, admin, event } = await setup();
+  await admin.mutation(api.events.update, {
+    id: event.id,
+    name: "Meetup",
+    slug: "meetup",
+    walkUpSkipsReview: true,
+  });
+  expect((await t.run((ctx) => ctx.db.get(event.id)))?.walkUpSkipsReview).toBe(true);
+  await admin.mutation(api.events.update, {
+    id: event.id,
+    name: "Meetup",
+    slug: "meetup",
+    dynamic: true,
+    walkUpSkipsReview: true,
+  });
+  expect((await t.run((ctx) => ctx.db.get(event.id)))?.walkUpSkipsReview).toBeUndefined();
+  await admin.mutation(api.events.update, {
+    id: event.id,
+    name: "Meetup",
+    slug: "meetup",
+    dynamic: false,
+  });
+  expect((await t.run((ctx) => ctx.db.get(event.id)))?.walkUpSkipsReview).toBeUndefined();
+
+  const created = await admin.mutation(api.events.create, {
+    name: "Drop-in",
+    dynamic: true,
+    walkUpSkipsReview: true,
+  });
+  expect((await t.run((ctx) => ctx.db.get(created.id)))?.walkUpSkipsReview).toBeUndefined();
+});
