@@ -87,6 +87,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
       const { added, skipped, flagged, blacklisted } = await addEmails({
         eventId: id,
         emails: [trimmed],
+        walkUp: true,
       });
       if (blacklisted > 0) {
         toast.error(`${trimmed} is blacklisted`, {
@@ -159,6 +160,9 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
                 Enter the attendee&apos;s {labels.addressNoun} to make them
                 eligible, then flip to the QR code so they can scan and claim.
                 {byHandle ? " They sign in with X to claim." : ""}
+                {event.walkUpSkipsReview
+                  ? " Attendees from previous events are added without organizer approval."
+                  : ""}
               </CardDescription>
             </CardHeader>
             <CardContent className="py-(--card-spacing)">

@@ -325,6 +325,40 @@ export function IdentityPicker({
   );
 }
 
+export function WalkUpReviewToggle({
+  id,
+  checked,
+  onChange,
+  className,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+}) {
+  return (
+    <FieldLabel htmlFor={id} className={cn("cursor-pointer", className)}>
+      <Field orientation="horizontal">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={(next) => onChange(next === true)}
+        />
+        <FieldContent>
+          <FieldTitle>Walk-up adds skip organizer approval</FieldTitle>
+          {checked ? (
+            <FieldDescription>
+              Attendees added on the walk-up page who signed up for a previous
+              event become eligible right away instead of waiting under
+              Flagged for review. Uploaded lists are still reviewed.
+            </FieldDescription>
+          ) : null}
+        </FieldContent>
+      </Field>
+    </FieldLabel>
+  );
+}
+
 export function DynamicToggle({
   id,
   checked,

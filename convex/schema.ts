@@ -65,6 +65,10 @@ export default defineSchema({
     // can claim, and is recorded in `emails` on first contact so it can only
     // claim once.
     dynamic: v.optional(v.boolean()),
+    // When set, attendees added on the walk-up page who already appear in
+    // another event become eligible immediately instead of being held in
+    // `flaggedEmails` for organizer approval. Bulk uploads still flag.
+    walkUpSkipsReview: v.optional(v.boolean()),
     // How attendees are identified: verified email (default when absent) or
     // the X handle linked to their account. Participant and claim rows for
     // "x" events store "@handle" keys in the same fields emails use.

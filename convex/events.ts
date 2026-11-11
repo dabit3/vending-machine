@@ -244,6 +244,7 @@ export const get = query({
       eventEndDate: event.eventEndDate,
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
+      walkUpSkipsReview: event.walkUpSkipsReview,
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,
       contactEmail: event.contactEmail,
@@ -459,6 +460,7 @@ export const create = mutation({
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
@@ -505,6 +507,7 @@ export const create = mutation({
       eventEndDate: resolveEventEndDate(eventDate, args.eventEndDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
+      walkUpSkipsReview: args.walkUpSkipsReview || undefined,
       identity: args.identity === "x" ? "x" : undefined,
       signInMessage: args.signInMessage?.trim() || undefined,
       contactEmail: resolveContactEmail(args.contactEmail),
@@ -534,6 +537,7 @@ export const update = mutation({
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
@@ -600,6 +604,10 @@ export const update = mutation({
       ),
       claimInstructions: args.claimInstructions?.trim() || undefined,
       dynamic: args.dynamic || undefined,
+      // Absent means unchanged, so older admin forms don't clear it.
+      ...(args.walkUpSkipsReview !== undefined
+        ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined }
+        : {}),
       // Older admin forms don't send `identity`; leave the setting untouched
       // rather than resetting the event to email.
       ...(args.identity !== undefined

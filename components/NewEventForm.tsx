@@ -31,6 +31,7 @@ import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
   EventDatesField,
   DynamicToggle,
+  WalkUpReviewToggle,
   IdentityPicker,
   SlugInput,
 } from "@/components/EventFormFields";
@@ -79,6 +80,7 @@ export default function NewEventForm({
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [dynamic, setDynamic] = useState(false);
+  const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(false);
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
   const [contactEmail, setContactEmail] = useState("");
@@ -143,6 +145,7 @@ export default function NewEventForm({
         description: description || undefined,
         claimInstructions: instructions || undefined,
         dynamic,
+        walkUpSkipsReview: !dynamic && walkUpSkipsReview ? true : undefined,
         identity,
         signInMessage: signInMessage || undefined,
         contactEmail: contactEmail || undefined,
@@ -412,7 +415,15 @@ export default function NewEventForm({
                       onChange={setDynamic}
                       identity={identity}
                     />
-                    {dynamic ? <DynamicEventWarning /> : null}
+                    {dynamic ? (
+                      <DynamicEventWarning />
+                    ) : (
+                      <WalkUpReviewToggle
+                        id="event-walkup-review"
+                        checked={walkUpSkipsReview}
+                        onChange={setWalkUpSkipsReview}
+                      />
+                    )}
                   </FieldGroup>
                 </details>
               </FieldGroup>
