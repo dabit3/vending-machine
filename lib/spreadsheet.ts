@@ -35,21 +35,25 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
-const EMAIL_RE = /[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+/;
+// Wrapping punctuation ("(a@b.c)", "[a@b.c]", "<a@b.c>") is not part of the
+// address; a trailing period from running text is stripped below.
+const EMAIL_RE = /[^\s@,;<>"'()[\]{}]+@[^\s@,;<>"'()[\]{}]+\.[^\s@,;<>"'()[\]{}]+/g;
 
-// Scan every cell for an email-shaped value, so any column layout works
-// (headers, extra columns, or "Name <email@x.com>" cells).
+// Scan every cell for email-shaped values, so any column layout works
+// (headers, extra columns, "Name <email@x.com>" cells, or several
+// addresses in one cell).
 export function extractEmails(rows: string[][]): string[] {
   const seen = new Set<string>();
   const emails: string[] = [];
   for (const row of rows) {
     for (const cell of row) {
-      const match = cell.match(EMAIL_RE);
-      if (!match) continue;
-      const email = match[0].toLowerCase();
-      if (!seen.has(email)) {
-        seen.add(email);
-        emails.push(email);
+      for (const match of cell.matchAll(EMAIL_RE)) {
+        const email = match[0].toLowerCase().replace(/\.+$/, "");
+        if (!email.includes(".", email.indexOf("@"))) continue;
+        if (!seen.has(email)) {
+          seen.add(email);
+          emails.push(email);
+        }
       }
     }
   }

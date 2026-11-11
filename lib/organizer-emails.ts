@@ -28,3 +28,7 @@ export function parseOrganizerEmails(input: string): {
 // Admin lists can be added in bulk (see lib/admin-emails.ts). Bounded per
 // request so a pasted list can't become an unbounded mutation.
 export const MAX_BULK_ADMINS = 200;
+
+// Bulk entries must look like a whole address (no spaces, brackets or
+// quotes, a dot after the @), since the parser can't ask about a typo.
+export const EMAIL_SHAPE = /^[^\s@,;<>"'()[\]{}]+@[^\s@,;<>"'()[\]{}]+\.[^\s@,;<>"'()[\]{}.]+$/;

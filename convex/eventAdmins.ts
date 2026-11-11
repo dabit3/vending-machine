@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireEventAdmin } from "./admins";
-import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
+import { EMAIL_SHAPE, MAX_BULK_ADMINS } from "../lib/organizer-emails";
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -53,7 +53,7 @@ export const addMany = mutation({
     const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = raw.trim().toLowerCase();
-      if (!email || !email.includes("@") || seen.has(email)) {
+      if (!EMAIL_SHAPE.test(email) || seen.has(email)) {
         skipped++;
         continue;
       }
