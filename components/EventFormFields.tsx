@@ -325,6 +325,49 @@ export function IdentityPicker({
   );
 }
 
+// With two code blocks: whether each attendee gets a code from both, or
+// picks one.
+export function ClaimModeToggle({
+  id,
+  value,
+  onChange,
+  disabled,
+  className,
+}: {
+  id: string;
+  value: "one" | "all";
+  onChange: (value: "one" | "all") => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <Field className={className}>
+      <FieldLabel id={`${id}-label`}>Each attendee gets</FieldLabel>
+      <ToggleGroup
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-description`}
+        value={[value]}
+        disabled={disabled}
+        onValueChange={(next) => {
+          if (next[0] === "one" || next[0] === "all") onChange(next[0]);
+        }}
+      >
+        <ToggleGroupItem value="all" variant="outline">
+          Both codes
+        </ToggleGroupItem>
+        <ToggleGroupItem value="one" variant="outline">
+          Their choice of one
+        </ToggleGroupItem>
+      </ToggleGroup>
+      <FieldDescription id={`${id}-description`}>
+        {value === "all"
+          ? "One claim dispenses a code from each block. If one block runs out, attendees still get the other and can come back for the rest."
+          : "Attendees pick one of the two blocks on the claim page and get a single code."}
+      </FieldDescription>
+    </Field>
+  );
+}
+
 export function WalkUpReviewToggle({
   id,
   checked,
