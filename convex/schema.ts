@@ -38,6 +38,14 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_target_event", ["targetEventId"]),
 
+  // Events a signed-in account has starred, keyed by the Clerk user id.
+  eventFavorites: defineTable({
+    user: v.string(),
+    eventId: v.id("events"),
+  })
+    .index("by_user_event", ["user", "eventId"])
+    .index("by_event", ["eventId"]),
+
   eventAdmins: defineTable({
     eventId: v.id("events"),
     email: v.string(),

@@ -20,6 +20,7 @@ import type * as codes from "../codes.js";
 import type * as emails from "../emails.js";
 import type * as eventAdmins from "../eventAdmins.js";
 import type * as events from "../events.js";
+import type * as favorites from "../favorites.js";
 import type * as identity from "../identity.js";
 import type * as notifications from "../notifications.js";
 import type * as stripeBatchModel from "../stripeBatchModel.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   emails: typeof emails;
   eventAdmins: typeof eventAdmins;
   events: typeof events;
+  favorites: typeof favorites;
   identity: typeof identity;
   notifications: typeof notifications;
   stripeBatchModel: typeof stripeBatchModel;
