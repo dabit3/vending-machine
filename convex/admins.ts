@@ -1,7 +1,7 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
-import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
+import { EMAIL_SHAPE, MAX_BULK_ADMINS } from "../lib/organizer-emails";
 
 export async function adminEmailStatus(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
@@ -132,7 +132,7 @@ export const addMany = mutation({
     const seen = new Set<string>();
     for (const raw of args.emails) {
       const email = raw.trim().toLowerCase();
-      if (!email || !email.includes("@") || seen.has(email)) {
+      if (!EMAIL_SHAPE.test(email) || seen.has(email)) {
         skipped++;
         continue;
       }
