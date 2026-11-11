@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { extractAdminEmails } from "@/lib/admin-emails";
+import { bulkAddSummary, extractAdminEmails } from "@/lib/admin-emails";
 import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 import { fileToItems } from "@/lib/spreadsheet";
 import { cn } from "@/lib/utils";
@@ -44,12 +44,7 @@ export default function BulkAdminAdd({
     }
     setBusy(true);
     try {
-      const { added, skipped } = await onAdd(list);
-      const parts = [
-        `${added} ${added === 1 ? noun.replace(/s$/, "") : noun} added`,
-      ];
-      if (skipped > 0) parts.push(`${skipped} already added or invalid`);
-      toast.success(parts.join(", "));
+      toast.success(bulkAddSummary(await onAdd(list), noun));
       setText("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : `Failed to add ${noun}`);
