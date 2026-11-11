@@ -66,9 +66,17 @@ export const add = mutation({
         )
         .unique();
       if (existing) {
+        // Someone who already claimed here keeps their code, so the
+        // cooldown is moot for them (same rule as listCooldowns).
+        const claimedHere = await ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.eventId).eq("claimedBy", email)
+          )
+          .first();
         walkUpRow = {
           email,
-          waived: existing.cooldownWaivedAt !== undefined,
+          waived: existing.cooldownWaivedAt !== undefined || claimedHere !== null,
         };
         skipped++;
         continue;

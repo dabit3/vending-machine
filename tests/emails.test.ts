@@ -456,6 +456,24 @@ test("walk-up adds report an attendee still inside the claim cooldown", async ()
   });
   expect(waived.cooldownEligibleAt).toBeUndefined();
 
+  // Nor is someone who already claimed a code from this event.
+  await admin.mutation(api.emails.setCooldownWaived, { id: row._id, waived: false });
+  await t.run((ctx) =>
+    ctx.db.insert("codes", {
+      eventId: event.id,
+      code: "HERE",
+      claimedBy: "busy@example.com",
+      claimedAt: now - 60 * 60 * 1000,
+    }),
+  );
+  const claimedHere = await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: ["busy@example.com"],
+    walkUp: true,
+  });
+  expect(claimedHere).toMatchObject({ added: 0, skipped: 1 });
+  expect(claimedHere.cooldownEligibleAt).toBeUndefined();
+
   // Someone under the limit is not reported either.
   const ok = await admin.mutation(api.emails.add, {
     eventId: event.id,
