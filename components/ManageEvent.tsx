@@ -56,6 +56,8 @@ import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
+import { bulkAddSummary, extractAdminEmails } from "@/lib/admin-emails";
+import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { blockExpirySummary } from "@/lib/code-expiry";
@@ -2049,10 +2051,27 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    // A pasted list in the single box goes through the bulk add.
+    const found = extractAdminEmails(email);
+    const several = found.length > 1 || /[\s,;]/.test(email.trim());
+    if (several && found.length === 0) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (found.length > MAX_BULK_ADMINS) {
+      toast.error(`Add at most ${MAX_BULK_ADMINS} organizers at a time`);
+      return;
+    }
     setSubmitting(true);
     try {
-      await addAdmin({ eventId, email });
-      toast.success(`${email.trim().toLowerCase()} can now manage this event`);
+      if (several) {
+        toast.success(
+          bulkAddSummary(await addAdmins({ eventId, emails: found }), "organizers")
+        );
+      } else {
+        await addAdmin({ eventId, email });
+        toast.success(`${email.trim().toLowerCase()} can now manage this event`);
+      }
       setEmail("");
     } catch (err) {
       toast.error(
@@ -2090,7 +2109,9 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
               </InputGroupAddon>
               <InputGroupInput
                 id="organizer-email"
-                type="email"
+                type="text"
+                inputMode="email"
+                autoComplete="off"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}

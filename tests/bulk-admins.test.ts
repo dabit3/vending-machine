@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
-import { extractAdminEmails } from "../lib/admin-emails";
+import { bulkAddSummary, extractAdminEmails } from "../lib/admin-emails";
 import { MAX_BULK_ADMINS } from "../lib/organizer-emails";
 import { extractEmails } from "../lib/spreadsheet";
 
@@ -102,4 +102,14 @@ test("eventAdmins.addMany is scoped to events the caller manages", async () => {
     org.mutation(api.eventAdmins.addMany, { eventId: other.id, emails: ["one@example.com"] }),
   ).rejects.toThrow(/Not an admin/);
   expect(await admin.query(api.eventAdmins.list, { eventId: other.id })).toEqual([]);
+});
+
+test("bulkAddSummary wording", () => {
+  expect(bulkAddSummary({ added: 1, skipped: 0 }, "organizers")).toBe("1 organizer added");
+  expect(bulkAddSummary({ added: 3, skipped: 2 }, "admins")).toBe(
+    "3 admins added, 2 already added or invalid",
+  );
+  expect(bulkAddSummary({ added: 0, skipped: 1 }, "admins")).toBe(
+    "0 admins added, 1 already added or invalid",
+  );
 });

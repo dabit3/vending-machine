@@ -8,3 +8,15 @@ import { extractEmails } from "./spreadsheet";
 export function extractAdminEmails(input: string): string[] {
   return extractEmails(input.split(/\r?\n/).map((line) => line.split(/[\s,;]+/)));
 }
+
+// Summary line for a bulk add toast: "3 organizers added, 1 already added
+// or invalid".
+export function bulkAddSummary(
+  { added, skipped }: { added: number; skipped: number },
+  noun: string
+): string {
+  const one = noun.replace(/s$/, "");
+  const parts = [`${added} ${added === 1 ? one : noun} added`];
+  if (skipped > 0) parts.push(`${skipped} already added or invalid`);
+  return parts.join(", ");
+}

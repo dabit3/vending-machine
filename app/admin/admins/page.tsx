@@ -30,6 +30,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
+import { bulkAddSummary, extractAdminEmails } from "@/lib/admin-emails";
+import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 
 export default function AdminsPage() {
   const access = useQuery(api.admins.accessLevel);
@@ -44,10 +46,25 @@ export default function AdminsPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
+    // A pasted list in the single box goes through the bulk add.
+    const found = extractAdminEmails(email);
+    const several = found.length > 1 || /[\s,;]/.test(email.trim());
+    if (several && found.length === 0) {
+      toast.error("Enter a valid email address");
+      return;
+    }
+    if (found.length > MAX_BULK_ADMINS) {
+      toast.error(`Add at most ${MAX_BULK_ADMINS} admins at a time`);
+      return;
+    }
     setSubmitting(true);
     try {
-      await addAdmin({ email });
-      toast.success(`${email.trim().toLowerCase()} is now an admin`);
+      if (several) {
+        toast.success(bulkAddSummary(await addAdmins({ emails: found }), "admins"));
+      } else {
+        await addAdmin({ email });
+        toast.success(`${email.trim().toLowerCase()} is now an admin`);
+      }
       setEmail("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to add admin");
@@ -111,7 +128,9 @@ export default function AdminsPage() {
           <InputGroup>
             <InputGroupInput
               id="admin-email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="off"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
