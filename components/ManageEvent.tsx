@@ -2053,11 +2053,11 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
     e.preventDefault();
     // A pasted list in the single box goes through the bulk add.
     const found = extractAdminEmails(email);
-    const several = found.length > 1 || /[\s,;]/.test(email.trim());
-    if (several && found.length === 0) {
+    if (found.length === 0) {
       toast.error("Enter a valid email address");
       return;
     }
+    const several = found.length > 1 || /[\s,;]/.test(email.trim());
     if (found.length > MAX_BULK_ADMINS) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} organizers at a time`);
       return;
@@ -2069,8 +2069,8 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
           bulkAddSummary(await addAdmins({ eventId, emails: found }), "organizers")
         );
       } else {
-        await addAdmin({ eventId, email });
-        toast.success(`${email.trim().toLowerCase()} can now manage this event`);
+        await addAdmin({ eventId, email: found[0] });
+        toast.success(`${found[0]} can now manage this event`);
       }
       setEmail("");
     } catch (err) {

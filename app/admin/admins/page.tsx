@@ -48,11 +48,11 @@ export default function AdminsPage() {
     e.preventDefault();
     // A pasted list in the single box goes through the bulk add.
     const found = extractAdminEmails(email);
-    const several = found.length > 1 || /[\s,;]/.test(email.trim());
-    if (several && found.length === 0) {
+    if (found.length === 0) {
       toast.error("Enter a valid email address");
       return;
     }
+    const several = found.length > 1 || /[\s,;]/.test(email.trim());
     if (found.length > MAX_BULK_ADMINS) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} admins at a time`);
       return;
@@ -62,8 +62,8 @@ export default function AdminsPage() {
       if (several) {
         toast.success(bulkAddSummary(await addAdmins({ emails: found }), "admins"));
       } else {
-        await addAdmin({ email });
-        toast.success(`${email.trim().toLowerCase()} is now an admin`);
+        await addAdmin({ email: found[0] });
+        toast.success(`${found[0]} is now an admin`);
       }
       setEmail("");
     } catch (err) {
