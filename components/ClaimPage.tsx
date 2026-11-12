@@ -81,6 +81,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { codeExpiry } from "@/lib/code-expiry";
+import { stillHeld } from "@/lib/receipt";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
 
 type ClaimedCode = {
@@ -239,6 +240,19 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
       "pendingTypes" in eligibility &&
       eligibility.pendingTypes) ||
     [];
+  // Codes the attendee holds right now, so a code an organizer releases
+  // while the receipt is open leaves it.
+  const heldCodes: ClaimedCode[] | undefined =
+    previewMode || eligibility === undefined
+      ? undefined
+      : eligibility.eligible && eligibility.claimed
+        ? ((eligibility.claimedCodes as ClaimedCode[] | undefined) ?? [
+            eligibility.claimed,
+          ])
+        : [];
+  const receiptCodes = result?.ok
+    ? stillHeld(result.codes ?? [result], heldCodes)
+    : [];
   const nameValue = flattenClaimantName(
     claimantName ?? user?.fullName ?? ""
   ).slice(0, MAX_CLAIMANT_NAME);
@@ -353,12 +367,12 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : result?.ok ? (
+          ) : result?.ok && receiptCodes.length > 0 ? (
             <Receipt
               eventName={event.name}
               instructions={event.claimInstructions}
               contactEmail={event.contactEmail}
-              codes={result.codes ?? [result]}
+              codes={receiptCodes}
               alreadyClaimed={result.alreadyClaimed}
               pendingTypes={pendingTypes}
               collecting={submitting}
