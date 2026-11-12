@@ -796,6 +796,21 @@ export const update = mutation({
   },
 });
 
+// Renames the event from the manage page's heading. The claim URL stays, so
+// links and QR codes already shared keep working.
+export const rename = mutation({
+  args: { id: v.id("events"), name: v.string() },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.id);
+    const name = args.name.trim();
+    if (!name) throw new ConvexError("Enter a name for the event.");
+    const event = await ctx.db.get(args.id);
+    if (!event) throw new ConvexError("Event not found");
+    if (name !== event.name) await ctx.db.patch(args.id, { name });
+    return { name };
+  },
+});
+
 // Blank clears the address; anything else must be a single plain address,
 // since it is dropped into a mailto: link (no ?cc=, #, or other URL syntax).
 const CONTACT_EMAIL_PART = "[^\\s@?#&/%<>,;:\\\\\"()]+";
