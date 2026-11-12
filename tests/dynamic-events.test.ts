@@ -281,6 +281,31 @@ test("a claim that opens the instructions dispenses and records the read", async
     eligible: true,
     instructionsViewed: false,
   });
+  // So does one refused because the codes ran out.
+  const codeId = await t.run(async (ctx) => {
+    const code = (await ctx.db.query("codes").collect())[0];
+    await ctx.db.patch(code._id, {
+      claimedBy: "other@example.com",
+      claimedAt: Date.now(),
+    });
+    return code._id;
+  });
+  expect(
+    await user.mutation(api.claims.claim, {
+      slug: "meetup",
+      name: "Test Attendee",
+      instructionsRead: true,
+    })
+  ).toMatchObject({
+    ok: false,
+    error: "All codes for this event have been claimed.",
+  });
+  expect(await user.query(api.claims.eligibility, { slug: "meetup" })).toMatchObject({
+    instructionsViewed: false,
+  });
+  await t.run((ctx) =>
+    ctx.db.patch(codeId, { claimedBy: undefined, claimedAt: undefined })
+  );
   expect(
     await user.mutation(api.claims.claim, {
       slug: "meetup",

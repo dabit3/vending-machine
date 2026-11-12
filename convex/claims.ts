@@ -438,9 +438,17 @@ export const claim = mutation({
         error: "Enter your name to claim your code.",
       };
     }
-    if (firstRead) {
-      await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });
-    }
+    // Written only with a dispensed code: a claim refused for lack of stock
+    // never opened the instructions, so they stay unread for the retry.
+    const participantPatch = {
+      ...(name && name !== allowed.name ? { name } : {}),
+      ...(firstRead ? { instructionsViewedAt: Date.now() } : {}),
+    };
+    const recordClaim = async () => {
+      if (Object.keys(participantPatch).length > 0) {
+        await ctx.db.patch(allowed._id, participantPatch);
+      }
+    };
 
     const reserved = await reservedFor(ctx, event, key);
 
@@ -468,9 +476,7 @@ export const claim = mutation({
           error: "All codes for this event have been claimed.",
         };
       }
-      if (name && name !== allowed.name) {
-        await ctx.db.patch(allowed._id, { name });
-      }
+      await recordClaim();
       const codes = await Promise.all(
         (await claimedHere(ctx, event, key)).map((c) =>
           describeCode(ctx, event, c)
@@ -505,9 +511,7 @@ export const claim = mutation({
       claimedAt: Date.now(),
       reservedFor: undefined,
     });
-    if (name && name !== allowed.name) {
-      await ctx.db.patch(allowed._id, { name });
-    }
+    await recordClaim();
     const code = await describeCode(ctx, event, available);
     return { ok: true as const, ...code, alreadyClaimed: false, codes: [code] };
   },
