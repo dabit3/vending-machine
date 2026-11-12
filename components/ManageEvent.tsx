@@ -144,6 +144,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const addCodes = useMutation(api.codes.add);
   const allowReclaim = useMutation(api.claims.allowReclaim);
   const removeCode = useMutation(api.codes.remove);
+  const releaseCode = useMutation(api.codes.release);
   const renameCodeType = useMutation(api.codes.renameType);
   const removeCodeType = useMutation(api.codes.removeType);
   const setTypeValue = useMutation(api.codes.setTypeValue);
@@ -168,6 +169,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [reclaimTarget, setReclaimTarget] = useState<{
     email: string;
     codes: string[];
+  } | null>(null);
+  const [releaseTarget, setReleaseTarget] = useState<{
+    id: Id<"codes">;
+    code: string;
+    claimedBy: string;
   } | null>(null);
 
   // Emails that already claimed, mapped to their claimed code(s), so the
@@ -478,6 +484,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         label: c.code,
         tag: type === undefined ? (c.codeType ?? undefined) : undefined,
         claimedBy: c.claimedBy ?? undefined,
+        onRelease: c.claimedBy
+          ? () =>
+              setReleaseTarget({
+                id: c._id,
+                code: c.code,
+                claimedBy: c.claimedBy ?? "",
+              })
+          : undefined,
         onRemove: c.claimedBy
           ? undefined
           : () =>
@@ -1538,6 +1552,58 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             ) : (
               <RowList mono items={codeRows()} emptyText="No codes yet." />
             )}
+            <AlertDialog
+              open={releaseTarget !== null}
+              onOpenChange={(open) => {
+                if (!open) setReleaseTarget(null);
+              }}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Release {releaseTarget?.code}?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This takes the code back from {releaseTarget?.claimedBy}{" "}
+                    and returns it to the pool for someone else to claim.{" "}
+                    {releaseTarget?.claimedBy} has already seen the code, so
+                    only release it if they will not redeem it.{" "}
+                    {isDynamic
+                      ? "They can claim again from the event link."
+                      : `They stay on the list and can claim again unless you remove or block them.`}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      const target = releaseTarget;
+                      setReleaseTarget(null);
+                      if (!target) return;
+                      releaseCode({
+                        id: target.id,
+                        claimedBy: target.claimedBy,
+                      })
+                        .then((res) =>
+                          res.released
+                            ? toast.success(
+                                `${target.code} released from ${target.claimedBy}`
+                              )
+                            : toast.info(`${target.code} was already released`)
+                        )
+                        .catch((err) =>
+                          toast.error(
+                            mutationError(err, "Failed to release code")
+                          )
+                        );
+                    }}
+                  >
+                    <Undo2 data-icon="inline-start" />
+                    Release code
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
@@ -2337,6 +2403,7 @@ function RowList({
     claimedBy?: string;
     onReclaim?: () => void;
     onToggleBlock?: () => void;
+    onRelease?: () => void;
     onRemove?: () => void;
   }[];
   emptyText: string;
@@ -2445,13 +2512,27 @@ function RowList({
               </Button>
             ) : null}
             {item.claimedBy ? (
-              <Badge
-                variant="secondary"
-                className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
-              >
-                <Check data-icon="inline-start" />
-                {item.claimedBy}
-              </Badge>
+              <>
+                <Badge
+                  variant="secondary"
+                  className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
+                >
+                  <Check data-icon="inline-start" />
+                  {item.claimedBy}
+                </Badge>
+                {item.onRelease ? (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Release ${item.label} from ${item.claimedBy}`}
+                    title="Release code"
+                    onClick={item.onRelease}
+                    className="shrink-0 text-muted-foreground"
+                  >
+                    <Undo2 />
+                  </Button>
+                ) : null}
+              </>
             ) : item.onRemove ? (
               <Button
                 variant="ghost"
