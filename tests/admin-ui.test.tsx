@@ -248,6 +248,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     eventEndDate: undefined,
     dynamic: undefined,
     identity: "email" as const,
+    favorite: false,
     createdBy: undefined,
   });
   try {
@@ -286,6 +287,7 @@ test("the dashboard shows who created an event when it is known", () => {
     eventEndDate: undefined,
     dynamic: undefined,
     identity: "email" as const,
+    favorite: false,
     createdBy,
   });
   state.events = [event("tagged", "organizer@example.com")];
@@ -307,6 +309,7 @@ test("the dashboard shows an event's date only when it has one", () => {
     eventEndDate: undefined,
     dynamic: undefined,
     identity: "email" as const,
+    favorite: false,
     createdBy: undefined,
   });
   state.events = [event("undated")];
@@ -546,6 +549,7 @@ test("saved redemption instructions show the chosen mode in the title with detai
     signInMessage: "",
     onSignInMessageChange: () => {},
     identity: "email" as const,
+    favorite: false,
     contactEmail: "",
     onContactEmailChange: () => {},
   };
