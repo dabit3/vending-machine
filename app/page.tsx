@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight, LogIn, Ticket } from "lucide-react";
+import FavoriteButton from "@/components/FavoriteButton";
 import { QRCodeSVG } from "qrcode.react";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -44,6 +45,19 @@ interface EventItem {
   eventDate?: string;
   eventEndDate?: string;
   claimed: boolean;
+  favorite?: boolean;
+}
+
+// A starred event; `manages` ones open the manage page.
+interface StarredItem {
+  _id: string;
+  _creationTime?: number;
+  name: string;
+  slug: string;
+  description?: string;
+  eventDate?: string;
+  eventEndDate?: string;
+  manages: boolean;
 }
 
 const RECENT_EVENT_COUNT = 3;
@@ -54,6 +68,7 @@ const RECENT_EVENT_COUNT = 3;
 export default function Home() {
   const { authReady, signedIn, canQuery } = useViewerAuth();
   const mine = useQuery(api.events.mine, canQuery ? {} : "skip");
+  const starred = useQuery(api.favorites.mine, canQuery ? {} : "skip");
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -148,7 +163,10 @@ export default function Home() {
             className="pointer-events-none absolute inset-0 bg-dotgrid [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,black,transparent)]"
           />
           {signedIn || !authReady ? (
-            <YourEvents events={signedIn ? mine : undefined} />
+            <YourEvents
+              events={signedIn ? mine : undefined}
+              starred={signedIn ? starred : undefined}
+            />
           ) : (
             <div className="relative w-[300px] max-w-full rounded-2xl bg-card p-6 text-center shadow-(--shadow-card) ring-1 ring-foreground/10">
               <div className="rounded-lg bg-white p-3">
@@ -175,9 +193,16 @@ export default function Home() {
   );
 }
 
-function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
+function YourEvents({
+  events,
+  starred,
+}: {
+  events: EventItem[] | null | undefined;
+  // Starred events the viewer manages or attends, pinned above the list.
+  starred: StarredItem[] | undefined;
+}) {
   const [showAll, setShowAll] = useState(false);
-  if (events === undefined) {
+  if (events === undefined || (events !== null && starred === undefined)) {
     return (
       <div
         className="relative grid w-full max-w-md gap-3"
@@ -199,7 +224,9 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
       </Alert>
     );
   }
-  if (events.length === 0) {
+  const pinned = newestEventsFirst(starred ?? []);
+  const pinnedIds = new Set(pinned.map((event) => event._id));
+  if (events.length === 0 && pinned.length === 0) {
     return (
       <Empty className="relative w-full max-w-md border border-dashed border-border-strong bg-background/60 py-14">
         <EmptyHeader>
@@ -215,17 +242,55 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
       </Empty>
     );
   }
-  const sorted = newestEventsFirst(events);
+  const claimedIds = new Set(
+    events.filter((event) => event.claimed).map((event) => event._id),
+  );
+  const sorted = newestEventsFirst(
+    events.filter((event) => !pinnedIds.has(event._id)),
+  );
   const hasMore = sorted.length > RECENT_EVENT_COUNT;
   const shown = showAll ? sorted : sorted.slice(0, RECENT_EVENT_COUNT);
   return (
     <div className="relative grid w-full max-w-md gap-3">
-      <h2 className="px-1 text-sm font-medium text-muted-foreground">
-        Your events
-      </h2>
+      {pinned.length > 0 ? (
+        <>
+          <h2 className="px-1 text-sm font-medium text-muted-foreground">
+            Starred
+          </h2>
+          <ul className={cn("grid min-w-0 gap-3", sorted.length > 0 && "mb-3")}>
+            {pinned.map((event, index) => (
+              <EventCard
+                key={event._id}
+                event={{
+                  ...event,
+                  favorite: true,
+                  claimed: claimedIds.has(event._id),
+                }}
+                href={
+                  event.manages
+                    ? `/admin/events/${event._id}`
+                    : `/${event.slug}`
+                }
+                manages={event.manages}
+                index={index}
+              />
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {sorted.length > 0 ? (
+        <h2 className="px-1 text-sm font-medium text-muted-foreground">
+          Your events
+        </h2>
+      ) : null}
       <ul id="your-events" className="grid min-w-0 gap-3">
         {shown.map((event, index) => (
-          <EventCard key={event._id} event={event} index={index} />
+          <EventCard
+            key={event._id}
+            event={event}
+            href={`/${event.slug}`}
+            index={index}
+          />
         ))}
       </ul>
       {hasMore ? (
@@ -244,21 +309,32 @@ function YourEvents({ events }: { events: EventItem[] | null | undefined }) {
   );
 }
 
-function EventCard({ event, index }: { event: EventItem; index: number }) {
+function EventCard({
+  event,
+  href,
+  manages,
+  index,
+}: {
+  event: EventItem;
+  href: string;
+  // The link opens the manage page rather than the claim page.
+  manages?: boolean;
+  index: number;
+}) {
   const past = event.eventDate
     ? daysSinceEventEnded(event.eventDate, event.eventEndDate) > 0
     : false;
   return (
     <li
-      className="min-w-0 animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none"
+      className={cn(
+        "flex min-w-0 items-center rounded-xl bg-card pr-2 text-sm shadow-(--shadow-card) ring-1 ring-foreground/10 transition-[box-shadow,opacity] hover:ring-foreground/25 animate-in fade-in slide-in-from-bottom-1 fill-mode-both duration-300 motion-reduce:animate-none",
+        past && "opacity-70 focus-within:opacity-100 hover:opacity-100",
+      )}
       style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
     >
       <Link
-        href={`/${event.slug}`}
-        className={cn(
-          "group flex items-center justify-between gap-4 rounded-xl bg-card px-5 py-4 text-sm shadow-(--shadow-card) ring-1 ring-foreground/10 transition-[box-shadow,color] hover:ring-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-          past && "opacity-70 hover:opacity-100 focus-visible:opacity-100",
-        )}
+        href={href}
+        className="group flex min-w-0 flex-1 items-center justify-between gap-4 rounded-xl py-4 pr-2 pl-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       >
         <span className="min-w-0">
           <span className="block truncate font-heading text-base font-medium tracking-tight">
@@ -276,7 +352,11 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
             </span>
           ) : null}
         </span>
-        {event.claimed ? (
+        {manages ? (
+          <Badge variant="outline" className="shrink-0">
+            Manage
+          </Badge>
+        ) : event.claimed ? (
           <Badge variant="secondary" className="shrink-0">
             Claimed
           </Badge>
@@ -287,6 +367,11 @@ function EventCard({ event, index }: { event: EventItem; index: number }) {
           />
         )}
       </Link>
+      <FavoriteButton
+        eventId={event._id}
+        eventName={event.name}
+        favorite={event.favorite ?? false}
+      />
     </li>
   );
 }

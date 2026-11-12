@@ -14,6 +14,7 @@ import {
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
+import FavoriteButton from "@/components/FavoriteButton";
 import AttendeeMatchBadges, {
   type AttendeeMatch,
 } from "@/components/AttendeeMatchBadges";
@@ -55,6 +56,7 @@ interface ManagedEventItem {
   dynamic?: boolean;
   identity?: "email" | "x";
   createdBy?: string;
+  favorite?: boolean;
 }
 
 function AdminEventRow({
@@ -67,11 +69,16 @@ function AdminEventRow({
   match?: AttendeeMatch;
 }) {
   return (
-    <li className="border-b border-border">
+    <li className="flex items-center border-b border-border">
+      <FavoriteButton
+        eventId={event._id}
+        eventName={event.name}
+        favorite={event.favorite ?? false}
+      />
       <Link
         href={`/admin/events/${event._id}`}
         className={cn(
-          "group flex items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4",
+          "group flex min-w-0 flex-1 items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4",
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
@@ -153,6 +160,9 @@ export default function AdminDashboard() {
   const older = (
     filtered?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
+  // Starred events are pinned above the date groups, in the same order, and
+  // stay listed in their group.
+  const starred = [...current, ...past, ...older].filter((e) => e.favorite);
   const olderPageCount = Math.max(1, Math.ceil(older.length / OLDER_PAGE_SIZE));
   const olderPageIndex = Math.min(olderPage, olderPageCount - 1);
   if (olderPage !== olderPageIndex) setOlderPage(olderPageIndex);
@@ -310,6 +320,26 @@ export default function AdminDashboard() {
         )
       ) : (
         <>
+          {starred.length > 0 ? (
+            <section aria-labelledby="starred-events" className="mb-10">
+              <div className="flex items-baseline justify-between">
+                <h2
+                  id="starred-events"
+                  className="text-sm font-medium text-muted-foreground"
+                >
+                  Starred
+                </h2>
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {String(starred.length).padStart(2, "0")}
+                </span>
+              </div>
+              <ul className="mt-4 border-t border-border">
+                {starred.map((event) => (
+                  <AdminEventRow key={event._id} event={event} />
+                ))}
+              </ul>
+            </section>
+          ) : null}
           {!nameFilter || current.length > 0 ? (
             <>
               <div className="flex items-baseline justify-between">

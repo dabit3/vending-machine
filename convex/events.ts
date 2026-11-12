@@ -17,6 +17,7 @@ import { codeTerms } from "./codeTerms";
 import { blockKey, isArchivedType } from "./blockValues";
 import type { CodeTerms } from "../lib/block-value";
 import { isBlacklisted } from "./blacklist";
+import { favoriteEventIds } from "./favorites";
 import { eventIdentity, resolveViewer, viewerIdentityKeys } from "./identity";
 import {
   adminEmailStatus,
@@ -110,6 +111,7 @@ export const mine = query({
       ...new Set([...memberships.map((m) => m.eventId), ...claimedEventIds]),
     ];
     const events = await Promise.all(eventIds.map((id) => ctx.db.get(id)));
+    const starred = await favoriteEventIds(ctx);
     return events
       .filter((event) => event !== null)
       .map((event) => ({
@@ -121,6 +123,7 @@ export const mine = query({
         eventDate: event.eventDate,
         eventEndDate: event.eventEndDate,
         claimed: claimedEventIds.has(event._id),
+        favorite: starred.has(event._id),
       }))
       .sort((a, b) => {
         if (a.eventDate && b.eventDate) return a.eventDate.localeCompare(b.eventDate);
@@ -281,6 +284,7 @@ export const listManaged = query({
         .filter((event) => event !== null)
         .sort((a, b) => b._creationTime - a._creationTime);
     }
+    const starred = await favoriteEventIds(ctx);
     return events.map((event) => ({
       _id: event._id,
       _creationTime: event._creationTime,
@@ -289,6 +293,7 @@ export const listManaged = query({
       description: event.description,
       eventDate: event.eventDate,
       eventEndDate: event.eventEndDate,
+      favorite: starred.has(event._id),
       dynamic: event.dynamic,
       identity: eventIdentity(event),
       createdBy: event.createdBy,
@@ -834,6 +839,11 @@ export const remove = mutation({
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
       .collect();
     for (const admin of eventAdmins) await ctx.db.delete(admin._id);
+    const favorites = await ctx.db
+      .query("eventFavorites")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    for (const favorite of favorites) await ctx.db.delete(favorite._id);
     const requests = await ctx.db
       .query("accessRequests")
       .withIndex("by_event", (q) => q.eq("eventId", args.id))
