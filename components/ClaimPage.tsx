@@ -1258,7 +1258,7 @@ function Receipt({
         </div>
 
         <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance">
+          <h1 className="font-heading text-2xl font-semibold tracking-tight text-balance wrap-anywhere">
             {eventName}
           </h1>
           {value ? (
