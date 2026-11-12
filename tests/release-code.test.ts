@@ -119,3 +119,16 @@ test("in a two-code event, releasing one code lets the attendee collect that blo
   if (!again.ok) throw new Error("claim failed");
   expect(again.codes.map((c) => c.code).sort()).toEqual(["MAX-1", "USE-1"]);
 });
+
+test("a confirmation for an earlier claimant does not release a newer claim", async () => {
+  const { eventId, admin, codeId, user, second } = await setup({ codes: ["A"] });
+  await user.mutation(api.claims.claim, { slug: "meetup" });
+  const id = await codeId("A");
+  await admin.mutation(api.codes.release, { id, claimedBy: attendee.email });
+  await second.mutation(api.claims.claim, { slug: "meetup" });
+  await expect(
+    admin.mutation(api.codes.release, { id, claimedBy: attendee.email })
+  ).rejects.toThrow(/now claimed by oth@example.com/);
+  const [code] = await admin.query(api.codes.list, { eventId });
+  expect(code.claimedBy).toBe(other.email);
+});

@@ -1580,11 +1580,16 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                       const target = releaseTarget;
                       setReleaseTarget(null);
                       if (!target) return;
-                      releaseCode({ id: target.id })
-                        .then(() =>
-                          toast.success(
-                            `${target.code} released from ${target.claimedBy}`
-                          )
+                      releaseCode({
+                        id: target.id,
+                        claimedBy: target.claimedBy,
+                      })
+                        .then((res) =>
+                          res.released
+                            ? toast.success(
+                                `${target.code} released from ${target.claimedBy}`
+                              )
+                            : toast.info(`${target.code} was already released`)
                         )
                         .catch((err) =>
                           toast.error(

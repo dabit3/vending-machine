@@ -591,12 +591,19 @@ export const remove = mutation({
 // to the pool, e.g. when they won't use it. The claim no longer counts
 // toward their cross-event limit.
 export const release = mutation({
-  args: { id: v.id("codes") },
+  // `claimedBy` is the claimant the admin confirmed, so a confirmation left
+  // open while the code changed hands cannot take it from someone else.
+  args: { id: v.id("codes"), claimedBy: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const code = await ctx.db.get(args.id);
     if (!code) throw new Error("Code not found");
     const actorEmail = await requireEventAdmin(ctx, code.eventId);
     if (!code.claimedBy) return { released: false as const };
+    if (args.claimedBy !== undefined && args.claimedBy !== code.claimedBy) {
+      throw new Error(
+        `${code.code} is now claimed by ${code.claimedBy}, not ${args.claimedBy}. Nothing was released.`
+      );
+    }
     await ctx.db.patch(code._id, { claimedBy: undefined, claimedAt: undefined });
     // Dynamic events enroll attendees when they claim, so a claimant left
     // with no code is taken off again and the hidden event leaves their home
