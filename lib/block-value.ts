@@ -1,12 +1,19 @@
-// Numeric block values are dollar credits ("20" → "$20"); anything else
-// ("Team plan", "$200") is shown as entered.
-export function formatBlockValue(value: string): string {
-  const trimmed = value.trim();
-  return /^\d/.test(trimmed) ? `$${trimmed}` : trimmed;
+function dollars(amount: number): string {
+  return `$${amount.toLocaleString("en-US", {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
-function dollars(amount: number): string {
-  return `$${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
+// Numeric block values are dollar credits ("20" → "$20", "5000" → "$5,000");
+// anything else ("Team plan", "$200") is shown as entered.
+export function formatBlockValue(value: string): string {
+  const trimmed = value.trim();
+  if (!/^\d/.test(trimmed)) return trimmed;
+  // Only the leading whole-dollar digits are regrouped; "5,000" stays as typed.
+  return `$${trimmed.replace(/^\d+(?![\d,])/, (n) =>
+    n.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+$)/g, ",")
+  )}`;
 }
 
 export type CodeTerms = { redemptions: number; months: number };
@@ -90,7 +97,9 @@ export function codeValueSummary(
   terms?: CodeTerms
 ): { headline: string; detail?: string } {
   const trimmed = value.trim();
-  const credits = /^\d/.test(trimmed) ? `$${trimmed} in credits` : trimmed;
+  const credits = /^\d/.test(trimmed)
+    ? `${formatBlockValue(trimmed)} in credits`
+    : trimmed;
   if (!terms || (terms.redemptions <= 1 && terms.months <= 1))
     return { headline: credits };
   const numeric = /^\d+(\.\d+)?$/.test(trimmed) ? Number(trimmed) : null;
