@@ -11,7 +11,7 @@ export function formatBlockValue(value: string): string {
   const trimmed = value.trim();
   if (!/^\d/.test(trimmed)) return trimmed;
   // Only a leading whole number is regrouped; "12.5" and "5,000" stay as typed.
-  return `$${trimmed.replace(/^\d+(?![\d.,])/, (n) => Number(n).toLocaleString("en-US"))}`;
+  return `$${trimmed.replace(/^\d+(?![\d.,])/, (n) => n.replace(/\B(?=(\d{3})+$)/g, ","))}`;
 }
 
 export type CodeTerms = { redemptions: number; months: number };

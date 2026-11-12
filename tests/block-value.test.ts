@@ -84,4 +84,7 @@ test("whole-dollar values get thousands separators", () => {
   expect(blockValueSummary("5,000", 1, 0)).toEqual({ headline: "$5,000" });
   expect(blockValueSummary("5000 in usage", 1, 0)).toEqual({ headline: "$5,000 in usage" });
   expect(blockValueSummary("12.5", 1, 0)).toEqual({ headline: "$12.5" });
+  expect(blockValueSummary("9999999999999999", 1, 0)).toEqual({
+    headline: "$9,999,999,999,999,999",
+  });
 });
