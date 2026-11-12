@@ -586,3 +586,47 @@ export const remove = mutation({
     await dropTypeIfEmpty(ctx, code.eventId, code.codeType);
   },
 });
+
+// Admin action: takes a dispensed code back from its claimant and returns it
+// to the pool, e.g. when they won't use it. The claim no longer counts
+// toward their cross-event limit.
+export const release = mutation({
+  args: { id: v.id("codes") },
+  handler: async (ctx, args) => {
+    const code = await ctx.db.get(args.id);
+    if (!code) throw new Error("Code not found");
+    const actorEmail = await requireEventAdmin(ctx, code.eventId);
+    if (!code.claimedBy) return { released: false as const };
+    await ctx.db.patch(code._id, { claimedBy: undefined, claimedAt: undefined });
+    // Dynamic events enroll attendees when they claim, so a claimant left
+    // with no code is taken off again and the hidden event leaves their home
+    // page. List events keep the attendee, who can claim again.
+    const event = await ctx.db.get(code.eventId);
+    if (event?.dynamic) {
+      const claimedBy = code.claimedBy;
+      const remaining = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", code.eventId).eq("claimedBy", claimedBy)
+        )
+        .first();
+      const row = remaining
+        ? null
+        : await ctx.db
+            .query("emails")
+            .withIndex("by_event_email", (q) =>
+              q.eq("eventId", code.eventId).eq("email", claimedBy)
+            )
+            .unique();
+      if (row && row.blockedAt === undefined) await ctx.db.delete(row._id);
+    }
+    await logAudit(ctx, {
+      eventId: code.eventId,
+      action: "code_released",
+      actorEmail: actorEmail ?? undefined,
+      subjectEmail: code.claimedBy,
+      details: `Released claimed code ${code.code} from ${code.claimedBy} back to the pool`,
+    });
+    return { released: true as const, claimedBy: code.claimedBy };
+  },
+});
