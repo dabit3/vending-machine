@@ -120,6 +120,10 @@ export default function AdminDashboard() {
     api.events.searchByAttendee,
     searchQuery ? { query: searchQuery } : "skip"
   );
+  // Attendee search results do not carry the viewer's stars.
+  const starredIds = new Set(
+    events?.filter((e) => e.favorite).map((e) => e._id as string),
+  );
   const nameFilter = searchInput.trim().toLowerCase();
   const attendeeLike = looksLikeAttendeeQuery(searchInput);
   const filtered = nameFilter
@@ -273,7 +277,7 @@ export default function AdminDashboard() {
               {search.results.map((result) => (
                 <AdminEventRow
                   key={result._id}
-                  event={result}
+                  event={{ ...result, favorite: starredIds.has(result._id) }}
                   match={result}
                   past={
                     result.eventDate
