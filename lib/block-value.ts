@@ -10,8 +10,10 @@ function dollars(amount: number): string {
 export function formatBlockValue(value: string): string {
   const trimmed = value.trim();
   if (!/^\d/.test(trimmed)) return trimmed;
-  // Only a leading whole number is regrouped; "12.5" and "5,000" stay as typed.
-  return `$${trimmed.replace(/^\d+(?![\d.,])/, (n) => n.replace(/\B(?=(\d{3})+$)/g, ","))}`;
+  // Only the leading whole-dollar digits are regrouped; "5,000" stays as typed.
+  return `$${trimmed.replace(/^\d+(?![\d,])/, (n) =>
+    n.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+$)/g, ",")
+  )}`;
 }
 
 export type CodeTerms = { redemptions: number; months: number };
