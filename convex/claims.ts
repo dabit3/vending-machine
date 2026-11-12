@@ -356,6 +356,8 @@ export const claim = mutation({
     slug: v.string(),
     codeType: v.optional(v.string()),
     name: v.optional(v.string()),
+    // The attendee opened the redemption instructions with this claim.
+    instructionsRead: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Codes are only dispensed to the signed-in user's verified identity
@@ -418,7 +420,9 @@ export const claim = mutation({
       };
     }
 
-    if (event.claimInstructions && allowed.instructionsViewedAt === undefined) {
+    const firstRead =
+      !!event.claimInstructions && allowed.instructionsViewedAt === undefined;
+    if (firstRead && !args.instructionsRead) {
       return {
         ok: false as const,
         error: "Read the redemption instructions before claiming your code.",
@@ -433,6 +437,9 @@ export const claim = mutation({
         ok: false as const,
         error: "Enter your name to claim your code.",
       };
+    }
+    if (firstRead) {
+      await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });
     }
 
     const reserved = await reservedFor(ctx, event, key);

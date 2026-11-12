@@ -264,3 +264,33 @@ test("claimant names are flattened to one printable line and ignored on list eve
   ).toMatchObject({ ok: true, code: "A" });
   expect((await listed.t.run((ctx) => ctx.db.get(email)))?.name).toBeUndefined();
 });
+
+test("a claim that opens the instructions dispenses and records the read", async () => {
+  const { t, eventId, user } = await setup({ dynamic: true, codes: ["A"] });
+  await t.run(async (ctx) => {
+    await ctx.db.patch(eventId, { claimInstructions: "Redeem at checkout." });
+  });
+  // A refused claim leaves the instructions unread.
+  expect(
+    await user.mutation(api.claims.claim, {
+      slug: "meetup",
+      instructionsRead: true,
+    })
+  ).toMatchObject({ ok: false, error: "Enter your name to claim your code." });
+  expect(await user.query(api.claims.eligibility, { slug: "meetup" })).toMatchObject({
+    eligible: true,
+    instructionsViewed: false,
+  });
+  expect(
+    await user.mutation(api.claims.claim, {
+      slug: "meetup",
+      name: "Test Attendee",
+      instructionsRead: true,
+    })
+  ).toMatchObject({ ok: true, code: "A", alreadyClaimed: false });
+  expect(await user.query(api.claims.eligibility, { slug: "meetup" })).toMatchObject({
+    eligible: true,
+    instructionsViewed: true,
+    claimed: { code: "A" },
+  });
+});
