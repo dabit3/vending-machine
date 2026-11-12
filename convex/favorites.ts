@@ -89,12 +89,21 @@ export const set = mutation({
     if (!event || !(await viewerRole(ctx, event))) {
       throw new ConvexError("Event not found.");
     }
-    const count = (
-      await ctx.db
-        .query("eventFavorites")
-        .withIndex("by_user_event", (q) => q.eq("user", user))
-        .take(MAX_FAVORITES)
-    ).length;
+    const stars = await ctx.db
+      .query("eventFavorites")
+      .withIndex("by_user_event", (q) => q.eq("user", user))
+      .take(MAX_FAVORITES);
+    let count = stars.length;
+    if (count >= MAX_FAVORITES) {
+      // Stars on events the viewer can no longer see are hidden everywhere,
+      // so they are dropped rather than left to use up the allowance.
+      for (const star of stars) {
+        const starred = await ctx.db.get(star.eventId);
+        if (starred && (await viewerRole(ctx, starred))) continue;
+        await ctx.db.delete(star._id);
+        count--;
+      }
+    }
     if (count >= MAX_FAVORITES) {
       throw new ConvexError(
         `You can star up to ${MAX_FAVORITES} events. Unstar one first.`

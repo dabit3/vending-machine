@@ -1,6 +1,7 @@
 import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
+import { MAX_FAVORITES } from "../convex/favorites";
 import schema from "../convex/schema";
 
 const modules = import.meta.glob("../convex/**/*.ts");
@@ -118,4 +119,29 @@ test("deleting an event removes its stars; signed-out visitors cannot star", asy
 
   await admin.mutation(api.events.remove, { id: run });
   expect(await t.run((ctx) => ctx.db.query("eventFavorites").collect())).toEqual([]);
+});
+
+test("at the limit, stars on events the viewer lost access to make room for new ones", async () => {
+  const { t, org, admin, run, other } = await setup();
+  // The organizer's allowance is full, one star short of it on an event they
+  // have since been removed from.
+  await t.run(async (ctx) => {
+    for (let i = 0; i < MAX_FAVORITES - 1; i++) {
+      const eventId = await ctx.db.insert("events", { name: `E${i}`, slug: `e${i}` });
+      await ctx.db.insert("eventAdmins", { eventId, email: organizer.email });
+      await ctx.db.insert("eventFavorites", { user: organizer.subject, eventId });
+    }
+    await ctx.db.insert("eventFavorites", { user: organizer.subject, eventId: other });
+  });
+  await org.mutation(api.favorites.set, { eventId: run, favorite: true });
+  const stars = await t.run((ctx) => ctx.db.query("eventFavorites").collect());
+  expect(stars).toHaveLength(MAX_FAVORITES);
+  expect(stars.some((star) => star.eventId === other)).toBe(false);
+
+  // With every star still visible, the limit holds.
+  await t.run((ctx) => ctx.db.insert("eventAdmins", { eventId: other, email: organizer.email }));
+  await expect(
+    org.mutation(api.favorites.set, { eventId: other, favorite: true }),
+  ).rejects.toThrow(/up to 100 events/);
+  expect(await admin.query(api.favorites.mine, {})).toEqual([]);
 });
