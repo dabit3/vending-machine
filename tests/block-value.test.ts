@@ -35,7 +35,7 @@ test("multi-month codes show the total with a monthly breakdown", () => {
     detail: "$200 a month for 2 months",
   });
   expect(blockTermsSummary("200", 1, [{ redemptions: 2, months: 3 }])).toEqual({
-    headline: "$1200",
+    headline: "$1,200",
     detail: "$200 × 2 redemptions per code, each for 3 months",
   });
   expect(blockTermsSummary("Team plan", 1, [twoMonths])).toEqual({
@@ -71,4 +71,17 @@ test("dispensed code values include months and redemptions", () => {
     headline: "Team plan",
     detail: "Applies for 3 months, redeemable 2 times",
   });
+});
+
+test("whole-dollar values get thousands separators", () => {
+  expect(codeValueSummary("5000")).toEqual({ headline: "$5,000 in credits" });
+  expect(codeValueSummary("5000", { redemptions: 2, months: 1 })).toEqual({
+    headline: "$10,000 in credits total",
+    detail: "$5,000 each time, redeemable 2 times",
+  });
+  expect(blockValueSummary("5000", 5, 0)).toEqual({ headline: "$5,000" });
+  expect(blockValueSummary("1250000", 1, 0)).toEqual({ headline: "$1,250,000" });
+  expect(blockValueSummary("5,000", 1, 0)).toEqual({ headline: "$5,000" });
+  expect(blockValueSummary("5000 in usage", 1, 0)).toEqual({ headline: "$5,000 in usage" });
+  expect(blockValueSummary("12.5", 1, 0)).toEqual({ headline: "$12.5" });
 });
