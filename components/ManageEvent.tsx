@@ -17,6 +17,7 @@ import {
   Inbox,
   Mail,
   Plus,
+  Pencil,
   QrCode,
   RotateCcw,
   Search,
@@ -683,9 +684,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         </Button>
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-heading text-3xl font-semibold tracking-[-0.02em]">
-              {event.name}
-            </h1>
+            <EventTitle key={event._id} id={event._id} name={event.name} />
             {event.createdBy ? (
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 Created by {event.createdBy}
@@ -2551,6 +2550,81 @@ function RowList({
   );
 }
 
+// The page heading doubles as the event's name editor: the pencil swaps it
+// for an input, Enter or Save renames, Escape or Cancel puts it back.
+function EventTitle({ id, name }: { id: Id<"events">; name: string }) {
+  const renameEvent = useMutation(api.events.rename);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const next = (draft ?? "").trim();
+    if (!next) return;
+    if (next === name) {
+      setDraft(null);
+      return;
+    }
+    setSaving(true);
+    try {
+      await renameEvent({ id, name: next });
+      setDraft(null);
+      toast.success(`Event renamed to “${next}”`);
+    } catch (err) {
+      toast.error(mutationError(err, "Failed to rename event"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (draft === null) {
+    return (
+      <div className="flex items-start gap-1">
+        <h1 className="min-w-0 font-heading text-3xl font-semibold tracking-[-0.02em] wrap-anywhere">
+          {name}
+        </h1>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Edit event name"
+          title="Edit event name"
+          onClick={() => setDraft(name)}
+          className="mt-1 shrink-0 text-muted-foreground"
+        >
+          <Pencil />
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={handleSave} className="flex flex-wrap items-center gap-2">
+      <Input
+        autoFocus
+        aria-label="Event name"
+        value={draft}
+        disabled={saving}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setDraft(null);
+        }}
+        className="h-11 w-full font-heading text-2xl font-semibold tracking-[-0.02em] sm:w-96 md:text-2xl"
+      />
+      <Button type="submit" size="sm" disabled={saving || !draft.trim()}>
+        {saving ? "Saving..." : "Save"}
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={saving}
+        onClick={() => setDraft(null)}
+      >
+        Cancel
+      </Button>
+    </form>
+  );
+}
+
 function EventDetailsForm({
   event,
   canDelete,
@@ -2563,6 +2637,13 @@ function EventDetailsForm({
   const router = useRouter();
 
   const [name, setName] = useState(event.name);
+  // A rename from the page heading reaches this form too, unless the Name
+  // field holds an edit of its own.
+  const [savedName, setSavedName] = useState(event.name);
+  if (event.name !== savedName) {
+    setSavedName(event.name);
+    if (name.trim() === savedName) setName(event.name);
+  }
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
