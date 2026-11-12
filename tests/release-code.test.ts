@@ -2,6 +2,7 @@ import { convexTest } from "convex-test";
 import { expect, test } from "vitest";
 import { api } from "../convex/_generated/api";
 import schema from "../convex/schema";
+import { mutationError } from "../lib/stripe-form";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 const organizer = { subject: "org", email: "org@example.com", emailVerified: true };
@@ -126,9 +127,13 @@ test("a confirmation for an earlier claimant does not release a newer claim", as
   const id = await codeId("A");
   await admin.mutation(api.codes.release, { id, claimedBy: attendee.email });
   await second.mutation(api.claims.claim, { slug: "meetup" });
-  await expect(
-    admin.mutation(api.codes.release, { id, claimedBy: attendee.email })
-  ).rejects.toThrow(/now claimed by oth@example.com/);
+  // A ConvexError, so the manage page can show the reason in its toast.
+  const error = await admin
+    .mutation(api.codes.release, { id, claimedBy: attendee.email })
+    .catch((err: unknown) => err);
+  expect(mutationError(error, "fallback")).toBe(
+    "A is now claimed by oth@example.com, not att@example.com. Nothing was released."
+  );
   const [code] = await admin.query(api.codes.list, { eventId });
   expect(code.claimedBy).toBe(other.email);
 });

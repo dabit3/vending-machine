@@ -7,7 +7,7 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { viewerIdentityKeys } from "./identity";
 import { logAudit } from "./auditLog";
@@ -600,7 +600,7 @@ export const release = mutation({
     const actorEmail = await requireEventAdmin(ctx, code.eventId);
     if (!code.claimedBy) return { released: false as const };
     if (args.claimedBy !== undefined && args.claimedBy !== code.claimedBy) {
-      throw new Error(
+      throw new ConvexError(
         `${code.code} is now claimed by ${code.claimedBy}, not ${args.claimedBy}. Nothing was released.`
       );
     }
