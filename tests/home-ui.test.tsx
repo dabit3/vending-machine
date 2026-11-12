@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { getFunctionName } from "convex/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import Home from "../app/page";
 
@@ -10,10 +11,16 @@ interface MineItem {
   description?: string;
   eventDate?: string;
   claimed: boolean;
+  favorite?: boolean;
+}
+
+interface StarredItem extends Omit<MineItem, "claimed" | "favorite"> {
+  manages: boolean;
 }
 
 const state = vi.hoisted(() => ({
   mine: [] as MineItem[] | null | undefined,
+  starred: [] as StarredItem[] | undefined,
   authenticated: true,
   authLoading: false,
   // Convex lags Clerk: it reports signed-out while validating a fresh token.
@@ -25,10 +32,11 @@ vi.mock("convex/react", () => ({
     isAuthenticated: state.authenticated && state.convexAuthenticated,
     isLoading: false,
   }),
-  useQuery: (_ref: unknown, args: unknown) => {
+  useQuery: (ref: Parameters<typeof getFunctionName>[0], args: unknown) => {
     if (args === "skip") return undefined;
-    return state.mine;
+    return getFunctionName(ref) === "favorites:mine" ? state.starred : state.mine;
   },
+  useMutation: () => Object.assign(vi.fn(), { withOptimisticUpdate: () => vi.fn() }),
 }));
 vi.mock("@clerk/nextjs", () => ({
   SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -44,6 +52,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-09-07T12:00:00Z"));
   Object.assign(state, {
+    starred: [],
     mine: [
       { _id: "today", name: "Today's event", slug: "today", eventDate: "2026-09-07", claimed: true },
       { _id: "upcoming", name: "Upcoming event", slug: "upcoming", eventDate: "2026-09-10", claimed: false },
@@ -131,4 +140,33 @@ test("right after signing in, the signed-in layout shows while Convex is still v
   expect(html).toContain('aria-label="Loading your events"');
   expect(html).not.toContain("Sign in to claim your credits.");
   expect(html).not.toContain("Scan to claim");
+});
+
+test("starred events are pinned above the rest, managed ones linking to the manage page", () => {
+  state.mine = state.mine!.map((e) => (e._id === "old" ? { ...e, favorite: true } : e));
+  state.starred = [
+    { _id: "old", name: "Old event", slug: "old", eventDate: "2026-07-01", manages: false },
+    { _id: "run", name: "Event I run", slug: "run", eventDate: "2026-09-08", manages: true },
+  ];
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toMatch(/<h2\b[^>]*>Starred<\/h2>/);
+  const order = ["Starred</h2>", "Event I run", "Old event", "Your events</h2>", "Upcoming event", "Today"];
+  const at = order.map((text) => html.indexOf(text));
+  expect(at).toEqual([...at].sort((a, b) => a - b));
+  expect(at[0]).toBeGreaterThan(-1);
+  expect(html).toContain('href="/admin/events/run"');
+  expect(html).toContain('href="/old"');
+  // A starred event is not repeated in the list below.
+  expect(html.split("Old event</span>").length - 1).toBe(1);
+  expect(html).toContain('aria-pressed="true" aria-label="Unstar Old event"');
+  expect(html).toContain('aria-pressed="false" aria-label="Star Upcoming event"');
+});
+
+test("an admin with only starred events sees them instead of the empty state", () => {
+  state.mine = [];
+  state.starred = [{ _id: "run", name: "Event I run", slug: "run", manages: true }];
+  const html = renderToStaticMarkup(<Home />);
+  expect(html).toContain("Event I run");
+  expect(html).not.toContain("No events yet");
+  expect(html).not.toContain("Your events</h2>");
 });

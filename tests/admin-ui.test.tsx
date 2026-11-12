@@ -48,7 +48,7 @@ vi.mock("convex/react", () => ({
     if (getFunctionName(ref) === "events:listManaged") return state.events;
     return undefined;
   },
-  useMutation: () => vi.fn(),
+  useMutation: () => Object.assign(vi.fn(), { withOptimisticUpdate: () => vi.fn() }),
   usePaginatedQuery: () => ({
     results: state.history,
     status: state.historyStatus,
