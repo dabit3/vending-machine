@@ -149,7 +149,7 @@ export default function WalkUpClaim({ id }: { id: Id<"events"> }) {
           <ArrowLeft data-icon="inline-start" />
           Manage event
         </Button>
-        <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em]">
+        <h1 className="mt-3 font-heading text-3xl font-semibold tracking-[-0.02em] wrap-anywhere">
           {event.name}
         </h1>
       </div>

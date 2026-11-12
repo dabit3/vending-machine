@@ -84,7 +84,7 @@ function AdminEventRow({
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading font-medium tracking-tight">
-            {event.name}
+            <span className="min-w-0 wrap-anywhere">{event.name}</span>
             {event.dynamic ? <Badge variant="outline">Dynamic</Badge> : null}
             {event.identity === "x" ? (
               <Badge variant="outline">X handles</Badge>
