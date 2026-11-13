@@ -124,7 +124,6 @@ export default function ClaimPage(props: ClaimPageProps) {
 function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
-  const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
   const { authReady, signedIn, canQuery } = useViewerAuth();
   const eligibility = useQuery(
     api.claims.eligibility,
@@ -197,25 +196,12 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const previewMode =
     preview && eligibility?.eligible === true && "preview" in eligibility;
 
-  // Events with redemption instructions require one confirmed read (stored
-  // per attendee) before the claim UI unlocks; return visits skip the gate.
+  // Events with redemption instructions open them on an attendee's first
+  // claim (stored per attendee); return visits claim without the dialog.
   const mustReadInstructions =
     !!event?.claimInstructions &&
     eligibility?.eligible === true &&
     (previewMode ? !previewRead : !eligibility.instructionsViewed);
-
-  async function handleConfirmRead() {
-    setReadOpen(false);
-    if (previewMode) {
-      setPreviewRead(true);
-      return;
-    }
-    try {
-      await markInstructionsRead({ slug });
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    }
-  }
 
   // Two named pools means the user picks which one to draw from; a single
   // (possibly unnamed) pool claims without a choice.
@@ -259,8 +245,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const needsName =
     event?.dynamic === true && cleanClaimantName(nameValue) === undefined;
 
-  async function handleClaim() {
+  // `withInstructions` is the first claim on an event with redemption
+  // instructions: one press dispenses the code and opens the steps.
+  async function handleClaim(withInstructions = false) {
     if (previewMode && event) {
+      if (withInstructions) {
+        setPreviewRead(true);
+        setReadOpen(true);
+      }
       const type =
         (mustChoose && selectedType ? selectedType : event.codeTypes[0]) ||
         undefined;
@@ -294,8 +286,10 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
         slug,
         codeType: mustChoose && selectedType ? selectedType : undefined,
         name: event?.dynamic ? nameValue.trim() : undefined,
+        instructionsRead: withInstructions || undefined,
       });
       setResult(res);
+      if (res.ok && withInstructions) setReadOpen(true);
     } catch {
       setResult({ ok: false, error: "Something went wrong. Please try again." });
     } finally {
@@ -376,7 +370,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               alreadyClaimed={result.alreadyClaimed}
               pendingTypes={pendingTypes}
               collecting={submitting}
-              onCollect={handleClaim}
+              onCollect={() => handleClaim()}
               copied={copied}
               onCopy={copyCode}
             />
@@ -394,7 +388,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               alreadyClaimed
               pendingTypes={pendingTypes}
               collecting={submitting}
-              onCollect={handleClaim}
+              onCollect={() => handleClaim()}
               copied={copied}
               onCopy={copyCode}
             />
@@ -666,90 +660,6 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       </SignOutButton>
                     </div>
                   </div>
-                ) : mustReadInstructions ? (
-                  <div className="flex flex-col gap-5">
-                    {singleValue ? (
-                      <CodeValue summary={singleValue} />
-                    ) : getsAll ? (
-                      <IncludedCodes types={codeTypes} valueFor={valueFor} />
-                    ) : mustChoose ? (
-                      <ul className="flex flex-col gap-3">
-                        {codeTypes.map((type) => {
-                          const summary = valueFor(type);
-                          return summary ? (
-                            <li key={type}>
-                              <CodeValue label={type} summary={summary} />
-                            </li>
-                          ) : null;
-                        })}
-                      </ul>
-                    ) : null}
-                    <p className="text-base leading-relaxed text-muted-foreground">
-                      {event.dynamic ? "You're in." : "You're on the list."}{" "}
-                      Before your {getsAll ? "codes are" : "code is"}{" "}
-                      dispensed, take a moment to read how to redeem{" "}
-                      {getsAll ? "them" : "it"}.
-                    </p>
-                    <Dialog open={readOpen} onOpenChange={setReadOpen}>
-                      <DialogTrigger
-                        render={
-                          <Button variant="brand" size="lg" className="w-full" />
-                        }
-                      >
-                        <BookOpen data-icon="inline-start" />
-                        Read how to redeem
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle className="font-heading tracking-tight">
-                            How to redeem your code
-                          </DialogTitle>
-                          <DialogDescription>
-                            Read these before claiming. You can copy them to
-                            keep for later.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <RedemptionInstructions
-                          value={event.claimInstructions ?? ""}
-                        />
-                        <Button
-                          variant="brand"
-                          size="lg"
-                          className="w-full"
-                          onClick={handleConfirmRead}
-                        >
-                          <Check data-icon="inline-start" />
-                          Got it, continue to claim
-                        </Button>
-                      </DialogContent>
-                    </Dialog>
-                    {event.contactEmail ? (
-                      <GetInTouch
-                        email={event.contactEmail}
-                        eventName={event.name}
-                        variant="ghost"
-                        size="sm"
-                        className="self-center text-muted-foreground"
-                      />
-                    ) : null}
-                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span className="min-w-0 truncate">
-                        Signed in as{" "}
-                        <span className="text-foreground">
-                          {signedInAs ?? "verified user"}
-                        </span>
-                      </span>
-                      <SignOutButton redirectUrl={returnUrl}>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          className="shrink-0 text-muted-foreground"
-                        >
-                          Switch
-                        </Button>
-                      </SignOutButton>
-                    </div>
-                  </div>
                 ) : (
                   <div className="flex flex-col gap-5">
                     {result && !result.ok ? (
@@ -761,6 +671,13 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     {singleValue ? <CodeValue summary={singleValue} /> : null}
                     {getsAll ? (
                       <IncludedCodes types={codeTypes} valueFor={valueFor} />
+                    ) : null}
+                    {mustReadInstructions ? (
+                      <p className="text-base leading-relaxed text-muted-foreground">
+                        {event.dynamic ? "You're in." : "You're on the list."}{" "}
+                        Your {getsAll ? "codes are" : "code is"} dispensed as
+                        soon as you open the redemption steps.
+                      </p>
                     ) : null}
                     {mustChoose ? (
                       <fieldset className="flex flex-col gap-2">
@@ -830,7 +747,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         submitting || (mustChoose && !selectedType) || needsName
                       }
                       className="w-full"
-                      onClick={handleClaim}
+                      onClick={() => handleClaim(mustReadInstructions)}
                       aria-busy={submitting}
                       aria-live="polite"
                     >
@@ -839,6 +756,11 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                           <Spinner data-icon="inline-start" />
                           Checking the list...
                         </>
+                      ) : mustReadInstructions ? (
+                        <>
+                          <BookOpen data-icon="inline-start" />
+                          Read how to redeem
+                        </>
                       ) : getsAll ? (
                         "Dispense my codes"
                       ) : (
@@ -846,22 +768,24 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       )}
                     </Button>
                     <div className="flex flex-col gap-2">
-                      {event.claimInstructions ? (
+                      {event.claimInstructions && !mustReadInstructions ? (
                         <RedeemInstructionsDialog
                           eventName={event.name}
                           instructions={event.claimInstructions}
                         />
                       ) : null}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="self-center text-muted-foreground"
-                        render={<Link href="/my-codes/get-started" />}
-                        nativeButton={false}
-                      >
-                        Get started with Devin
-                        <ArrowRight data-icon="inline-end" aria-hidden />
-                      </Button>
+                      {mustReadInstructions ? null : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="self-center text-muted-foreground"
+                          render={<Link href="/my-codes/get-started" />}
+                          nativeButton={false}
+                        >
+                          Get started with Devin
+                          <ArrowRight data-icon="inline-end" aria-hidden />
+                        </Button>
+                      )}
                       {event.contactEmail ? (
                         <GetInTouch
                           email={event.contactEmail}
@@ -903,6 +827,35 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
               </div>
             </div>
           )}
+          {event?.claimInstructions ? (
+            <Dialog open={readOpen} onOpenChange={setReadOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-heading tracking-tight">
+                    How to redeem your{" "}
+                    {receiptCodes.length > 1 ? "codes" : "code"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Your {receiptCodes.length > 1 ? "codes are" : "code is"}{" "}
+                    dispensed. Follow these steps to use{" "}
+                    {receiptCodes.length > 1 ? "them" : "it"}; you can copy
+                    them to keep for later.
+                  </DialogDescription>
+                </DialogHeader>
+                <RedemptionInstructions value={event.claimInstructions} />
+                <Button
+                  variant="brand"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setReadOpen(false)}
+                >
+                  <Check data-icon="inline-start" />
+                  Got it, show my{" "}
+                  {receiptCodes.length > 1 ? "codes" : "code"}
+                </Button>
+              </DialogContent>
+            </Dialog>
+          ) : null}
         </div>
       </main>
       <SiteFooter width="card" />
