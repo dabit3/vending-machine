@@ -13,6 +13,7 @@ export type OptionalSetting = {
   title: string;
   // Button text while the setting is collapsed, e.g. "Set contact email".
   addLabel: string;
+  description: string;
   icon: LucideIcon;
   // A setting with a value stays expanded until it is cleared.
   set: boolean;
@@ -24,9 +25,7 @@ export type OptionalSetting = {
   render: (focus: boolean) => ReactNode;
 };
 
-// Optional form settings stay out of the way until needed: each shows as a
-// small "+ Add …" button, and expands into a panel once clicked or when it
-// already has a value.
+// Settings expand in place, keeping their order as values are added or cleared.
 export function OptionalSettings({
   settings,
   className,
@@ -44,8 +43,6 @@ export function OptionalSettings({
   if (newlySet.length > 0) {
     setOpened([...opened, ...newlySet.map((s) => s.key)]);
   }
-  const expanded = settings.filter((s) => s.set || opened.includes(s.key));
-  const collapsed = settings.filter((s) => !expanded.includes(s));
 
   function close(key: string) {
     setOpened((prev) => prev.filter((k) => k !== key));
@@ -57,56 +54,77 @@ export function OptionalSettings({
   }
 
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
-      {expanded.map((s) => (
-        <Field key={s.key} className="rounded-lg border p-4">
-          <div className="flex min-h-6 items-center justify-between gap-3">
-            <FieldLabel htmlFor={s.id} className="min-w-0">
-              <span className="truncate">{s.title}</span>
-              {s.summary !== undefined ? (
-                <span className="truncate font-normal text-muted-foreground">
-                  · {s.summary}
-                </span>
-              ) : null}
-            </FieldLabel>
-            <Button
-              type="button"
-              variant="ghost"
-              size="xs"
-              className="text-muted-foreground"
-              onClick={() => {
-                s.onClear();
-                close(s.key);
-              }}
-            >
-              <X data-icon="inline-start" />
-              {s.clearLabel ?? "Remove"}
-            </Button>
-          </div>
-          {s.render(focused.includes(s.key))}
-        </Field>
-      ))}
-      {collapsed.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {collapsed.map((s) => {
-            const Icon = s.icon;
-            return (
+    <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2", className)}>
+      {settings.map((s) => {
+        const Icon = s.icon;
+        const expanded = s.set || opened.includes(s.key);
+        const panelId = `${s.id}-panel`;
+        return (
+          <div key={s.key} className={cn("min-w-0", expanded && "sm:col-span-2")}>
+            {expanded ? (
+              <Field className="rounded-xl border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                      <Icon className="size-4" aria-hidden />
+                    </span>
+                    <FieldLabel htmlFor={s.id} className="min-w-0 flex-wrap">
+                      {s.title}
+                      {s.summary !== undefined ? (
+                        <span className="font-normal text-muted-foreground">
+                          · {s.summary}
+                        </span>
+                      ) : null}
+                    </FieldLabel>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    aria-label={`${s.clearLabel ?? "Remove"} ${s.title.toLowerCase()}`}
+                    onClick={() => {
+                      s.onClear();
+                      close(s.key);
+                    }}
+                  >
+                    <X data-icon="inline-start" />
+                    {s.clearLabel ?? "Remove"}
+                  </Button>
+                </div>
+                <div id={panelId} className="pt-2">
+                  {s.render(focused.includes(s.key))}
+                </div>
+              </Field>
+            ) : (
               <Button
-                key={s.key}
                 type="button"
                 variant="outline"
-                size="sm"
-                className="text-muted-foreground"
+                className="h-auto w-full min-w-0 justify-start gap-3 rounded-xl p-4 text-left whitespace-normal"
+                aria-label={s.addLabel}
+                aria-expanded={false}
+                aria-controls={panelId}
                 onClick={() => open(s.key)}
               >
-                <Plus data-icon="inline-start" />
-                <Icon data-icon="inline-start" />
-                {s.addLabel}
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <Icon aria-hidden />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span>{s.title}</span>
+                  <span className="font-sans text-xs font-normal text-muted-foreground">
+                    {s.description}
+                  </span>
+                </span>
+                <Plus
+                  data-icon="inline-end"
+                  className="text-muted-foreground"
+                  aria-hidden
+                />
               </Button>
-            );
-          })}
-        </div>
-      ) : null}
+            )}
+            {!expanded ? <div id={panelId} hidden /> : null}
+          </div>
+        );
+      })}
     </div>
   );
 }

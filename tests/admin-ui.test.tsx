@@ -380,6 +380,44 @@ test("dynamic warning is hidden until the box is ticked and spells out the conse
   expect(warning).not.toContain("home page");
 });
 
+test("new event organizers are a final optional section beside the create action", () => {
+  const html = renderToStaticMarkup(<NewEventForm />);
+  const organizerSection = html.indexOf("3. Organizers");
+  const organizerInput = html.indexOf('id="event-organizer-email"');
+  const submit = html.indexOf('type="submit"');
+
+  const codeSection = html.indexOf("2. Choose your codes");
+  expect(codeSection).toBeGreaterThan(0);
+  expect(organizerSection).toBeGreaterThan(codeSection);
+  expect(organizerInput).toBeGreaterThan(organizerSection);
+  expect(submit).toBeGreaterThan(organizerInput);
+  expect(html.slice(organizerInput, submit)).not.toContain('data-slot="card-title"');
+  expect(html.slice(0, organizerSection)).not.toContain("Add organizers");
+  expect(html).toContain("Optional. Give other admins access to this event.");
+  const input = html.match(/<input[^>]*id="event-organizer-email"[^>]*>/)?.[0];
+  expect(input).toContain('aria-describedby="event-organizer-help"');
+  expect(input).not.toContain("required");
+  expect(input).not.toContain("autofocus");
+});
+
+test("attendee settings use labeled responsive tiles with accessible expansion controls", () => {
+  const html = renderToStaticMarkup(<NewEventForm />);
+  const section = html.match(/<section[^>]*aria-labelledby="event-experience-heading"[\s\S]*?<\/section>/)?.[0];
+  expect(section).toBeDefined();
+  expect(section).toContain("Attendee experience");
+  expect(section).toContain("sm:grid-cols-2");
+  expect(section).toContain("A welcome and context for your event.");
+  expect(section).toContain("Help attendees redeem their codes.");
+  expect(section).toContain("A note to show before attendees sign in.");
+  expect(section).toContain("Where attendees can reach you for help.");
+  for (const id of ["description", "instructions", "signin-message", "contact-email"]) {
+    expect(section).toContain(`aria-controls="event-${id}-panel"`);
+    expect(section).toContain(`id="event-${id}-panel" hidden=""`);
+  }
+  expect(section?.match(/aria-expanded="false"/g)).toHaveLength(4);
+  expect(section).not.toContain("organizer");
+});
+
 test("new event form defaults to adding codes later", () => {
   const html = renderToStaticMarkup(<NewEventForm />);
   const selectedTabs = [...html.matchAll(/<button\b[^>]*aria-selected="true"[^>]*>([^<]*)<\/button>/g)].map(

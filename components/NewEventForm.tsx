@@ -432,105 +432,6 @@ export default function NewEventForm({
                   identity={identity}
                   contactEmail={contactEmail}
                   onContactEmailChange={setContactEmail}
-                  extraSettings={[
-                    {
-                      key: "organizers",
-                      id: "event-organizer-email",
-                      title: "Organizers",
-                      addLabel: "Add organizers",
-                      icon: UserPlus,
-                      set: organizers.length > 0 || organizerDraft !== "",
-                      onClear: () => {
-                        setOrganizers([]);
-                        setOrganizerDraft("");
-                        setOrganizerError(null);
-                      },
-                      summary:
-                        organizers.length > 0
-                          ? `${organizers.length} ${organizers.length === 1 ? "person" : "people"}`
-                          : undefined,
-                      render: (focus) => (
-                        <div className="flex flex-col gap-3">
-                          <Field>
-                            <div className="flex flex-col gap-2 sm:flex-row">
-                              <Input
-                                id="event-organizer-email"
-                                type="text"
-                                inputMode="email"
-                                autoComplete="off"
-                                value={organizerDraft}
-                                onChange={(e) => {
-                                  setOrganizerDraft(e.target.value);
-                                  if (organizerError) setOrganizerError(null);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    addOrganizer();
-                                  }
-                                }}
-                                autoFocus={focus}
-                                placeholder="organizer@example.com"
-                                className="sm:max-w-sm"
-                                aria-invalid={organizerError ? true : undefined}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => addOrganizer()}
-                                disabled={organizerDraft.trim() === ""}
-                                className="sm:w-auto"
-                              >
-                                <UserPlus data-icon="inline-start" />
-                                Add organizer
-                              </Button>
-                            </div>
-                            {organizerError ? (
-                              <FieldDescription className="text-destructive">
-                                {organizerError}
-                              </FieldDescription>
-                            ) : (
-                              <FieldDescription>
-                                Organizers can edit this event and manage its
-                                attendees and codes. They sign in with this
-                                email and find the event under Admin.
-                              </FieldDescription>
-                            )}
-                          </Field>
-                          {organizers.length > 0 ? (
-                            <ul className="flex flex-col gap-2">
-                              {organizers.map((email) => (
-                                <li
-                                  key={email}
-                                  className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
-                                >
-                                  <span
-                                    aria-hidden
-                                    className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground uppercase"
-                                  >
-                                    {email.charAt(0)}
-                                  </span>
-                                  <span className="min-w-0 flex-1 truncate text-sm">
-                                    {email}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    size="icon-sm"
-                                    variant="ghost"
-                                    className="shrink-0 text-muted-foreground"
-                                    aria-label={`Remove ${email}`}
-                                    onClick={() => removeOrganizer(email)}
-                                  >
-                                    <Trash2 />
-                                  </Button>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : null}
-                        </div>
-                      ),
-                    },
-                  ]}
                 />
                 <details className="group rounded-lg border bg-muted/30 open:bg-transparent">
                   <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 transition-colors outline-none select-none hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
@@ -789,6 +690,96 @@ export default function NewEventForm({
                   />
                 </>
               ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>3. Organizers</CardTitle>
+              <CardDescription>
+                Optional. Give other admins access to this event.
+              </CardDescription>
+              {organizers.length > 0 ? (
+                <CardAction>
+                  <Badge variant="secondary">{organizers.length} added</Badge>
+                </CardAction>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              <FieldGroup>
+                <Field data-invalid={organizerError ? true : undefined}>
+                  <FieldLabel htmlFor="event-organizer-email">
+                    Add organizers
+                  </FieldLabel>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="event-organizer-email"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="off"
+                      value={organizerDraft}
+                      onChange={(e) => {
+                        setOrganizerDraft(e.target.value);
+                        if (organizerError) setOrganizerError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addOrganizer();
+                        }
+                      }}
+                      placeholder="organizer@example.com"
+                      aria-invalid={organizerError ? true : undefined}
+                      aria-describedby="event-organizer-help"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => addOrganizer()}
+                      disabled={organizerDraft.trim() === ""}
+                    >
+                      <UserPlus data-icon="inline-start" />
+                      Add organizer
+                    </Button>
+                  </div>
+                  <FieldDescription
+                    id="event-organizer-help"
+                    role={organizerError ? "alert" : undefined}
+                  >
+                    {organizerError ??
+                      "Organizers can edit this event and manage its attendees and codes. They sign in with this email and find the event under Admin."}
+                  </FieldDescription>
+                </Field>
+                {organizers.length > 0 ? (
+                  <ul className="flex flex-col gap-2">
+                    {organizers.map((email) => (
+                      <li
+                        key={email}
+                        className="flex items-center gap-3 rounded-lg border border-border bg-surface px-3 py-2"
+                      >
+                        <span
+                          aria-hidden
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground uppercase"
+                        >
+                          {email.charAt(0)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm">
+                          {email}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          className="shrink-0 text-muted-foreground"
+                          aria-label={`Remove ${email}`}
+                          onClick={() => removeOrganizer(email)}
+                        >
+                          <Trash2 />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </FieldGroup>
             </CardContent>
           </Card>
         </fieldset>
