@@ -577,6 +577,27 @@ test("optional settings with a value render expanded with a clear action", () =>
   expect(html).not.toContain("Set contact / support email");
 });
 
+test("redemption instructions come before the description in optional settings", () => {
+  const html = renderToStaticMarkup(
+    <EventOptionalSettings
+      idPrefix="t"
+      description=""
+      onDescriptionChange={() => {}}
+      instructions=""
+      onInstructionsChange={() => {}}
+      instructionsDescription="Read first."
+      signInMessage=""
+      onSignInMessageChange={() => {}}
+      identity="email"
+      contactEmail=""
+      onContactEmailChange={() => {}}
+    />,
+  );
+  expect(html.indexOf("Set redemption instructions")).toBeLessThan(
+    html.indexOf("Add description"),
+  );
+});
+
 test("saved redemption instructions show the chosen mode in the title with details folded", () => {
   const props = {
     idPrefix: "t",

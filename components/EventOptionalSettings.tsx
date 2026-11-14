@@ -23,7 +23,7 @@ function instructionsSummary(instructions: string) {
 }
 
 // The optional, attendee-facing event settings shared by the create and
-// manage forms: description, redemption instructions, sign-in message and
+// manage forms: redemption instructions, description, sign-in message and
 // contact email.
 export function EventOptionalSettings({
   idPrefix,
@@ -71,6 +71,25 @@ export function EventOptionalSettings({
       <OptionalSettings
         settings={[
           {
+            key: "instructions",
+            id: `${idPrefix}-instructions`,
+            title: "Redemption instructions",
+            addLabel: "Set redemption instructions",
+            description: "Help attendees redeem their codes.",
+            icon: ListChecks,
+            set: instructions !== "",
+            onClear: () => onInstructionsChange(""),
+            summary: instructionsSummary(instructions),
+            render: () => (
+              <ClaimInstructionsField
+                id={`${idPrefix}-instructions`}
+                value={instructions}
+                onChange={onInstructionsChange}
+                description={instructionsDescription}
+              />
+            ),
+          },
+          {
             key: "description",
             id: `${idPrefix}-description`,
             title: "Description",
@@ -94,25 +113,6 @@ export function EventOptionalSettings({
                   Pasted links become clickable; Markdown works too.
                 </FieldDescription>
               </Field>
-            ),
-          },
-          {
-            key: "instructions",
-            id: `${idPrefix}-instructions`,
-            title: "Redemption instructions",
-            addLabel: "Set redemption instructions",
-            description: "Help attendees redeem their codes.",
-            icon: ListChecks,
-            set: instructions !== "",
-            onClear: () => onInstructionsChange(""),
-            summary: instructionsSummary(instructions),
-            render: () => (
-              <ClaimInstructionsField
-                id={`${idPrefix}-instructions`}
-                value={instructions}
-                onChange={onInstructionsChange}
-                description={instructionsDescription}
-              />
             ),
           },
           {
