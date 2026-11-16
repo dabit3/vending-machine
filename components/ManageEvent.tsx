@@ -2140,6 +2140,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} organizers at a time`);
       return;
     }
+    const submittedEmail = email;
     setSubmitting(several);
     setEmail("");
     try {
@@ -2152,6 +2153,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
         toast.success(`${found[0]} can now manage this event`);
       }
     } catch (err) {
+      setEmail((current) => current === "" ? submittedEmail : current);
       toast.error(
         err instanceof Error ? err.message : "Failed to add organizer"
       );

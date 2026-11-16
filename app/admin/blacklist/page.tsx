@@ -95,7 +95,9 @@ export default function BlacklistPage() {
     e.preventDefault();
     const address = email;
     setEmail("");
-    await blacklist(address);
+    if (!(await blacklist(address))) {
+      setEmail((current) => current === "" ? address : current);
+    }
   }
 
   async function handleQuickAdd(address: string) {

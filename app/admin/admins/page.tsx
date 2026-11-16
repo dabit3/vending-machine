@@ -62,6 +62,7 @@ export default function AdminsPage() {
       toast.error(`Add at most ${MAX_BULK_ADMINS} admins at a time`);
       return;
     }
+    const submittedEmail = email;
     setSubmitting(several);
     setEmail("");
     try {
@@ -72,6 +73,7 @@ export default function AdminsPage() {
         toast.success(`${found[0]} is now an admin`);
       }
     } catch (err) {
+      setEmail((current) => current === "" ? submittedEmail : current);
       toast.error(err instanceof Error ? err.message : "Failed to add admin");
     } finally {
       setSubmitting(false);
