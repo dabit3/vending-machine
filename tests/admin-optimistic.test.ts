@@ -11,7 +11,16 @@ import {
   renameTypeOptimistic,
   releaseCodeOptimistic,
   addBlacklistOptimistic,
+  isOptimisticId,
 } from "../lib/admin-optimistic";
+
+test("only fabricated optimistic IDs disable row actions", () => {
+  expect(isOptimisticId("optimistic:person@example.com")).toBe(true);
+  expect(isOptimisticId("optimistic:flagged-id")).toBe(true);
+  expect(isOptimisticId("persisted-id")).toBe(false);
+  expect(isOptimisticId("")).toBe(false);
+  expect(isOptimisticId(undefined)).toBe(false);
+});
 
 function fakeStore() {
   const queries = new Map<string, { args: Record<string, unknown>; value: unknown }>();

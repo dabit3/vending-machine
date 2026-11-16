@@ -2253,6 +2253,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
                         variant="ghost"
                         className="shrink-0 text-muted-foreground"
                         aria-label={`Remove ${a.email}`}
+                        disabled={optimistic.isOptimisticId(a._id)}
                       />
                     }
                   >
@@ -2275,6 +2276,7 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
+                        disabled={optimistic.isOptimisticId(a._id)}
                         onClick={() =>
                           removeAdmin({ id: a._id }).catch((err) =>
                             toast.error(
@@ -2476,6 +2478,7 @@ function RowList({
                 }
                 title={item.blocked ? "Allow claiming" : "Block from claiming"}
                 onClick={item.onToggleBlock}
+                disabled={optimistic.isOptimisticId(item.key)}
                 className="shrink-0 text-muted-foreground"
               >
                 {item.blocked ? <Undo2 /> : <Ban />}
@@ -2488,6 +2491,7 @@ function RowList({
                 aria-label={`Allow ${item.label} to claim again`}
                 title="Allow re-claim"
                 onClick={item.onReclaim}
+                disabled={optimistic.isOptimisticId(item.key)}
                 className="shrink-0 text-muted-foreground"
               >
                 <RotateCcw />
@@ -2509,6 +2513,7 @@ function RowList({
                     aria-label={`Release ${item.label} from ${item.claimedBy}`}
                     title="Release code"
                     onClick={item.onRelease}
+                    disabled={optimistic.isOptimisticId(item.key)}
                     className="shrink-0 text-muted-foreground"
                   >
                     <Undo2 />
@@ -2521,6 +2526,7 @@ function RowList({
                 size="icon-sm"
                 aria-label={`Remove ${item.label}`}
                 onClick={item.onRemove}
+                disabled={optimistic.isOptimisticId(item.key)}
                 className="shrink-0 text-muted-foreground"
               >
                 <X />

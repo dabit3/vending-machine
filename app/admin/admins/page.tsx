@@ -5,7 +5,7 @@ import { ShieldAlert, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { addAdminOptimistic, removeAdminOptimistic } from "@/lib/admin-optimistic";
+import { addAdminOptimistic, isOptimisticId, removeAdminOptimistic } from "@/lib/admin-optimistic";
 import { AdminDialogAction as AlertDialogAction } from "@/components/AdminDialogAction";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -191,6 +191,7 @@ export default function AdminsPage() {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={`Remove ${admin.email}`}
+                        disabled={isOptimisticId(admin._id)}
                         className="shrink-0 text-muted-foreground"
                       />
                     }
@@ -209,6 +210,7 @@ export default function AdminsPage() {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
+                        disabled={isOptimisticId(admin._id)}
                         onClick={() => handleRemove(admin._id)}
                       >
                         Remove me
@@ -222,6 +224,7 @@ export default function AdminsPage() {
                   size="icon-sm"
                   aria-label={`Remove ${admin.email}`}
                   onClick={() => handleRemove(admin._id)}
+                  disabled={isOptimisticId(admin._id)}
                   className="shrink-0 text-muted-foreground"
                 >
                   <X />

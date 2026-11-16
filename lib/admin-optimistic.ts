@@ -8,6 +8,11 @@ import { normalizeEmail, normalizeXHandle } from "@/lib/attendee-identity";
 import { slugify } from "@/lib/slug";
 
 type Query = FunctionReference<"query">;
+
+export function isOptimisticId(id: string | undefined): boolean {
+  return id?.startsWith("optimistic:") ?? false;
+}
+
 function update<Q extends Query>(store: OptimisticLocalStore, query: Q, transform: (value: FunctionReturnType<Q>, args: FunctionArgs<Q>) => FunctionReturnType<Q>) {
   for (const { args, value } of store.getAllQueries(query)) {
     if (value !== undefined) store.setQuery(query, args, transform(value, args));

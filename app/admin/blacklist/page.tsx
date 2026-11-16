@@ -6,7 +6,7 @@ import { Ban, ChevronDown, Search, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { addBlacklistOptimistic, removeBlacklistOptimistic } from "@/lib/admin-optimistic";
+import { addBlacklistOptimistic, isOptimisticId, removeBlacklistOptimistic } from "@/lib/admin-optimistic";
 import { Id } from "@/convex/_generated/dataModel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -184,6 +184,7 @@ export default function BlacklistPage() {
                   size="icon-sm"
                   aria-label={`Remove ${entry.email} from blacklist`}
                   onClick={() => handleRemove(entry._id)}
+                  disabled={isOptimisticId(entry._id)}
                   className="shrink-0 text-muted-foreground"
                 >
                   <X />
