@@ -357,12 +357,12 @@ test("new event form exposes all three code sources and keeps page settings opti
     "Add description",
     "Set redemption instructions",
     "Set custom sign-in message",
-    "Set contact / support email",
+    "Contact / support email",
     "Add organizers",
     "Create event",
   ])
     expect(html).toContain(label);
-  // Optional settings start collapsed: no instruction tabs or textareas.
+  // Empty optional settings start collapsed: no instruction tabs or textareas.
   for (const control of [">None</button>", ">Pro</button>", "<textarea"])
     expect(html).not.toContain(control);
   expect(html).toContain('maxLength="120"');
@@ -409,13 +409,13 @@ test("attendee settings use labeled responsive tiles with accessible expansion c
   expect(section).toContain("A welcome and context for your event.");
   expect(section).toContain("Help attendees redeem their codes.");
   expect(section).toContain("A note to show before attendees sign in.");
-  expect(section).toContain("Where attendees can reach you for help.");
-  for (const id of ["description", "instructions", "signin-message", "contact-email"]) {
+  expect(section).toContain('value="support@cognition.ai"');
+  for (const id of ["description", "instructions", "signin-message"]) {
     expect(section).toContain(`aria-controls="event-${id}-panel"`);
     expect(section).toContain(`id="event-${id}-panel" hidden=""`);
   }
-  expect(section?.match(/aria-expanded="false"/g)).toHaveLength(4);
-  expect(section).not.toContain("organizer");
+  expect(section?.match(/aria-expanded="false"/g)).toHaveLength(3);
+  expect(section).not.toContain('id="event-organizer-email"');
 });
 
 test("new event form defaults to adding codes later", () => {
@@ -542,6 +542,17 @@ test("missing Stripe setup disables generation without removing the other event 
   const studio = renderToStaticMarkup(<StripeCodeStudio />);
   expect(studio).toContain("Stripe setup required");
   expect(studio).not.toContain("Value per code (USD)");
+});
+
+test("new events have an enabled, editable support email by default", () => {
+  const html = renderToStaticMarkup(<NewEventForm />);
+  const input = [...html.matchAll(/<input\b[^>]*>/g)]
+    .map((match) => match[0])
+    .find((input) => input.includes('id="event-contact-email"'));
+  expect(input).toContain('value="support@cognition.ai"');
+  expect(input).not.toMatch(/\b(disabled|readOnly|required)=/);
+  expect(html).not.toContain("Set contact / support email");
+  expect(html).toContain("Remove");
 });
 
 test("sign-in message is collapsed into a single set-custom button by default", () => {
