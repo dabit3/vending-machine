@@ -34,6 +34,8 @@ import {
 import { toast } from "sonner";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import * as optimistic from "@/lib/admin-optimistic";
+import { AdminDialogAction as AlertDialogAction } from "@/components/AdminDialogAction";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   activeCodeTypes,
@@ -72,7 +74,6 @@ const COOLDOWN_PAGE_SIZE = 500;
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -122,7 +123,7 @@ import {
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
-  const setClaimMode = useMutation(api.events.setClaimMode);
+  const setClaimMode = useMutation(api.events.setClaimMode).withOptimisticUpdate(optimistic.setClaimModeOptimistic);
   const emails = useQuery(api.emails.list, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const cooldowns = usePaginatedQuery(
@@ -135,21 +136,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const codeTerms = useQuery(api.codes.codeTerms, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
-  const removeEmail = useMutation(api.emails.remove);
-  const setEmailBlocked = useMutation(api.emails.setBlocked);
-  const setCooldownWaived = useMutation(api.emails.setCooldownWaived);
-  const removeAllEmails = useMutation(api.emails.removeAll);
-  const removeUnclaimedEmails = useMutation(api.emails.removeUnclaimed);
-  const approveFlagged = useMutation(api.emails.approveFlagged);
-  const rejectFlagged = useMutation(api.emails.rejectFlagged);
+  const removeEmail = useMutation(api.emails.remove).withOptimisticUpdate(optimistic.removeEmailOptimistic);
+  const setEmailBlocked = useMutation(api.emails.setBlocked).withOptimisticUpdate(optimistic.setBlockedOptimistic);
+  const setCooldownWaived = useMutation(api.emails.setCooldownWaived).withOptimisticUpdate(optimistic.setCooldownOptimistic);
+  const removeAllEmails = useMutation(api.emails.removeAll).withOptimisticUpdate(optimistic.removeAllEmailsOptimistic);
+  const removeUnclaimedEmails = useMutation(api.emails.removeUnclaimed).withOptimisticUpdate(optimistic.removeUnclaimedEmailsOptimistic);
+  const approveFlagged = useMutation(api.emails.approveFlagged).withOptimisticUpdate(optimistic.approveFlaggedOptimistic);
+  const rejectFlagged = useMutation(api.emails.rejectFlagged).withOptimisticUpdate(optimistic.rejectFlaggedOptimistic);
   const addCodes = useMutation(api.codes.add);
-  const allowReclaim = useMutation(api.claims.allowReclaim);
-  const removeCode = useMutation(api.codes.remove);
-  const releaseCode = useMutation(api.codes.release);
-  const renameCodeType = useMutation(api.codes.renameType);
-  const removeCodeType = useMutation(api.codes.removeType);
-  const setTypeValue = useMutation(api.codes.setTypeValue);
-  const setTypeArchived = useMutation(api.codes.setTypeArchived);
+  const allowReclaim = useMutation(api.claims.allowReclaim).withOptimisticUpdate(optimistic.allowReclaimOptimistic);
+  const removeCode = useMutation(api.codes.remove).withOptimisticUpdate(optimistic.removeCodeOptimistic);
+  const releaseCode = useMutation(api.codes.release).withOptimisticUpdate(optimistic.releaseCodeOptimistic);
+  const renameCodeType = useMutation(api.codes.renameType).withOptimisticUpdate(optimistic.renameTypeOptimistic);
+  const removeCodeType = useMutation(api.codes.removeType).withOptimisticUpdate(optimistic.removeTypeOptimistic);
+  const setTypeValue = useMutation(api.codes.setTypeValue).withOptimisticUpdate(optimistic.setTypeValueOptimistic);
+  const setTypeArchived = useMutation(api.codes.setTypeArchived).withOptimisticUpdate(optimistic.setTypeArchivedOptimistic);
   const retryStripeSync = useMutation(api.codes.retryStripeSync);
 
   const [emailInput, setEmailInput] = useState("");
@@ -1357,8 +1358,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               onRetryStripe={(codeType) =>
                 retryStripeSync({ eventId: id, codeType })
               }
-              onArchive={async (codeType, archived) => {
-                const res = await setTypeArchived({
+              onArchive={(codeType, archived) => {
+                const result = setTypeArchived({
                   eventId: id,
                   codeType,
                   archived,
@@ -1368,13 +1369,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     prev === `existing:${codeType ?? ""}` ? null : prev
                   );
                 }
-                return res;
+                return result;
               }}
               onSetValue={(codeType, value) =>
                 setTypeValue({ eventId: id, codeType, value })
               }
-              onRename={async (from, to) => {
-                await renameCodeType({ eventId: id, from, to });
+              onRename={(from, to) => {
+                const result = renameCodeType({ eventId: id, from, to });
                 // Keep the selection (and the filtered list) on the block
                 // that was just renamed.
                 setBlockTarget((prev) =>
@@ -1383,13 +1384,14 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 setArchivedListType((prev) =>
                   prev === (from ?? "") ? to : prev
                 );
+                return result;
               }}
-              onDelete={async (codeType) => {
-                const res = await removeCodeType({ eventId: id, codeType });
+              onDelete={(codeType) => {
+                const result = removeCodeType({ eventId: id, codeType });
                 setBlockTarget((prev) =>
                   prev === `existing:${codeType ?? ""}` ? null : prev
                 );
-                return res;
+                return result;
               }}
             />
             {allBlocksArchived ? (
@@ -1734,8 +1736,6 @@ function CodeBlockRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type);
   const [valueInput, setValueInput] = useState(value ?? "");
-  const [busy, setBusy] = useState(false);
-  const [archiving, setArchiving] = useState(false);
   const count = codes.length;
   const claimed = codes.filter((c) => c.claimedBy !== undefined).length;
   const available = count - claimed;
@@ -1760,33 +1760,29 @@ function CodeBlockRow({
       setValueInput(value ?? "");
       return;
     }
-    setBusy(true);
+    setEditing(false);
     try {
       if (renaming) {
-        await onRename(type || undefined, to);
-        toast.success(
-          type ? `Renamed “${type}” to “${to}”` : `Named code block “${to}”`
-        );
+        void onRename(type || undefined, to)
+          .then(() => toast.success(type ? `Renamed “${type}” to “${to}”` : `Named code block “${to}”`))
+          .catch((err) => toast.error(mutationError(err, "Failed to rename code block")));
       }
       if (valueChanged) {
-        await onSetValue(
+        void onSetValue(
           (renaming ? to : type) || undefined,
           newValue || undefined
-        );
-        toast.success(newValue ? "Block value saved" : "Block value cleared");
+        ).then(() => toast.success(newValue ? "Block value saved" : "Block value cleared"))
+          .catch((err) => toast.error(mutationError(err, "Failed to save block value")));
       }
       setEditing(false);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to update code block"
       );
-    } finally {
-      setBusy(false);
     }
   }
 
   async function handleArchive(next: boolean) {
-    setArchiving(true);
     try {
       const { unclaimed, stripeCodes } = await onArchive(
         type || undefined,
@@ -1807,8 +1803,6 @@ function CodeBlockRow({
           ? err.message
           : `Failed to ${next ? "archive" : "unarchive"} code block`
       );
-    } finally {
-      setArchiving(false);
     }
   }
 
@@ -1839,8 +1833,7 @@ function CodeBlockRow({
             placeholder="Value, e.g. 100 or Team plan"
             className="h-7 max-w-48 text-sm"
           />
-          <Button type="submit" size="xs" variant="secondary" disabled={busy}>
-            {busy ? <Spinner data-icon="inline-start" /> : null}
+          <Button type="submit" size="xs" variant="secondary">
             Save
           </Button>
           <Button
@@ -1883,14 +1876,9 @@ function CodeBlockRow({
                 size="xs"
                 variant="ghost"
                 className="text-muted-foreground"
-                disabled={archiving}
                 onClick={() => handleArchive(false)}
               >
-                {archiving ? (
-                  <Spinner data-icon="inline-start" />
-                ) : (
-                  <ArchiveRestore data-icon="inline-start" />
-                )}
+                <ArchiveRestore data-icon="inline-start" />
                 Unarchive
               </Button>
             ) : canArchive ? (
@@ -1901,15 +1889,10 @@ function CodeBlockRow({
                       size="xs"
                       variant="ghost"
                       className="text-muted-foreground"
-                      disabled={archiving}
                     />
                   }
                 >
-                  {archiving ? (
-                    <Spinner data-icon="inline-start" />
-                  ) : (
-                    <Archive data-icon="inline-start" />
-                  )}
+                  <Archive data-icon="inline-start" />
                   Archive
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -2135,9 +2118,9 @@ function BlockStat({
 
 function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
   const admins = useQuery(api.eventAdmins.list, { eventId });
-  const addAdmin = useMutation(api.eventAdmins.add);
+  const addAdmin = useMutation(api.eventAdmins.add).withOptimisticUpdate(optimistic.addEventAdminOptimistic);
   const addAdmins = useMutation(api.eventAdmins.addMany);
-  const removeAdmin = useMutation(api.eventAdmins.remove);
+  const removeAdmin = useMutation(api.eventAdmins.remove).withOptimisticUpdate(optimistic.removeEventAdminOptimistic);
 
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -2157,7 +2140,8 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
       toast.error(`Add at most ${MAX_BULK_ADMINS} organizers at a time`);
       return;
     }
-    setSubmitting(true);
+    setSubmitting(several);
+    setEmail("");
     try {
       if (several) {
         toast.success(
@@ -2167,7 +2151,6 @@ function EventAdminsCard({ eventId }: { eventId: Id<"events"> }) {
         await addAdmin({ eventId, email: found[0] });
         toast.success(`${found[0]} can now manage this event`);
       }
-      setEmail("");
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to add organizer"
@@ -2553,9 +2536,8 @@ function RowList({
 // The page heading doubles as the event's name editor: the pencil swaps it
 // for an input, Enter or Save renames, Escape or Cancel puts it back.
 function EventTitle({ id, name }: { id: Id<"events">; name: string }) {
-  const renameEvent = useMutation(api.events.rename);
+  const renameEvent = useMutation(api.events.rename).withOptimisticUpdate(optimistic.renameEventOptimistic);
   const [draft, setDraft] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -2565,15 +2547,12 @@ function EventTitle({ id, name }: { id: Id<"events">; name: string }) {
       setDraft(null);
       return;
     }
-    setSaving(true);
+    setDraft(null);
     try {
       await renameEvent({ id, name: next });
-      setDraft(null);
       toast.success(`Event renamed to “${next}”`);
     } catch (err) {
       toast.error(mutationError(err, "Failed to rename event"));
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -2602,21 +2581,19 @@ function EventTitle({ id, name }: { id: Id<"events">; name: string }) {
         autoFocus
         aria-label="Event name"
         value={draft}
-        disabled={saving}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") setDraft(null);
         }}
         className="h-11 w-full font-heading text-2xl font-semibold tracking-[-0.02em] sm:w-96 md:text-2xl"
       />
-      <Button type="submit" size="sm" disabled={saving || !draft.trim()}>
-        {saving ? "Saving..." : "Save"}
+      <Button type="submit" size="sm" disabled={!draft.trim()}>
+        Save
       </Button>
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        disabled={saving}
         onClick={() => setDraft(null)}
       >
         Cancel
@@ -2632,8 +2609,8 @@ function EventDetailsForm({
   event: Doc<"events">;
   canDelete: boolean;
 }) {
-  const updateEvent = useMutation(api.events.update);
-  const removeEvent = useMutation(api.events.remove);
+  const updateEvent = useMutation(api.events.update).withOptimisticUpdate(optimistic.updateEventOptimistic);
+  const removeEvent = useMutation(api.events.remove).withOptimisticUpdate(optimistic.removeEventOptimistic);
   const router = useRouter();
 
   const [name, setName] = useState(event.name);
@@ -2662,7 +2639,6 @@ function EventDetailsForm({
     event.signInMessage ?? ""
   );
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
-  const [saving, setSaving] = useState(false);
   const dirty =
     name.trim() !== event.name ||
     slugify(slug) !== event.slug ||
@@ -2678,9 +2654,9 @@ function EventDetailsForm({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
+    setSlug(slugify(slug));
     try {
-      const { slug: savedSlug } = await updateEvent({
+      await updateEvent({
         id: event._id,
         name,
         slug,
@@ -2694,7 +2670,6 @@ function EventDetailsForm({
         signInMessage,
         contactEmail,
       });
-      setSlug(savedSlug);
       toast.success("Event saved");
     } catch (err) {
       toast.error(
@@ -2703,14 +2678,13 @@ function EventDetailsForm({
           err instanceof Error ? err.message : "Failed to save"
         )
       );
-    } finally {
-      setSaving(false);
     }
   }
 
   async function handleDelete() {
-    await removeEvent({ id: event._id });
-    toast.success(`Event "${event.name}" deleted`);
+    void removeEvent({ id: event._id })
+      .then(() => toast.success(`Event "${event.name}" deleted`))
+      .catch((err) => toast.error(mutationError(err, "Failed to delete event")));
     router.push("/admin");
   }
 
@@ -2807,19 +2781,11 @@ function EventDetailsForm({
             <div className="flex items-center gap-3">
               <Button
                 type="submit"
-                disabled={saving || !dirty}
-                aria-busy={saving}
+                disabled={!dirty}
               >
-                {saving ? (
-                  <>
-                    <Spinner data-icon="inline-start" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save changes"
-                )}
+                Save changes
               </Button>
-              {dirty && !saving ? (
+              {dirty ? (
                 <span className="text-xs text-muted-foreground">
                   Unsaved changes
                 </span>
