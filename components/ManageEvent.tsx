@@ -2690,7 +2690,10 @@ function EventDetailsForm({
   async function handleDelete() {
     void removeEvent({ id: event._id })
       .then(() => toast.success(`Event "${event.name}" deleted`))
-      .catch((err) => toast.error(mutationError(err, "Failed to delete event")));
+      .catch((err) => {
+        toast.error(mutationError(err, "Failed to delete event"));
+        router.push(`/admin/events/${event._id}`);
+      });
     router.push("/admin");
   }
 
