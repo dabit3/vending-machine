@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LegalPage, { LegalSection } from "@/components/LegalPage";
-import { APP_URL, getAppName } from "@/lib/app-name";
+import { APP_URL, DEFAULT_EVENT_SUPPORT_EMAIL, getAppName } from "@/lib/app-name";
 
-const UPDATED = "September 23, 2026";
+const UPDATED = "November 16, 2026";
 
 export const metadata: Metadata = {
   title: `Privacy Policy · ${getAppName()}`,
@@ -101,13 +101,9 @@ export default function PrivacyPage() {
 
       <LegalSection title="9. Contact">
         <p>
-          Privacy questions can be raised on the project&apos;s{" "}
-          <a
-            href="https://github.com/dabit3/vending-machine"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub repository
+          Privacy questions? Email{" "}
+          <a href={`mailto:${DEFAULT_EVENT_SUPPORT_EMAIL}`}>
+            {DEFAULT_EVENT_SUPPORT_EMAIL}
           </a>
           .
         </p>

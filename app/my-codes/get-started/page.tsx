@@ -11,7 +11,7 @@ import {
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import CopyCommand from "@/components/CopyCommand";
-import { getAppName } from "@/lib/app-name";
+import { DEFAULT_EVENT_SUPPORT_EMAIL, getAppName } from "@/lib/app-name";
 
 export const metadata: Metadata = {
   title: `Get started with Devin · ${getAppName()}`,
@@ -239,8 +239,11 @@ export default function GetStartedPage() {
               </ul>
               <p className="mt-6 text-sm text-muted-foreground">
                 Questions about your account? Email{" "}
-                <a href="mailto:support@cognition.ai" className={linkClass}>
-                  support@cognition.ai
+                <a
+                  href={`mailto:${DEFAULT_EVENT_SUPPORT_EMAIL}`}
+                  className={linkClass}
+                >
+                  {DEFAULT_EVENT_SUPPORT_EMAIL}
                 </a>
                 .
               </p>
