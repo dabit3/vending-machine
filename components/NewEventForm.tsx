@@ -19,6 +19,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
+import { DEFAULT_EVENT_SUPPORT_EMAIL } from "@/lib/app-name";
 import { parseOrganizerEmails } from "@/lib/organizer-emails";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
@@ -137,7 +138,7 @@ export default function NewEventForm({
   const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(false);
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
+  const [contactEmail, setContactEmail] = useState(DEFAULT_EVENT_SUPPORT_EMAIL);
   const [organizers, setOrganizers] = useState<string[]>([]);
   const [organizerDraft, setOrganizerDraft] = useState("");
   const [organizerError, setOrganizerError] = useState<string | null>(null);
