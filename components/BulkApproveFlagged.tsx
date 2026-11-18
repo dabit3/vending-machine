@@ -40,7 +40,7 @@ export default function BulkApproveFlagged({
     setOpen(false);
     try {
       // Snapshot this page: newly revealed entries still need admin review.
-      const { approved, failed } = await bulkApproveFlagged(
+      const { approved, failed, skipped } = await bulkApproveFlagged(
         entries.map((entry) => entry._id),
         onApprove,
       );
@@ -48,12 +48,15 @@ export default function BulkApproveFlagged({
         toast.error(
           `${failed} flagged ${failed === 1 ? "entry" : "entries"} could not be approved`,
           {
-            description: `${approved} approved. Failed entries remain for review. Blacklisted entries cannot be approved.`,
+            description: `${approved} approved. ${skipped > 0 ? `${skipped} already resolved and skipped. ` : ""}Failed entries remain for review. Blacklisted entries cannot be approved.`,
           },
         );
       } else {
         toast.success(
           `Approved ${approved} flagged ${approved === 1 ? "entry" : "entries"}`,
+          skipped > 0
+            ? { description: `${skipped} already resolved and skipped.` }
+            : undefined,
         );
       }
     } finally {

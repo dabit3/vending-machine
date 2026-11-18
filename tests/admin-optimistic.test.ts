@@ -11,6 +11,8 @@ import {
   renameTypeOptimistic,
   releaseCodeOptimistic,
   addBlacklistOptimistic,
+  approveFlaggedOptimistic,
+  rejectFlaggedOptimistic,
   isOptimisticId,
 } from "../lib/admin-optimistic";
 
@@ -110,4 +112,30 @@ test("blacklist adds normalize identities, avoid duplicates, and ignore invalid 
   addBlacklistOptimistic(store, { email: "a@example.com" });
   addBlacklistOptimistic(store, { email: "invalid" });
   expect(store.getQuery(api.blacklist.list, {})).toMatchObject([{ email: "a@example.com" }]);
+});
+
+test("pending flagged approvals and rejection compose without duplicates or cross-event changes", () => {
+  const store = fakeStore();
+  const entries = ["a", "b", "c"].map((name) => ({
+    _id: `flag-${name}` as Id<"flaggedEmails">, email: `${name}@example.com`,
+    matchedEvents: [], otherMatchCount: 0, claimCount: 0,
+  }));
+  const other = { ...entries[0], _id: "other-flag" as Id<"flaggedEmails"> };
+  store.setQuery(api.emails.listFlagged, { eventId }, { entries, hasMore: true });
+  store.setQuery(api.emails.listFlagged, { eventId: otherEventId }, { entries: [other], hasMore: false });
+  store.setQuery(api.emails.list, { eventId }, [{ ...email, email: entries[2].email }]);
+  store.setQuery(api.emails.list, { eventId: otherEventId }, []);
+  store.setQuery(api.codes.list, { eventId }, [{ ...code, reservedFor: entries[2].email }]);
+  approveFlaggedOptimistic(store, { id: entries[0]._id });
+  approveFlaggedOptimistic(store, { id: entries[0]._id });
+  approveFlaggedOptimistic(store, { id: entries[1]._id });
+  rejectFlaggedOptimistic(store, { id: entries[2]._id });
+  expect(store.getQuery(api.emails.listFlagged, { eventId })).toEqual({ entries: [], hasMore: true });
+  expect(store.getQuery(api.emails.list, { eventId })?.map((row) => row.email))
+    .toEqual([entries[0].email, entries[1].email]);
+  expect(store.getQuery(api.codes.list, { eventId })?.[0].reservedFor).toBeUndefined();
+  expect(store.getQuery(api.emails.listFlagged, { eventId: otherEventId }))
+    .toEqual({ entries: [other], hasMore: false });
+  expect(store.getQuery(api.emails.list, { eventId: otherEventId })).toEqual([]);
+  expect(entries).toHaveLength(3);
 });
