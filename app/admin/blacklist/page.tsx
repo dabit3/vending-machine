@@ -6,6 +6,7 @@ import { Ban, ChevronDown, Search, ShieldAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { addBlacklistOptimistic, isOptimisticId, removeBlacklistOptimistic } from "@/lib/admin-optimistic";
 import { Id } from "@/convex/_generated/dataModel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/input-group";
 import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import AttendeeMatchBadges from "@/components/AttendeeMatchBadges";
 import { cn } from "@/lib/utils";
 import {
@@ -36,16 +36,11 @@ export default function BlacklistPage() {
     api.blacklist.list,
     access?.isGlobalAdmin ? {} : "skip",
   );
-  const addEmail = useMutation(api.blacklist.add);
-  const removeEmail = useMutation(api.blacklist.remove);
+  const addEmail = useMutation(api.blacklist.add).withOptimisticUpdate(addBlacklistOptimistic);
+  const removeEmail = useMutation(api.blacklist.remove).withOptimisticUpdate(removeBlacklistOptimistic);
 
   const [email, setEmail] = useState("");
   const [search, setSearch] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [addingEmail, setAddingEmail] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<Id<"blacklistedEmails"> | null>(
-    null,
-  );
   const [expanded, setExpanded] = useState<Set<Id<"blacklistedEmails">>>(
     () => new Set(),
   );
@@ -98,19 +93,18 @@ export default function BlacklistPage() {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
-    if (await blacklist(email)) setEmail("");
-    setSubmitting(false);
+    const address = email;
+    setEmail("");
+    if (!(await blacklist(address))) {
+      setEmail((current) => current === "" ? address : current);
+    }
   }
 
   async function handleQuickAdd(address: string) {
-    setAddingEmail(address);
     await blacklist(address);
-    setAddingEmail(null);
   }
 
   async function handleRemove(id: Id<"blacklistedEmails">) {
-    setRemovingId(id);
     try {
       await removeEmail({ id });
       toast.success("Removed from blacklist");
@@ -118,8 +112,6 @@ export default function BlacklistPage() {
       toast.error(
         err instanceof Error ? err.message : "Failed to remove from blacklist",
       );
-    } finally {
-      setRemovingId(null);
     }
   }
 
@@ -194,11 +186,10 @@ export default function BlacklistPage() {
                   size="icon-sm"
                   aria-label={`Remove ${entry.email} from blacklist`}
                   onClick={() => handleRemove(entry._id)}
-                  disabled={removingId === entry._id}
-                  aria-busy={removingId === entry._id}
+                  disabled={isOptimisticId(entry._id)}
                   className="shrink-0 text-muted-foreground"
                 >
-                  {removingId === entry._id ? <Spinner /> : <X />}
+                  <X />
                 </Button>
               </span>
             </div>
@@ -247,11 +238,9 @@ export default function BlacklistPage() {
                 type="submit"
                 variant="default"
                 size="xs"
-                disabled={submitting}
-                aria-busy={submitting}
               >
                 <Ban data-icon="inline-start" />
-                {submitting ? "Adding..." : "Blacklist"}
+                Blacklist
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
@@ -330,15 +319,9 @@ export default function BlacklistPage() {
                             variant="ghost"
                             size="xs"
                             onClick={() => handleQuickAdd(attendee.email)}
-                            disabled={addingEmail === attendee.email}
-                            aria-busy={addingEmail === attendee.email}
                             className="shrink-0 text-muted-foreground"
                           >
-                            {addingEmail === attendee.email ? (
-                              <Spinner />
-                            ) : (
-                              <Ban data-icon="inline-start" />
-                            )}
+                            <Ban data-icon="inline-start" />
                             Blacklist
                           </Button>
                         )}

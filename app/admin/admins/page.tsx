@@ -5,10 +5,11 @@ import { ShieldAlert, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { addAdminOptimistic, isOptimisticId, removeAdminOptimistic } from "@/lib/admin-optimistic";
+import { AdminDialogAction as AlertDialogAction } from "@/components/AdminDialogAction";
 import { Id } from "@/convex/_generated/dataModel";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -28,7 +29,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
 import {
   bulkAddSummary,
@@ -40,13 +40,12 @@ import { MAX_BULK_ADMINS } from "@/lib/organizer-emails";
 export default function AdminsPage() {
   const access = useQuery(api.admins.accessLevel);
   const admins = useQuery(api.admins.list, access?.isGlobalAdmin ? {} : "skip");
-  const addAdmin = useMutation(api.admins.add);
+  const addAdmin = useMutation(api.admins.add).withOptimisticUpdate(addAdminOptimistic);
   const addAdmins = useMutation(api.admins.addMany);
-  const removeAdmin = useMutation(api.admins.remove);
+  const removeAdmin = useMutation(api.admins.remove).withOptimisticUpdate(removeAdminOptimistic);
 
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [removingId, setRemovingId] = useState<Id<"admins"> | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +62,9 @@ export default function AdminsPage() {
       toast.error(`Add at most ${MAX_BULK_ADMINS} admins at a time`);
       return;
     }
-    setSubmitting(true);
+    const submittedEmail = email;
+    setSubmitting(several);
+    setEmail("");
     try {
       if (several) {
         toast.success(bulkAddSummary(await addAdmins({ emails: found }), "admins"));
@@ -71,8 +72,8 @@ export default function AdminsPage() {
         await addAdmin({ email: found[0] });
         toast.success(`${found[0]} is now an admin`);
       }
-      setEmail("");
     } catch (err) {
+      setEmail((current) => current === "" ? submittedEmail : current);
       toast.error(err instanceof Error ? err.message : "Failed to add admin");
     } finally {
       setSubmitting(false);
@@ -80,14 +81,11 @@ export default function AdminsPage() {
   }
 
   async function handleRemove(id: Id<"admins">) {
-    setRemovingId(id);
     try {
       await removeAdmin({ id });
       toast.success("Admin removed");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to remove admin");
-    } finally {
-      setRemovingId(null);
     }
   }
 
@@ -195,13 +193,12 @@ export default function AdminsPage() {
                         variant="ghost"
                         size="icon-sm"
                         aria-label={`Remove ${admin.email}`}
-                        disabled={removingId === admin._id}
-                        aria-busy={removingId === admin._id}
+                        disabled={isOptimisticId(admin._id)}
                         className="shrink-0 text-muted-foreground"
                       />
                     }
                   >
-                    {removingId === admin._id ? <Spinner /> : <X />}
+                    <X />
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
@@ -215,6 +212,7 @@ export default function AdminsPage() {
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         variant="destructive"
+                        disabled={isOptimisticId(admin._id)}
                         onClick={() => handleRemove(admin._id)}
                       >
                         Remove me
@@ -228,11 +226,10 @@ export default function AdminsPage() {
                   size="icon-sm"
                   aria-label={`Remove ${admin.email}`}
                   onClick={() => handleRemove(admin._id)}
-                  disabled={removingId === admin._id}
-                  aria-busy={removingId === admin._id}
+                  disabled={isOptimisticId(admin._id)}
                   className="shrink-0 text-muted-foreground"
                 >
-                  {removingId === admin._id ? <Spinner /> : <X />}
+                  <X />
                 </Button>
               )}
             </li>
