@@ -9,6 +9,7 @@ export async function bulkApproveFlagged(
   const uniqueIds = [...new Set(ids)];
   let approved = 0;
   let failed = 0;
+  let skipped = 0;
   for (let i = 0; i < uniqueIds.length; i += APPROVAL_CONCURRENCY) {
     const results = await Promise.allSettled(
       uniqueIds
@@ -16,9 +17,10 @@ export async function bulkApproveFlagged(
         .map(async (id) => approve({ id })),
     );
     for (const result of results) {
-      if (result.status === "fulfilled") approved++;
-      else failed++;
+      if (result.status === "rejected") failed++;
+      else if (result.value === false) skipped++;
+      else approved++;
     }
   }
-  return { approved, failed };
+  return { approved, failed, skipped };
 }

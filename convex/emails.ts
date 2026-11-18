@@ -307,12 +307,12 @@ export const approveFlagged = mutation({
   args: { id: v.id("flaggedEmails") },
   handler: async (ctx, args) => {
     const flagged = await ctx.db.get(args.id);
-    if (!flagged) return;
+    if (!flagged) return false;
     const actorEmail = await requireEventAdmin(ctx, flagged.eventId);
     const event = await ctx.db.get(flagged.eventId);
     if (!event) {
       await ctx.db.delete(args.id);
-      return;
+      return false;
     }
     if (await isBlacklisted(ctx, flagged.email)) {
       throw new Error(`${flagged.email} is blacklisted and cannot be added`);
@@ -337,6 +337,7 @@ export const approveFlagged = mutation({
       subjectEmail: flagged.email,
       details: `Duplicate across ${flagged.matchedEventIds.length} other event(s)`,
     });
+    return true;
   },
 });
 
