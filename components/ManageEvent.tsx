@@ -59,6 +59,7 @@ import { DynamicEventWarning } from "@/components/DynamicEventWarning";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { fileToItems, type ImportKind } from "@/lib/spreadsheet";
 import BulkAdminAdd from "@/components/BulkAdminAdd";
+import BulkApproveFlagged from "@/components/BulkApproveFlagged";
 import {
   bulkAddSummary,
   extractAdminEmails,
@@ -840,12 +841,19 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             </CardTitle>
             <CardDescription>
               These uploaded {labels.plural} already signed up for previous events.
-              Approve each one individually to add it to the eligible list, or
-              reject it to discard it.
+              Approve them individually or in bulk to add them to the eligible
+              list, or reject an entry to discard it.
               {flagged.hasMore
                 ? " Showing the first batch; more will appear as these are resolved."
                 : ""}
             </CardDescription>
+            <CardAction>
+              <BulkApproveFlagged
+                entries={flagged.entries}
+                hasMore={flagged.hasMore}
+                onApprove={approveFlagged}
+              />
+            </CardAction>
           </CardHeader>
           <CardContent>
             <ul className="max-h-96 divide-y divide-border overflow-y-auto border-y border-border">
