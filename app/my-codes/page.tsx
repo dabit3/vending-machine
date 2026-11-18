@@ -140,6 +140,7 @@ export default function MyCodesPage() {
                   mode="modal"
                   forceRedirectUrl="/my-codes"
                   signUpForceRedirectUrl="/my-codes"
+                  withSignUp
                 >
                   <Button variant="brand" size="lg" className="w-full">
                     <LogIn data-icon="inline-start" />
