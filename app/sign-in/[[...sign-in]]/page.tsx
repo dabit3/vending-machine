@@ -7,6 +7,8 @@ import SiteFooter from "@/components/SiteFooter";
 // Clerk's own hops between sign-in and sign-up). Passing it as the forced
 // redirect means the walk-up page, or any admin link, comes back after
 // signing in instead of the app-wide after-sign-in destination.
+// `withSignUp` turns an unknown email into account creation instead of an
+// "account not found" error.
 export default async function SignInPage({
   searchParams,
 }: {
@@ -34,6 +36,7 @@ export default async function SignInPage({
           <SignIn
             forceRedirectUrl={returnTo}
             signUpForceRedirectUrl={returnTo}
+            withSignUp
           />
         </div>
       </main>

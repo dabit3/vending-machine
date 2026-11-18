@@ -480,6 +480,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       mode="modal"
                       forceRedirectUrl={returnUrl}
                       signUpForceRedirectUrl={returnUrl}
+                      withSignUp
                     >
                       <Button variant="brand" size="lg" className="w-full">
                         <LogIn data-icon="inline-start" />

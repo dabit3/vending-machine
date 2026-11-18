@@ -35,6 +35,7 @@ export default function HeaderAuth({
         mode="modal"
         forceRedirectUrl={pathname}
         signUpForceRedirectUrl={pathname}
+        withSignUp
       >
         <Button
           variant="ghost"

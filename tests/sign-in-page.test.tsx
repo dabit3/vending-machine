@@ -27,6 +27,7 @@ test("/sign-in forces the redirect back to the protected admin page", async () =
     JSON.stringify({
       forceRedirectUrl: "/admin/events/abc/walkup",
       signUpForceRedirectUrl: "/admin/events/abc/walkup",
+      withSignUp: true,
     }).replace(/"/g, "&quot;"),
   );
 });
@@ -35,7 +36,17 @@ test("/sign-in without redirect_url leaves Clerk's default redirect alone", asyn
   const html = renderToStaticMarkup(
     await SignInPage({ searchParams: Promise.resolve({}) }),
   );
-  expect(html).toContain("data-props=\"{}\"");
+  expect(html).toContain(
+    `data-props="${JSON.stringify({ withSignUp: true }).replace(/"/g, "&quot;")}"`,
+  );
+});
+
+// An unknown email at sign-in should start account creation, not error out.
+test("/sign-in offers account creation for unknown users", async () => {
+  const html = renderToStaticMarkup(
+    await SignInPage({ searchParams: Promise.resolve({}) }),
+  );
+  expect(html).toContain("&quot;withSignUp&quot;:true");
 });
 
 test("safeReturnPath keeps only same-site paths", () => {
