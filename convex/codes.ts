@@ -245,10 +245,16 @@ export const renameType = mutation({
     const archivedCodeTypes = event?.archivedCodeTypes?.map((t) =>
       t === (from ?? "") && targets.length > 0 ? to : t
     );
+    // The event-level archive's restore list tracks the same keys, so a
+    // renamed block is still reopened when the event is unarchived.
+    const eventArchivedCodeTypes = event?.eventArchivedCodeTypes?.map((t) =>
+      t === (from ?? "") && targets.length > 0 ? to : t
+    );
     await ctx.db.patch(args.eventId, {
       codeTypes,
       codeTypeValues: values,
       archivedCodeTypes,
+      eventArchivedCodeTypes,
     });
     return { renamed: targets.length };
   },
@@ -294,6 +300,9 @@ export const removeType = mutation({
       codeTypes: (event.codeTypes ?? []).filter((t) => t !== typeKey),
       codeTypeValues: values,
       archivedCodeTypes: event.archivedCodeTypes?.filter((t) => t !== typeKey),
+      eventArchivedCodeTypes: event.eventArchivedCodeTypes?.filter(
+        (t) => t !== typeKey
+      ),
     });
     await logAudit(ctx, {
       eventId: args.eventId,
