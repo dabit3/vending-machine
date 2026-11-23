@@ -57,6 +57,7 @@ interface ManagedEventItem {
   identity?: "email" | "x";
   createdBy?: string;
   favorite?: boolean;
+  archived?: boolean;
 }
 
 function AdminEventRow({
@@ -88,6 +89,9 @@ function AdminEventRow({
             {event.dynamic ? <Badge variant="outline">Dynamic</Badge> : null}
             {event.identity === "x" ? (
               <Badge variant="outline">X handles</Badge>
+            ) : null}
+            {event.archived ? (
+              <Badge variant="secondary">Archived</Badge>
             ) : null}
           </div>
           {match ? (
@@ -139,8 +143,12 @@ export default function AdminDashboard() {
   // order soonest-first, with undated ones following in their arrival
   // (newest created) order; past events list the most recently ended first.
   // YYYY-MM-DD compares correctly as a plain string.
+  // Archived events leave the date groups entirely and list under their own
+  // section at the bottom of the page.
+  const archived = filtered?.filter((e) => e.archived) ?? [];
+  const unarchived = filtered?.filter((e) => !e.archived);
   const active =
-    filtered?.filter(
+    unarchived?.filter(
       (e) => !e.eventDate || daysSinceEventEnded(e.eventDate, e.eventEndDate) <= 0
     ) ??
     [];
@@ -159,10 +167,10 @@ export default function AdminDashboard() {
   const byDateDesc = (a: ManagedEventItem, b: ManagedEventItem) =>
     lastDay(b).localeCompare(lastDay(a));
   const past = (
-    filtered?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
+    unarchived?.filter((e) => daysAgo(e) > 0 && daysAgo(e) < RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
   const older = (
-    filtered?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
+    unarchived?.filter((e) => daysAgo(e) >= RECENT_PAST_DAYS) ?? []
   ).sort(byDateDesc);
   // Starred events are pinned above the date groups, in the same order, and
   // stay listed in their group.
@@ -313,7 +321,7 @@ export default function AdminDashboard() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : nameFilter && current.length + past.length + older.length === 0 ? (
+      ) : nameFilter && current.length + past.length + older.length + archived.length === 0 ? (
         searchQuery ? null : (
           <p className="text-sm text-muted-foreground" aria-live="polite">
             No events match &ldquo;{searchInput.trim()}&rdquo;.
@@ -443,6 +451,23 @@ export default function AdminDashboard() {
                 </Button>
               </div>
             )
+          ) : null}
+          {archived.length > 0 ? (
+            <>
+              <div className="mt-12 flex items-baseline justify-between">
+                <h2 className="text-sm font-medium text-muted-foreground">
+                  Archived events
+                </h2>
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {String(archived.length).padStart(2, "0")}
+                </span>
+              </div>
+              <ul className="mt-4 border-t border-border">
+                {archived.map((event) => (
+                  <AdminEventRow key={event._id} event={event} past />
+                ))}
+              </ul>
+            </>
           ) : null}
         </>
       )}

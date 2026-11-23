@@ -41,6 +41,7 @@ function dispensesAll(event: Doc<"events">) {
 // The open blocks of an event (undefined = the unnamed pool), in the order
 // the blocks were created. Legacy events without a stored list have one pool.
 function openBlocks(event: Doc<"events">): (string | undefined)[] {
+  if (event.archivedAt !== undefined) return [];
   return (event.codeTypes ?? [""])
     .filter((t) => !isArchivedType(event, t))
     .map((t) => t || undefined);
@@ -83,6 +84,7 @@ async function reservedFor(
     .filter(notExpired)
     .filter((q) => q.eq(q.field("claimedBy"), undefined))
     .collect();
+  if (event.archivedAt !== undefined) return [];
   return rows.filter((c) => !isArchivedType(event, c.codeType));
 }
 
@@ -124,6 +126,7 @@ export async function nextAvailable(
   event: Doc<"events">,
   requestedType: string | undefined
 ): Promise<Doc<"codes"> | null> {
+  if (event.archivedAt !== undefined) return null;
   if (requestedType !== undefined && isArchivedType(event, requestedType)) {
     return null;
   }

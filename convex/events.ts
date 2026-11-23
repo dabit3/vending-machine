@@ -7,14 +7,18 @@ import {
   parseOrganizerEmails,
 } from "../lib/organizer-emails";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
-import { addCodesToEvent } from "./codes";
+import { addCodesToEvent, startStripeSync } from "./codes";
 import { logAudit } from "./auditLog";
 import { truncateStripeBatchName } from "../lib/stripe-name";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
 import { generationFields } from "./stripeValidation";
 import { notExpired } from "./codeExpiry";
 import { codeTerms } from "./codeTerms";
-import { blockKey, isArchivedType } from "./blockValues";
+import {
+  activeCodeTypes,
+  blockKey,
+  isArchivedType,
+} from "./blockValues";
 import type { CodeTerms } from "../lib/block-value";
 import { isBlacklisted } from "./blacklist";
 import { favoriteEventIds } from "./favorites";
@@ -151,9 +155,12 @@ export const getBySlug = query({
     // have a single unnamed pool.
     const viewer = await resolveViewer(ctx, event);
     const viewerKey = viewer.ok ? viewer.key : undefined;
-    const candidateTypes = (event.codeTypes ?? [""]).filter(
-      (t) => !isArchivedType(event, t)
-    );
+    // An archived event never offers codes, even if a block was reopened on
+    // it without restoring the event.
+    const candidateTypes =
+      event.archivedAt !== undefined
+        ? []
+        : (event.codeTypes ?? [""]).filter((t) => !isArchivedType(event, t));
     const availableTypes = new Set<string>();
     // Terms of the code each block would dispense next, for the type picker.
     const codeTypeTerms: Record<string, CodeTerms> = {};
@@ -173,7 +180,7 @@ export const getBySlug = query({
       const terms = hit ? await codeTerms(ctx, hit) : undefined;
       if (terms) codeTypeTerms[blockKey(typeKey)] = terms;
     }
-    if (viewerKey) {
+    if (viewerKey && event.archivedAt === undefined) {
       const reserved = await ctx.db
         .query("codes")
         .withIndex("by_event_reservedFor", (q) =>
@@ -259,6 +266,7 @@ export const get = query({
       signInMessage: event.signInMessage,
       contactEmail: event.contactEmail,
       createdBy: event.createdBy,
+      archivedAt: event.archivedAt,
     };
   },
 });
@@ -297,6 +305,7 @@ export const listManaged = query({
       dynamic: event.dynamic,
       identity: eventIdentity(event),
       createdBy: event.createdBy,
+      archived: event.archivedAt !== undefined,
     }));
   },
 });
@@ -824,6 +833,84 @@ function resolveContactEmail(raw: string | undefined): string | undefined {
     throw new ConvexError("Enter a valid contact email address.");
   return email;
 }
+
+// Archives or unarchives a whole event. Archiving also archives every code
+// block on it (recorded in eventArchivedCodeTypes so unarchiving restores
+// exactly those and leaves individually archived blocks alone), holding
+// back all unclaimed codes until the event is unarchived. System admins only.
+export const setArchived = mutation({
+  args: { id: v.id("events"), archived: v.boolean() },
+  handler: async (ctx, args) => {
+    const { email: actorEmail } = await adminEmailStatus(ctx);
+    await requireAdmin(ctx);
+    const event = await ctx.db.get(args.id);
+    if (!event) throw new Error("Event not found");
+    if ((event.archivedAt !== undefined) === args.archived) {
+      return { codeTypesChanged: 0, stripeCodes: 0 };
+    }
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.id))
+      .collect();
+    const forType = (typeKey: string) =>
+      codes.filter((c) => (c.codeType ?? "") === typeKey);
+    let stripeCodes = 0;
+    if (args.archived) {
+      const current = event.archivedCodeTypes ?? [];
+      const allTypes = activeCodeTypes(event, codes);
+      const added = allTypes.filter((t) => !current.includes(t));
+      await ctx.db.patch(args.id, {
+        archivedAt: Date.now(),
+        archivedCodeTypes: [...new Set([...current, ...allTypes])],
+        eventArchivedCodeTypes: added,
+      });
+      for (const typeKey of added) {
+        stripeCodes += await startStripeSync(
+          ctx,
+          (await ctx.db.get(args.id)) ?? event,
+          typeKey || undefined,
+          forType(typeKey),
+          false
+        );
+      }
+      await logAudit(ctx, {
+        eventId: args.id,
+        action: "event_archived",
+        actorEmail: actorEmail ?? undefined,
+        details: `Archived event: ${added.length} block(s) archived`,
+      });
+      return { codeTypesChanged: added.length, stripeCodes };
+    }
+    const restored = event.eventArchivedCodeTypes ?? [];
+    await ctx.db.patch(args.id, {
+      archivedAt: undefined,
+      archivedCodeTypes: [
+        ...new Set(
+          (event.archivedCodeTypes ?? []).filter(
+            (t) => !restored.includes(t)
+          )
+        ),
+      ],
+      eventArchivedCodeTypes: undefined,
+    });
+    for (const typeKey of restored) {
+      stripeCodes += await startStripeSync(
+        ctx,
+        (await ctx.db.get(args.id)) ?? event,
+        typeKey || undefined,
+        forType(typeKey),
+        true
+      );
+    }
+    await logAudit(ctx, {
+      eventId: args.id,
+      action: "event_unarchived",
+      actorEmail: actorEmail ?? undefined,
+      details: `Unarchived event: ${restored.length} block(s) restored`,
+    });
+    return { codeTypesChanged: restored.length, stripeCodes };
+  },
+});
 
 export const remove = mutation({
   args: { id: v.id("events") },

@@ -103,6 +103,14 @@ export default defineSchema({
     // Code blocks (by type key, "" = unnamed) that no longer dispense codes,
     // e.g. after the event ended. Their codes stay for records and receipts.
     archivedCodeTypes: v.optional(v.array(v.string())),
+    // When set, the event itself is archived: it leaves the admin dashboard's
+    // active/past groups for the Archived section. Archiving an event
+    // archives every code block on it.
+    archivedAt: v.optional(v.number()),
+    // The block keys the event-level archive added to archivedCodeTypes, so
+    // unarchiving the event restores exactly those and leaves blocks an
+    // admin archived individually alone.
+    eventArchivedCodeTypes: v.optional(v.array(v.string())),
     // Progress of mirroring a block's archive state onto its Stripe
     // promotion codes, keyed by blockKey.
     stripeArchiveSync: v.optional(

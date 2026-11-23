@@ -153,7 +153,15 @@ export async function addCodesToEvent(
   // when each block was first created, not alphabetically.
   if (added > 0) {
     if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
-    await ctx.db.patch(eventId, { codeTypes: ordered });
+    // A block created under a name the event archive retired is a different
+    // block; drop the restore entry so unarchiving the event can't reopen it.
+    const restoreTypes = event.eventArchivedCodeTypes?.includes(codeType ?? "")
+      ? event.eventArchivedCodeTypes!.filter((t) => t !== (codeType ?? ""))
+      : undefined;
+    await ctx.db.patch(eventId, {
+      codeTypes: ordered,
+      ...(restoreTypes ? { eventArchivedCodeTypes: restoreTypes } : {}),
+    });
     const value = input.value?.trim();
     if (value) {
       await ctx.db.patch(eventId, {
@@ -242,13 +250,42 @@ export const renameType = mutation({
       values[toKey] = values[fromKey];
     }
     if (fromKey !== toKey) delete values[fromKey];
-    const archivedCodeTypes = event?.archivedCodeTypes?.map((t) =>
-      t === (from ?? "") && targets.length > 0 ? to : t
+    const archivedCodeTypes = event?.archivedCodeTypes
+      ? [
+          ...new Set(
+            event.archivedCodeTypes.map((t) =>
+              t === (from ?? "") && targets.length > 0 ? to : t
+            )
+          ),
+        ]
+      : undefined;
+    // The event-level archive's restore list tracks the same keys, so a
+    // renamed block is still reopened when the event is unarchived. Merging
+    // into an individually archived block keeps the original key instead:
+    // unarchiving the event must not reopen a block an admin closed.
+    const individuallyArchived = (event?.archivedCodeTypes ?? []).filter(
+      (t) => !(event?.eventArchivedCodeTypes ?? []).includes(t)
+    );
+    // Reusing a retired restore name for a different block retires the
+    // restore entry, so unarchiving the event can't reopen that block.
+    let restoreTypes = event?.eventArchivedCodeTypes;
+    if (
+      restoreTypes?.includes(to) &&
+      (from ?? "") !== to &&
+      !(event?.codeTypes ?? []).includes(to)
+    ) {
+      restoreTypes = restoreTypes.filter((t) => t !== to);
+    }
+    const eventArchivedCodeTypes = restoreTypes?.map((t) =>
+      t === (from ?? "") && targets.length > 0 && !individuallyArchived.includes(to)
+        ? to
+        : t
     );
     await ctx.db.patch(args.eventId, {
       codeTypes,
       codeTypeValues: values,
       archivedCodeTypes,
+      eventArchivedCodeTypes,
     });
     return { renamed: targets.length };
   },
@@ -294,6 +331,9 @@ export const removeType = mutation({
       codeTypes: (event.codeTypes ?? []).filter((t) => t !== typeKey),
       codeTypeValues: values,
       archivedCodeTypes: event.archivedCodeTypes?.filter((t) => t !== typeKey),
+      eventArchivedCodeTypes: event.eventArchivedCodeTypes?.filter(
+        (t) => t !== typeKey
+      ),
     });
     await logAudit(ctx, {
       eventId: args.eventId,
@@ -364,7 +404,7 @@ function stripeLinkedCodes(codes: Doc<"codes">[]) {
 // Mirrors the block's archive state onto its Stripe promotion codes
 // (active = !archived) through a background worker. Returns how many codes
 // the worker will update. Pasted codes have no Stripe record and are skipped.
-async function startStripeSync(
+export async function startStripeSync(
   ctx: MutationCtx,
   event: Doc<"events">,
   codeType: string | undefined,

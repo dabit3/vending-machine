@@ -119,6 +119,10 @@ async function resolveDestination(
     return {
       error: "Event not found. The codes remain saved in Code studio.",
     } as const;
+  if (event.archivedAt !== undefined)
+    return {
+      error: "This event is archived. Unarchive it before adding codes.",
+    } as const;
   const codeType = requestedType?.trim() ?? batch.name;
   if (codeType.length > 80)
     return { error: "Block names must be 80 characters or fewer." } as const;

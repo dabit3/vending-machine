@@ -375,3 +375,241 @@ test("a second block can be created while the only block is archived", async () 
   expect(updated.codeTypes).toEqual(["Day one", "Day two"]);
   expect(updated.archivedCodeTypes).toEqual(["Day one"]);
 });
+
+test("archiving an event archives every code block with it", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A", "B"],
+    codeType: "Day one",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["C"],
+    codeType: "Day two",
+  });
+  const res = await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  expect(res.codeTypesChanged).toBe(2);
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toEqual(expect.any(Number));
+  expect(updated.archivedCodeTypes).toEqual(["Day one", "Day two"]);
+  const managed = await admin.query(api.events.listManaged);
+  expect(managed.find((e) => e._id === event.id)?.archived).toBe(true);
+});
+
+test("unarchiving an event restores only the blocks it archived", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Day one",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["B"],
+    codeType: "Day two",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Day one",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toBeUndefined();
+  expect(updated.archivedCodeTypes).toEqual(["Day one"]);
+});
+
+test("an event with no codes archives and unarchives cleanly", async () => {
+  const { admin, event } = await setup();
+  const res = await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  expect(res.codeTypesChanged).toBe(0);
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toBeUndefined();
+  expect(updated.archivedCodeTypes).toEqual([]);
+});
+
+test("event admins cannot archive an event", async () => {
+  const { t, event } = await setup();
+  const organizer = t.withIdentity({
+    subject: "org",
+    email: "org@example.com",
+    emailVerified: true,
+  });
+  await expect(
+    organizer.mutation(api.events.setArchived, {
+      id: event.id,
+      archived: true,
+    })
+  ).rejects.toThrow();
+});
+
+test("an archived event dispenses nothing even with a reopened block", async () => {
+  const { t, admin, event } = await setup();
+  const attendee = {
+    subject: "attendee",
+    email: "attendee@example.com",
+    emailVerified: true,
+  };
+  await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: [attendee.email],
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Credits",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Credits",
+    archived: false,
+  });
+  const res = await t
+    .withIdentity(attendee)
+    .mutation(api.claims.claim, { slug: event.slug, name: "Test Attendee" });
+  expect(res).toMatchObject({ ok: false });
+});
+
+test("a renamed archived block is still restored on event unarchive", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Old name",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Old name",
+    to: "New name",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual([]);
+});
+
+test("renaming an event-archived block into an individually archived one keeps it closed", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["S1"],
+    codeType: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["T1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Solo",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Shared",
+    to: "Solo",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual(["Solo"]);
+});
+
+test("a new block reusing a retired restore name stays archived", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["S1"],
+    codeType: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["T1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Solo",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Shared",
+    to: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["N1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Shared",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual(["Solo", "Shared"]);
+});
+
+test("an archived event advertises no codes even with a reopened block", async () => {
+  const { t, admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Credits",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Credits",
+    archived: false,
+  });
+  const view = await t.query(api.events.getBySlug, { slug: event.slug });
+  expect(view).toMatchObject({ soldOut: true, codeTypes: [] });
+});
