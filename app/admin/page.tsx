@@ -321,7 +321,7 @@ export default function AdminDashboard() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : nameFilter && current.length + past.length + older.length === 0 ? (
+      ) : nameFilter && current.length + past.length + older.length + archived.length === 0 ? (
         searchQuery ? null : (
           <p className="text-sm text-muted-foreground" aria-live="polite">
             No events match &ldquo;{searchInput.trim()}&rdquo;.
