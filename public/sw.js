@@ -42,14 +42,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (request.mode !== "navigate") return;
-  // Dynamic event pages stream a usable claim screen before slow metadata or
-  // other page tails finish. Preserve that behavior; only the static wallet
-  // entrypoints need a whole-document deadline for cold-start code access.
-  if (!WALLET_ENTRYPOINTS.includes(url.pathname)) {
-    event.respondWith(fetch(request).catch(offlineFallback));
-    return;
-  }
-
   // Event Wi-Fi may hang instead of rejecting. Do not leave the installed
   // app waiting indefinitely for a network navigation that cannot finish.
   const controller = new AbortController();
@@ -61,12 +53,14 @@ self.addEventListener("fetch", (event) => {
     }, 5000);
   });
   const navigation = fetch(request, { signal: controller.signal }).then(async (response) => {
-    if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
+    if (WALLET_ENTRYPOINTS.includes(url.pathname) && response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
       // fetch resolves at headers, not at the end of the HTML download. Keep
       // the deadline active until the document is complete. Returning the
       // original response preserves redirect URL and response metadata.
       await response.clone().arrayBuffer();
     }
+    // Dynamic event/admin pages may stream a usable screen before slow
+    // metadata finishes. Their deadline covers headers only, not page tails.
     return response;
   });
   event.respondWith(Promise.race([navigation, timeout]).catch(offlineFallback).finally(() => clearTimeout(timer)));

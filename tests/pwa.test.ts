@@ -83,12 +83,12 @@ describe("the privacy-preserving offline worker", () => {
     expect(cache.add).not.toHaveBeenCalled();
   });
 
-  test("a stalled Wi-Fi navigation falls back after five seconds", async () => {
+  test.each(["/my-codes", "/conference"])("a stalled Wi-Fi navigation to %s falls back after five seconds", async (path) => {
     vi.useFakeTimers();
     try {
       const { navigate, fetch, offline } = worker();
       fetch.mockImplementation(() => new Promise(() => {}));
-      const response = navigate().mock.calls[0][0];
+      const response = navigate({ url: `https://trydevin.ai${path}` }).mock.calls[0][0];
       await vi.advanceTimersByTimeAsync(5000);
       expect(await response).toBe(offline);
     } finally { vi.useRealTimers(); }
