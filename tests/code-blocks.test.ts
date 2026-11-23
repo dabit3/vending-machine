@@ -549,3 +549,67 @@ test("renaming an event-archived block into an individually archived one keeps i
   const updated = (await admin.query(api.events.get, { id: event.id }))!;
   expect(updated.archivedCodeTypes).toEqual(["Solo"]);
 });
+
+test("a new block reusing a retired restore name stays archived", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["S1"],
+    codeType: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["T1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Solo",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Shared",
+    to: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["N1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Shared",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual(["Solo", "Shared"]);
+});
+
+test("an archived event advertises no codes even with a reopened block", async () => {
+  const { t, admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Credits",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Credits",
+    archived: false,
+  });
+  const view = await t.query(api.events.getBySlug, { slug: event.slug });
+  expect(view).toMatchObject({ soldOut: true, codeTypes: [] });
+});

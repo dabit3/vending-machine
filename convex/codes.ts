@@ -153,7 +153,15 @@ export async function addCodesToEvent(
   // when each block was first created, not alphabetically.
   if (added > 0) {
     if (!ordered.includes(codeType ?? "")) ordered.push(codeType ?? "");
-    await ctx.db.patch(eventId, { codeTypes: ordered });
+    // A block created under a name the event archive retired is a different
+    // block; drop the restore entry so unarchiving the event can't reopen it.
+    const restoreTypes = event.eventArchivedCodeTypes?.includes(codeType ?? "")
+      ? event.eventArchivedCodeTypes!.filter((t) => t !== (codeType ?? ""))
+      : undefined;
+    await ctx.db.patch(eventId, {
+      codeTypes: ordered,
+      ...(restoreTypes ? { eventArchivedCodeTypes: restoreTypes } : {}),
+    });
     const value = input.value?.trim();
     if (value) {
       await ctx.db.patch(eventId, {
@@ -258,7 +266,17 @@ export const renameType = mutation({
     const individuallyArchived = (event?.archivedCodeTypes ?? []).filter(
       (t) => !(event?.eventArchivedCodeTypes ?? []).includes(t)
     );
-    const eventArchivedCodeTypes = event?.eventArchivedCodeTypes?.map((t) =>
+    // Reusing a retired restore name for a different block retires the
+    // restore entry, so unarchiving the event can't reopen that block.
+    let restoreTypes = event?.eventArchivedCodeTypes;
+    if (
+      restoreTypes?.includes(to) &&
+      (from ?? "") !== to &&
+      !(event?.codeTypes ?? []).includes(to)
+    ) {
+      restoreTypes = restoreTypes.filter((t) => t !== to);
+    }
+    const eventArchivedCodeTypes = restoreTypes?.map((t) =>
       t === (from ?? "") && targets.length > 0 && !individuallyArchived.includes(to)
         ? to
         : t
