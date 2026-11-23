@@ -22,7 +22,7 @@ function worker() {
     clients: { claim: vi.fn().mockResolvedValue(undefined) },
   };
   runInNewContext(workerSource, {
-    self, caches, fetch, URL, Response, setTimeout, clearTimeout,
+    self, caches, fetch, URL, Response, setTimeout, clearTimeout, AbortController,
     Request: class { constructor(public url: string, public options: unknown) {} },
   });
   const request = { url: "https://trydevin.ai/my-codes", method: "GET", mode: "navigate" };
@@ -92,6 +92,31 @@ describe("the privacy-preserving offline worker", () => {
       await vi.advanceTimersByTimeAsync(5000);
       expect(await response).toBe(offline);
     } finally { vi.useRealTimers(); }
+  });
+
+  test("receiving headers does not disable the deadline for a stalled HTML body", async () => {
+    vi.useFakeTimers();
+    let stream!: ReadableStreamDefaultController<Uint8Array>;
+    try {
+      const { navigate, fetch, offline } = worker();
+      const body = new ReadableStream<Uint8Array>({ start(controller) {
+        stream = controller;
+        controller.enqueue(new TextEncoder().encode("<!doctype html><html>"));
+      } });
+      fetch.mockResolvedValue(new Response(body, { headers: { "Content-Type": "text/html" } }));
+      const response = navigate().mock.calls[0][0];
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(await response).toBe(offline);
+      expect(fetch.mock.calls[0][1].signal.aborted).toBe(true);
+    } finally { stream.close(); vi.useRealTimers(); }
+  });
+
+  test("complete HTML keeps the original response and its redirect metadata", async () => {
+    const { navigate, fetch } = worker();
+    const live = new Response("<html>Account</html>", { headers: { "Content-Type": "text/html" } });
+    fetch.mockResolvedValue(live);
+    expect(await navigate().mock.calls[0][0]).toBe(live);
+    expect(await live.text()).toContain("Account");
   });
 
   test.each(["/offline.html", "/offline-viewer.js", "/offline-store.js"])("can cold-load public viewer asset %s offline", async (path) => {

@@ -36,11 +36,24 @@ self.addEventListener("fetch", (event) => {
 
   // Event Wi-Fi may hang instead of rejecting. Do not leave the installed
   // app waiting indefinitely for a network navigation that cannot finish.
+  const controller = new AbortController();
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error("Navigation timed out")), 5000);
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error("Navigation timed out"));
+    }, 5000);
   });
-  event.respondWith(Promise.race([fetch(request), timeout]).catch(async () => {
+  const navigation = fetch(request, { signal: controller.signal }).then(async (response) => {
+    if (response.ok && response.headers.get("Content-Type")?.includes("text/html")) {
+      // fetch resolves at headers, not at the end of the HTML download. Keep
+      // the deadline active until the document is complete. Returning the
+      // original response preserves redirect URL and response metadata.
+      await response.clone().arrayBuffer();
+    }
+    return response;
+  });
+  event.respondWith(Promise.race([navigation, timeout]).catch(async () => {
     const cache = await caches.open(CACHE_NAME);
     return (await cache.match(OFFLINE_URL)) ?? new Response("You're offline. Reconnect and try again.", {
       status: 503,
