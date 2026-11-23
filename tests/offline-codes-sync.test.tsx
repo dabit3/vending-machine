@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { OfflineCodesSync } from "../components/OfflineCodes";
+import { OfflineCodesControls, OfflineCodesSync } from "../components/OfflineCodes";
 import { activateOwner, readWallet, saveWallet, setOfflineEnabled } from "../public/offline-store.js";
 
 type Effect = () => void | (() => void);
@@ -120,4 +120,13 @@ test("unverified or no-longer-authorized live results clear saved codes", async 
   state.query.mockResolvedValue(null);
   mount(); await flush();
   expect(readWallet(storage)).toBeNull();
+});
+
+test("a server-rendered offline link remains usable while Clerk or hydration is stalled", () => {
+  state.auth.isLoaded = false;
+  state.auth.isSignedIn = false;
+  const html = renderToStaticMarkup(<OfflineCodesControls />);
+  expect(html).toContain('href="/offline.html"');
+  expect(html).toContain("Open offline copies");
+  expect(html).not.toContain("Remove offline copies");
 });

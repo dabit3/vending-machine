@@ -100,14 +100,14 @@ export function OfflineCodesControls() {
     update();
     return subscribe(update);
   }, [userId]);
-  if (!isLoaded || !isSignedIn) return null;
   return (
     <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-      <p>{saved ? "Claimed codes saved on this device for up to 7 days. Anyone using this browser can read them." : enabled ? "Offline copies are available after a successful sync." : "Offline saving is off for this browser."}</p>
-      {saved && <Button variant="link" className="h-auto p-0" nativeButton={false} render={<a href="/offline.html" />}>Open offline copies</Button>}
-      <Button variant="link" className="h-auto p-0" onClick={() => {
+      {isLoaded && isSignedIn && <p>{saved ? "Claimed codes saved on this device for up to 7 days. Anyone using this browser can read them." : enabled ? "Offline copies are available after a successful sync." : "Offline saving is off for this browser."}</p>}
+      {/* A plain server-rendered link still works if Clerk or hydration stalls. */}
+      <Button variant="link" className="h-auto p-0" nativeButton={false} render={<a href="/offline.html" />}>Open offline copies</Button>
+      {isLoaded && isSignedIn && <Button variant="link" className="h-auto p-0" onClick={() => {
         try { setOfflineEnabled(localStorage, !enabled); notify(); } catch { /* Storage unavailable. */ }
-      }}>{enabled ? "Remove offline copies" : "Save codes on this device"}</Button>
+      }}>{enabled ? "Remove offline copies" : "Save codes on this device"}</Button>}
     </div>
   );
 }
