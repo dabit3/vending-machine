@@ -34,14 +34,11 @@ export function activeCodeTypes(
 }
 
 // Whether a block has been archived by a system admin, so none of its codes
-// are dispensed (not even reserved ones) until it is unarchived. While the
-// event itself is archived every block reads as archived, so an archived
-// event dispenses nothing even if a block is reopened on it.
+// are dispensed (not even reserved ones) until it is unarchived.
 export function isArchivedType(
-  event: { archivedCodeTypes?: string[]; archivedAt?: number },
+  event: { archivedCodeTypes?: string[] },
   codeType: string | undefined
 ): boolean {
-  if (event.archivedAt !== undefined) return true;
   return event.archivedCodeTypes?.includes(codeType ?? "") ?? false;
 }
 

@@ -84,6 +84,7 @@ async function reservedFor(
     .filter(notExpired)
     .filter((q) => q.eq(q.field("claimedBy"), undefined))
     .collect();
+  if (event.archivedAt !== undefined) return [];
   return rows.filter((c) => !isArchivedType(event, c.codeType));
 }
 
