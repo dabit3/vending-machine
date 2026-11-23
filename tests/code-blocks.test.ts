@@ -375,3 +375,88 @@ test("a second block can be created while the only block is archived", async () 
   expect(updated.codeTypes).toEqual(["Day one", "Day two"]);
   expect(updated.archivedCodeTypes).toEqual(["Day one"]);
 });
+
+test("archiving an event archives every code block with it", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A", "B"],
+    codeType: "Day one",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["C"],
+    codeType: "Day two",
+  });
+  const res = await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  expect(res.codeTypesChanged).toBe(2);
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toEqual(expect.any(Number));
+  expect(updated.archivedCodeTypes).toEqual(["Day one", "Day two"]);
+  const managed = await admin.query(api.events.listManaged);
+  expect(managed.find((e) => e._id === event.id)?.archived).toBe(true);
+});
+
+test("unarchiving an event restores only the blocks it archived", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Day one",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["B"],
+    codeType: "Day two",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Day one",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toBeUndefined();
+  expect(updated.archivedCodeTypes).toEqual(["Day one"]);
+});
+
+test("an event with no codes archives and unarchives cleanly", async () => {
+  const { admin, event } = await setup();
+  const res = await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  expect(res.codeTypesChanged).toBe(0);
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedAt).toBeUndefined();
+  expect(updated.archivedCodeTypes).toEqual([]);
+});
+
+test("event admins cannot archive an event", async () => {
+  const { t, event } = await setup();
+  const organizer = t.withIdentity({
+    subject: "org",
+    email: "org@example.com",
+    emailVerified: true,
+  });
+  await expect(
+    organizer.mutation(api.events.setArchived, {
+      id: event.id,
+      archived: true,
+    })
+  ).rejects.toThrow();
+});

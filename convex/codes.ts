@@ -364,7 +364,7 @@ function stripeLinkedCodes(codes: Doc<"codes">[]) {
 // Mirrors the block's archive state onto its Stripe promotion codes
 // (active = !archived) through a background worker. Returns how many codes
 // the worker will update. Pasted codes have no Stripe record and are skipped.
-async function startStripeSync(
+export async function startStripeSync(
   ctx: MutationCtx,
   event: Doc<"events">,
   codeType: string | undefined,

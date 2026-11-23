@@ -687,6 +687,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
             <EventTitle key={event._id} id={event._id} name={event.name} />
+            {event.archivedAt !== undefined ? (
+              <p className="mt-1">
+                <Badge variant="secondary">Archived</Badge>
+              </p>
+            ) : null}
             {event.createdBy ? (
               <p className="mt-1 truncate text-xs text-muted-foreground">
                 Created by {event.createdBy}
@@ -2627,6 +2632,7 @@ function EventDetailsForm({
 }) {
   const updateEvent = useMutation(api.events.update).withOptimisticUpdate(optimistic.updateEventOptimistic);
   const removeEvent = useMutation(api.events.remove).withOptimisticUpdate(optimistic.removeEventOptimistic);
+  const setEventArchived = useMutation(api.events.setArchived);
   const router = useRouter();
 
   const [name, setName] = useState(event.name);
@@ -2692,6 +2698,25 @@ function EventDetailsForm({
         mutationError(
           err,
           err instanceof Error ? err.message : "Failed to save"
+        )
+      );
+    }
+  }
+
+  async function handleArchiveToggle() {
+    const archived = event.archivedAt === undefined;
+    try {
+      await setEventArchived({ id: event._id, archived });
+      toast.success(
+        archived
+          ? `Event "${event.name}" archived`
+          : `Event "${event.name}" unarchived`
+      );
+    } catch (err) {
+      toast.error(
+        mutationError(
+          err,
+          `Failed to ${archived ? "" : "un"}archive event`
         )
       );
     }
@@ -2810,6 +2835,45 @@ function EventDetailsForm({
                 </span>
               ) : null}
             </div>
+            {canDelete ? (
+              <AlertDialog>
+                <AlertDialogTrigger render={<Button variant="outline" />}>
+                  {event.archivedAt !== undefined ? (
+                    <>
+                      <ArchiveRestore data-icon="inline-start" />
+                      Unarchive event
+                    </>
+                  ) : (
+                    <>
+                      <Archive data-icon="inline-start" />
+                      Archive event
+                    </>
+                  )}
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {event.archivedAt !== undefined
+                        ? `Unarchive “${event.name}”?`
+                        : `Archive “${event.name}”?`}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {event.archivedAt !== undefined
+                        ? "The event returns to the active lists and every code block it had archived reopens, so unclaimed codes can be dispensed again."
+                        : "The event moves to the Archived section and every code block on it is archived, so no more codes can be claimed. Claimed codes and Stripe batches stay on record."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleArchiveToggle}>
+                      {event.archivedAt !== undefined
+                        ? "Unarchive event"
+                        : "Archive event"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
             {canDelete ? (
               <AlertDialog>
                 <AlertDialogTrigger render={<Button variant="destructive" />}>
