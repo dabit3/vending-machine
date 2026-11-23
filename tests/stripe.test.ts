@@ -1250,3 +1250,36 @@ describe("batch assignment", () => {
     );
   });
 });
+
+describe("archived events", () => {
+  test("reject attaching a completed batch until unarchived", async () => {
+    const { t, admin } = await setup();
+    const event = await admin.mutation(api.events.create, { name: "Event" });
+    const batchId = await admin.mutation(api.stripeBatches.create, input);
+    await drain(t);
+    await admin.mutation(api.events.setArchived, {
+      id: event.id,
+      archived: true,
+    });
+    await expect(
+      admin.mutation(api.stripeBatches.attach, {
+        batchId,
+        eventId: event.id,
+      }),
+    ).rejects.toThrow("archived");
+    expect(
+      await admin.query(api.codes.list, { eventId: event.id }),
+    ).toHaveLength(0);
+    await admin.mutation(api.events.setArchived, {
+      id: event.id,
+      archived: false,
+    });
+    await admin.mutation(api.stripeBatches.attach, {
+      batchId,
+      eventId: event.id,
+    });
+    expect(
+      await admin.query(api.codes.list, { eventId: event.id }),
+    ).toHaveLength(7);
+  });
+});
