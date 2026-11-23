@@ -4,6 +4,15 @@
 const CACHE_NAME = "trydevin-offline-v2";
 const OFFLINE_URL = "/offline.html";
 const PUBLIC_ASSETS = [OFFLINE_URL, "/offline-viewer.js", "/offline-store.js"];
+const WALLET_ENTRYPOINTS = ["/", "/my-codes", "/my-codes/"];
+
+async function offlineFallback() {
+  const cache = await caches.open(CACHE_NAME);
+  return (await cache.match(OFFLINE_URL)) ?? new Response("You're offline. Reconnect and try again.", {
+    status: 503,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,6 +42,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   if (request.mode !== "navigate") return;
+  // Dynamic event pages stream a usable claim screen before slow metadata or
+  // other page tails finish. Preserve that behavior; only the static wallet
+  // entrypoints need a whole-document deadline for cold-start code access.
+  if (!WALLET_ENTRYPOINTS.includes(url.pathname)) {
+    event.respondWith(fetch(request).catch(offlineFallback));
+    return;
+  }
 
   // Event Wi-Fi may hang instead of rejecting. Do not leave the installed
   // app waiting indefinitely for a network navigation that cannot finish.
@@ -53,11 +69,5 @@ self.addEventListener("fetch", (event) => {
     }
     return response;
   });
-  event.respondWith(Promise.race([navigation, timeout]).catch(async () => {
-    const cache = await caches.open(CACHE_NAME);
-    return (await cache.match(OFFLINE_URL)) ?? new Response("You're offline. Reconnect and try again.", {
-      status: 503,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }).finally(() => clearTimeout(timer)));
+  event.respondWith(Promise.race([navigation, timeout]).catch(offlineFallback).finally(() => clearTimeout(timer)));
 });

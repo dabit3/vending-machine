@@ -119,6 +119,24 @@ describe("the privacy-preserving offline worker", () => {
     expect(await live.text()).toContain("Account");
   });
 
+  test("dynamic event pages keep streaming even while a slow metadata tail stays open", async () => {
+    vi.useFakeTimers();
+    let stream!: ReadableStreamDefaultController<Uint8Array>;
+    try {
+      const { navigate, fetch } = worker();
+      const body = new ReadableStream<Uint8Array>({ start(controller) {
+        stream = controller;
+        controller.enqueue(new TextEncoder().encode("<html><main>Claim credits</main>"));
+      } });
+      const live = new Response(body, { headers: { "Content-Type": "text/html" } });
+      fetch.mockResolvedValue(live);
+      expect(await navigate({ url: "https://trydevin.ai/conference" }).mock.calls[0][0]).toBe(live);
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(live.bodyUsed).toBe(false);
+    } finally { stream.close(); vi.useRealTimers(); }
+  });
+
   test.each(["/offline.html", "/offline-viewer.js", "/offline-store.js"])("can cold-load public viewer asset %s offline", async (path) => {
     const { navigate, cache, fetch, offline } = worker();
     expect(await navigate({ url: `https://trydevin.ai${path}`, mode: "cors" }).mock.calls[0][0]).toBe(offline);
