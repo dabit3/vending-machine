@@ -46,6 +46,8 @@ function render() {
 }
 
 element("retry").addEventListener("click", () => {
+  // This dependency-free static document deliberately has no Next.js router.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   if (location.pathname === "/offline.html") location.assign("/my-codes");
   else location.reload();
 });

@@ -22,7 +22,7 @@ vi.mock("react", async (original) => ({
 vi.mock("@clerk/nextjs", () => ({ useAuth: () => state.auth, useClerk: () => ({ addListener: state.listener }) }));
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isAuthenticated: state.authenticated }),
-  useConnectionState: () => ({ isWebSocketConnected: state.connected }),
+  useConvexConnectionState: () => ({ isWebSocketConnected: state.connected }),
   useQuery: () => state.cached,
 }));
 vi.mock("convex/browser", () => ({ ConvexHttpClient: class { setAuth = state.setAuth; query = state.query; } }));

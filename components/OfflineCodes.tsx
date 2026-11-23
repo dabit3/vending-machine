@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useAuth, useClerk } from "@clerk/nextjs";
-import { useConnectionState, useConvexAuth, useQuery } from "convex/react";
+import { useConvexConnectionState, useConvexAuth, useQuery } from "convex/react";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import { codeValueSummary } from "@/lib/block-value";
@@ -32,7 +32,7 @@ export function OfflineCodesSync() {
   const { isLoaded, isSignedIn, userId, sessionId, sessionClaims, getToken } = useAuth();
   const clerk = useClerk();
   const { isAuthenticated } = useConvexAuth();
-  const { isWebSocketConnected } = useConnectionState();
+  const { isWebSocketConnected } = useConvexConnectionState();
   const enabled = useSyncExternalStore(subscribe, enabledSnapshot, () => false);
   const codes = useQuery(api.codes.mine, isLoaded && isSignedIn && isAuthenticated && enabled ? {} : "skip");
 
