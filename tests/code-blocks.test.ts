@@ -515,3 +515,37 @@ test("a renamed archived block is still restored on event unarchive", async () =
   const updated = (await admin.query(api.events.get, { id: event.id }))!;
   expect(updated.archivedCodeTypes).toEqual([]);
 });
+
+test("renaming an event-archived block into an individually archived one keeps it closed", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["S1"],
+    codeType: "Solo",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["T1"],
+    codeType: "Shared",
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Solo",
+    archived: true,
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Shared",
+    to: "Solo",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual(["Solo"]);
+});

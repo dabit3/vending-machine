@@ -881,9 +881,13 @@ export const setArchived = mutation({
     const restored = event.eventArchivedCodeTypes ?? [];
     await ctx.db.patch(args.id, {
       archivedAt: undefined,
-      archivedCodeTypes: (event.archivedCodeTypes ?? []).filter(
-        (t) => !restored.includes(t)
-      ),
+      archivedCodeTypes: [
+        ...new Set(
+          (event.archivedCodeTypes ?? []).filter(
+            (t) => !restored.includes(t)
+          )
+        ),
+      ],
       eventArchivedCodeTypes: undefined,
     });
     for (const typeKey of restored) {

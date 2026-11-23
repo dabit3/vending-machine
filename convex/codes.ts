@@ -242,13 +242,26 @@ export const renameType = mutation({
       values[toKey] = values[fromKey];
     }
     if (fromKey !== toKey) delete values[fromKey];
-    const archivedCodeTypes = event?.archivedCodeTypes?.map((t) =>
-      t === (from ?? "") && targets.length > 0 ? to : t
-    );
+    const archivedCodeTypes = event?.archivedCodeTypes
+      ? [
+          ...new Set(
+            event.archivedCodeTypes.map((t) =>
+              t === (from ?? "") && targets.length > 0 ? to : t
+            )
+          ),
+        ]
+      : undefined;
     // The event-level archive's restore list tracks the same keys, so a
-    // renamed block is still reopened when the event is unarchived.
+    // renamed block is still reopened when the event is unarchived. Merging
+    // into an individually archived block keeps the original key instead:
+    // unarchiving the event must not reopen a block an admin closed.
+    const individuallyArchived = (event?.archivedCodeTypes ?? []).filter(
+      (t) => !(event?.eventArchivedCodeTypes ?? []).includes(t)
+    );
     const eventArchivedCodeTypes = event?.eventArchivedCodeTypes?.map((t) =>
-      t === (from ?? "") && targets.length > 0 ? to : t
+      t === (from ?? "") && targets.length > 0 && !individuallyArchived.includes(to)
+        ? to
+        : t
     );
     await ctx.db.patch(args.eventId, {
       codeTypes,
