@@ -109,7 +109,10 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
 
   return (
     <InstallContext.Provider value={{
-      available: hydrated && !standalone && !installed && "serviceWorker" in navigator,
+      // Chromium suppresses beforeinstallprompt for already-installed apps.
+      // Don't offer manual instructions there just because a tab was reloaded.
+      available: hydrated && !standalone && !installed && "serviceWorker" in navigator &&
+        (prompt !== null || !("onbeforeinstallprompt" in window)),
       open: () => setOpen(true),
     }}>
       {children}
