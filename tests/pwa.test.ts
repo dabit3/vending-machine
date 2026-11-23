@@ -22,7 +22,7 @@ function worker() {
     clients: { claim: vi.fn().mockResolvedValue(undefined) },
   };
   runInNewContext(workerSource, {
-    self, caches, fetch, URL, Response,
+    self, caches, fetch, URL, Response, setTimeout, clearTimeout,
     Request: class { constructor(public url: string, public options: unknown) {} },
   });
   const request = { url: "https://trydevin.ai/my-codes", method: "GET", mode: "navigate" };
@@ -47,12 +47,14 @@ test("the app installs at a stable identity with standalone navigation and real 
 });
 
 describe("the privacy-preserving offline worker", () => {
-  test("installs only the static public fallback", async () => {
+  test("installs only the static public viewer and its dependency-free scripts", async () => {
     const { handlers, cache, self } = worker();
     const waitUntil = vi.fn();
     handlers.install({ waitUntil });
     await waitUntil.mock.calls[0][0];
-    expect(cache.add).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ url: "/offline.html" }));
+    expect(cache.add.mock.calls.map(([request]) => request.url)).toEqual([
+      "/offline.html", "/offline-viewer.js", "/offline-store.js",
+    ]);
     expect(self.skipWaiting).toHaveBeenCalledOnce();
   });
 
@@ -61,7 +63,7 @@ describe("the privacy-preserving offline worker", () => {
     const waitUntil = vi.fn();
     handlers.activate({ waitUntil });
     await waitUntil.mock.calls[0][0];
-    expect(caches.delete).toHaveBeenCalledExactlyOnceWith("trydevin-offline-v0");
+    expect(caches.delete.mock.calls.map(([name]) => name)).toEqual(["trydevin-offline-v0", "trydevin-offline-v1"]);
     expect(self.clients.claim).toHaveBeenCalledOnce();
   });
 
@@ -79,6 +81,24 @@ describe("the privacy-preserving offline worker", () => {
     expect(await navigate().mock.calls[0][0]).toBe(offline);
     expect(cache.match).toHaveBeenCalledExactlyOnceWith("/offline.html");
     expect(cache.add).not.toHaveBeenCalled();
+  });
+
+  test("a stalled Wi-Fi navigation falls back after five seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      const { navigate, fetch, offline } = worker();
+      fetch.mockImplementation(() => new Promise(() => {}));
+      const response = navigate().mock.calls[0][0];
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(await response).toBe(offline);
+    } finally { vi.useRealTimers(); }
+  });
+
+  test.each(["/offline.html", "/offline-viewer.js", "/offline-store.js"])("can cold-load public viewer asset %s offline", async (path) => {
+    const { navigate, cache, fetch, offline } = worker();
+    expect(await navigate({ url: `https://trydevin.ai${path}`, mode: "cors" }).mock.calls[0][0]).toBe(offline);
+    expect(cache.match).toHaveBeenCalledWith(path);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   test("still explains a failed connection if the offline cache was evicted", async () => {

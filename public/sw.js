@@ -1,12 +1,14 @@
-// Only the public offline document is stored. Never cache authenticated HTML,
-// RSC payloads, API responses, or claimed codes on a shared device.
-const CACHE_NAME = "trydevin-offline-v1";
+// Cache only this public viewer and its scripts, never authenticated HTML,
+// RSC, API, auth, or Convex traffic. Claimed snapshots live in separate,
+// owner-scoped localStorage and are cleared by the app on auth changes.
+const CACHE_NAME = "trydevin-offline-v2";
 const OFFLINE_URL = "/offline.html";
+const PUBLIC_ASSETS = [OFFLINE_URL, "/offline-viewer.js", "/offline-store.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.add(new Request(OFFLINE_URL, { cache: "reload" })))
+      .then((cache) => Promise.all(PUBLIC_ASSETS.map((url) => cache.add(new Request(url, { cache: "reload" })))))
       .then(() => self.skipWaiting()),
   );
 });
@@ -23,14 +25,26 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET" || request.mode !== "navigate" ||
-      new URL(request.url).origin !== self.location.origin) return;
+  const url = new URL(request.url);
+  if (request.method !== "GET" || url.origin !== self.location.origin) return;
+  if (PUBLIC_ASSETS.includes(url.pathname)) {
+    event.respondWith(caches.open(CACHE_NAME).then(async (cache) =>
+      (await cache.match(url.pathname)) ?? fetch(request)));
+    return;
+  }
+  if (request.mode !== "navigate") return;
 
-  event.respondWith(fetch(request).catch(async () => {
+  // Event Wi-Fi may hang instead of rejecting. Do not leave the installed
+  // app waiting indefinitely for a network navigation that cannot finish.
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Navigation timed out")), 5000);
+  });
+  event.respondWith(Promise.race([fetch(request), timeout]).catch(async () => {
     const cache = await caches.open(CACHE_NAME);
     return (await cache.match(OFFLINE_URL)) ?? new Response("You're offline. Reconnect and try again.", {
       status: 503,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
     });
-  }));
+  }).finally(() => clearTimeout(timer)));
 });

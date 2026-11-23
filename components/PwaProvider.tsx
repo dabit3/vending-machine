@@ -121,7 +121,9 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
           <Alert role="status">
             <WifiOff aria-hidden />
             <AlertTitle>You&apos;re offline</AlertTitle>
-            <AlertDescription>Reconnect to load or claim credits.</AlertDescription>
+            <AlertDescription>
+              <a href="/offline.html">View saved codes</a>, or reconnect to claim credits.
+            </AlertDescription>
           </Alert>
         </div>
       )}
@@ -131,7 +133,8 @@ export default function PwaProvider({ children }: { children: React.ReactNode })
             <DialogTitle>Install {getAppName()}</DialogTitle>
             <DialogDescription>
               Open {getAppName()} from your home screen, with more room and no browser tabs.
-              You&apos;ll still need an internet connection to view or claim credits.
+              Claimed codes can be saved on this device for offline viewing.
+              You&apos;ll still need an internet connection to claim or redeem credits.
             </DialogDescription>
           </DialogHeader>
           {prompt ? (
