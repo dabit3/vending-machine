@@ -460,3 +460,58 @@ test("event admins cannot archive an event", async () => {
     })
   ).rejects.toThrow();
 });
+
+test("an archived event dispenses nothing even with a reopened block", async () => {
+  const { t, admin, event } = await setup();
+  const attendee = {
+    subject: "attendee",
+    email: "attendee@example.com",
+    emailVerified: true,
+  };
+  await admin.mutation(api.emails.add, {
+    eventId: event.id,
+    emails: [attendee.email],
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Credits",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.setTypeArchived, {
+    eventId: event.id,
+    codeType: "Credits",
+    archived: false,
+  });
+  const res = await t
+    .withIdentity(attendee)
+    .mutation(api.claims.claim, { slug: event.slug, name: "Test Attendee" });
+  expect(res).toMatchObject({ ok: false });
+});
+
+test("a renamed archived block is still restored on event unarchive", async () => {
+  const { admin, event } = await setup();
+  await admin.mutation(api.codes.add, {
+    eventId: event.id,
+    codes: ["A"],
+    codeType: "Old name",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: true,
+  });
+  await admin.mutation(api.codes.renameType, {
+    eventId: event.id,
+    from: "Old name",
+    to: "New name",
+  });
+  await admin.mutation(api.events.setArchived, {
+    id: event.id,
+    archived: false,
+  });
+  const updated = (await admin.query(api.events.get, { id: event.id }))!;
+  expect(updated.archivedCodeTypes).toEqual([]);
+});
