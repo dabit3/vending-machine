@@ -2,12 +2,14 @@
 
 import { useSyncExternalStore } from "react";
 import { UserButton } from "@clerk/nextjs";
-import { Moon, Sun } from "lucide-react";
+import { Download, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useAppInstall } from "@/components/PwaProvider";
 
 const subscribe = () => () => {};
 
 export default function ProfileMenu() {
+  const install = useAppInstall();
   const { resolvedTheme, forcedTheme, setTheme } = useTheme();
   const hydrated = useSyncExternalStore(
     subscribe,
@@ -24,6 +26,9 @@ export default function ProfileMenu() {
     <UserButton>
       <UserButton.MenuItems>
         <UserButton.Action label="manageAccount" />
+        {install.available && (
+          <UserButton.Action label="Install app" labelIcon={<Download aria-hidden />} onClick={install.open} />
+        )}
         {canSwitchTheme && (
           <UserButton.Action
             key={nextTheme}

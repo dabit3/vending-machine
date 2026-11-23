@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#121212" />
+    <title>You're offline · Try Devin</title>
+    <style>
+      :root { color-scheme: dark light; font-family: system-ui, sans-serif; background: #121212; color: #f2f2f2; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
+      main { max-width: 360px; }
+      .brand { font-size: 12px; letter-spacing: .15em; text-transform: uppercase; }
+      h1 { font-size: 32px; letter-spacing: -.04em; margin: 32px 0 12px; }
+      p { line-height: 1.6; color: #9b9b9b; }
+      button { margin-top: 16px; min-height: 44px; border: 0; border-radius: 10px; padding: 12px 20px; background: #f2f2f2; color: #121212; font: inherit; cursor: pointer; touch-action: manipulation; }
+      button:focus-visible { outline: 3px solid #467bf7; outline-offset: 4px; }
+      @media (prefers-color-scheme: light) { :root { background: #fafafa; color: #202020; } p { color: #5e5e5e; } button { background: #202020; color: #fafafa; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="brand">Try Devin</div>
+      <h1>You're offline.</h1>
+      <p>Connect to the internet to view or claim credits. Your codes are saved to your account, not on this device.</p>
+      <p>This page will reconnect when you're back online.</p>
+      <button type="button" onclick="window.location.reload()">Try again</button>
+    </main>
+    <script>window.addEventListener("online", function () { window.location.reload(); });</script>
+  </body>
+</html>
