@@ -116,6 +116,34 @@
 
 body {
   font-family: var(--font-sans), system-ui, sans-serif;
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Keep controls clear of notches and the home indicator in standalone mode. */
+.pwa-header {
+  padding-top: env(safe-area-inset-top);
+}
+
+.pwa-connection {
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* A stable viewport avoids a jump when mobile browser chrome expands. */
+@utility min-h-screen {
+  min-height: calc(100svh - env(safe-area-inset-bottom));
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+@media (pointer: coarse) {
+  /* Prevent iOS focus zoom without disabling accessible pinch-to-zoom. */
+  input, select, textarea {
+    font-size: max(1rem, 1em);
+  }
 }
 
 /* Neutral, not brand: selection is incidental, so it shouldn't compete with

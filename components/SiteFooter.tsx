@@ -1,4 +1,5 @@
 import DevinCredit from "@/components/DevinCredit";
+import { InstallAppButton } from "@/components/PwaProvider";
 import { getAppName } from "@/lib/app-name";
 import { PAGE_WIDTHS, type PageWidth } from "@/lib/page-width";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ export default function SiteFooter({
     <footer className="border-t border-border">
       <div
         className={cn(
-          "mx-auto flex min-h-14 items-center justify-between gap-4 px-4 py-3 sm:px-6",
+          "mx-auto flex min-h-14 flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6",
           PAGE_WIDTHS[width]
         )}
       >
@@ -35,7 +36,10 @@ export default function SiteFooter({
           <GitHubMark className="size-4 shrink-0" />
           <span className="truncate text-xs font-medium">{getAppName()}</span>
         </a>
-        <DevinCredit />
+        <div className="flex items-center gap-3">
+          <InstallAppButton />
+          <DevinCredit />
+        </div>
       </div>
     </footer>
   );

@@ -1,10 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { APP_URL, getAppName } from "@/lib/app-name";
+import PwaProvider from "@/components/PwaProvider";
 import "./globals.css";
 
 const ibmPlexMono = IBM_Plex_Mono({
@@ -19,6 +20,12 @@ export const metadata: Metadata = {
   applicationName: getAppName(),
   title: getAppName(),
   description: "Claim credits for hackathons, conferences, and meetups.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: getAppName(),
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     type: "website",
     siteName: getAppName(),
@@ -30,6 +37,13 @@ export const metadata: Metadata = {
     title: getAppName(),
     description: "Sign in to claim your credits.",
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#121212",
 };
 
 // Clerk appearance: brand color + minimal overrides; Clerk adapts to the
@@ -87,7 +101,9 @@ export default function RootLayout({
             >
               Skip to content
             </a>
-            <ConvexClientProvider>{children}</ConvexClientProvider>
+            <PwaProvider>
+              <ConvexClientProvider>{children}</ConvexClientProvider>
+            </PwaProvider>
             <Toaster />
           </ThemeProvider>
         </body>
