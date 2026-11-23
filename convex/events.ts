@@ -155,9 +155,12 @@ export const getBySlug = query({
     // have a single unnamed pool.
     const viewer = await resolveViewer(ctx, event);
     const viewerKey = viewer.ok ? viewer.key : undefined;
-    const candidateTypes = (event.codeTypes ?? [""]).filter(
-      (t) => !isArchivedType(event, t)
-    );
+    // An archived event never offers codes, even if a block was reopened on
+    // it without restoring the event.
+    const candidateTypes =
+      event.archivedAt !== undefined
+        ? []
+        : (event.codeTypes ?? [""]).filter((t) => !isArchivedType(event, t));
     const availableTypes = new Set<string>();
     // Terms of the code each block would dispense next, for the type picker.
     const codeTypeTerms: Record<string, CodeTerms> = {};
@@ -177,7 +180,7 @@ export const getBySlug = query({
       const terms = hit ? await codeTerms(ctx, hit) : undefined;
       if (terms) codeTypeTerms[blockKey(typeKey)] = terms;
     }
-    if (viewerKey) {
+    if (viewerKey && event.archivedAt === undefined) {
       const reserved = await ctx.db
         .query("codes")
         .withIndex("by_event_reservedFor", (q) =>
