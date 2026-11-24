@@ -41,6 +41,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { codeValueSummary } from "@/lib/block-value";
+import { OfflineCodesControls } from "@/components/OfflineCodes";
 
 interface EventInfo {
   _id: string;
@@ -125,6 +126,7 @@ export default function MyCodesPage() {
             </Button>
           </div>
 
+          <OfflineCodesControls />
           {!authReady ? (
             <CodesSkeleton />
           ) : !signedIn ? (

@@ -4,28 +4,46 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#121212" />
-    <title>You're offline · Try Devin</title>
+    <title>Saved codes · Try Devin</title>
     <style>
       :root { color-scheme: dark light; font-family: system-ui, sans-serif; background: #121212; color: #f2f2f2; }
       * { box-sizing: border-box; }
       body { margin: 0; min-height: 100svh; display: grid; place-items: center; padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left)); }
-      main { max-width: 360px; }
+      main { width: 100%; max-width: 720px; }
       .brand { font-size: 12px; letter-spacing: .15em; text-transform: uppercase; }
       h1 { font-size: 32px; letter-spacing: -.04em; margin: 32px 0 12px; }
       p { line-height: 1.6; color: #9b9b9b; }
       button { margin-top: 16px; min-height: 44px; border: 0; border-radius: 10px; padding: 12px 20px; background: #f2f2f2; color: #121212; font: inherit; cursor: pointer; touch-action: manipulation; }
       button:focus-visible { outline: 3px solid #467bf7; outline-offset: 4px; }
+      a { color: inherit; text-underline-offset: 3px; }
+      #codes { display: grid; gap: 16px; margin: 24px 0; }
+      article { border: 1px solid #555; border-radius: 12px; padding: 24px; min-width: 0; }
+      article h2 { margin: 0 0 8px; font-size: 18px; }
+      article p { margin: 6px 0; }
+      .code { display: block; font-size: 22px; margin: 24px 0 8px; overflow-wrap: anywhere; user-select: all; }
+      .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      .secondary { background: transparent; color: inherit; border: 1px solid #555; }
+      [hidden] { display: none !important; }
+      @media (min-width: 640px) { #codes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
       @media (prefers-color-scheme: light) { :root { background: #fafafa; color: #202020; } p { color: #5e5e5e; } button { background: #202020; color: #fafafa; } }
     </style>
   </head>
   <body>
     <main>
       <div class="brand">Try Devin</div>
-      <h1>You're offline.</h1>
-      <p>Connect to the internet to view or claim credits. Your codes are saved to your account, not on this device.</p>
-      <p>This page will reconnect when you're back online.</p>
-      <button type="button" onclick="window.location.reload()">Try again</button>
+      <h1 id="heading">You're offline.</h1>
+      <p id="description">Reconnect to claim credits. Already-claimed codes saved on this device will appear here.</p>
+      <p id="saved-at" hidden></p>
+      <div id="codes" aria-label="Saved claimed codes"></div>
+      <p id="privacy" hidden>These copies are readable by anyone using this browser. They are removed on sign-out or account change, and expire after 7 days without a successful sync. Expired codes are not shown.</p>
+      <p id="status" role="status" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" id="retry">Reconnect</button>
+        <button type="button" id="remove" class="secondary" hidden>Remove offline copies</button>
+        <a id="view-codes" href="/my-codes" hidden>View saved codes</a>
+      </div>
+      <noscript><p>Enable JavaScript to view locally saved codes, or reconnect to open your account.</p></noscript>
     </main>
-    <script>window.addEventListener("online", function () { window.location.reload(); });</script>
+    <script type="module" src="/offline-viewer.js"></script>
   </body>
 </html>
