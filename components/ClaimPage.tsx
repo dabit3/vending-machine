@@ -124,6 +124,7 @@ export default function ClaimPage(props: ClaimPageProps) {
 function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const event = useQuery(api.events.getBySlug, { slug });
   const claim = useMutation(api.claims.claim);
+  const markInstructionsRead = useMutation(api.claims.markInstructionsRead);
   const { authReady, signedIn, canQuery } = useViewerAuth();
   const eligibility = useQuery(
     api.claims.eligibility,
@@ -141,6 +142,8 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   // Dynamic events ask who is claiming; prefilled from the Clerk profile.
   const [claimantName, setClaimantName] = useState<string | null>(null);
   const [readOpen, setReadOpen] = useState(false);
+  const [chooseReadOpen, setChooseReadOpen] = useState(false);
+  const [confirmingRead, setConfirmingRead] = useState(false);
   const [previewRead, setPreviewRead] = useState(false);
   // Where Clerk sends the viewer after the sign-in / sign-up modal; keeps the
   // admin preview flag so an admin does not land in the live claim flow.
@@ -198,6 +201,9 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
 
   // Events with redemption instructions open them on an attendee's first
   // claim (stored per attendee); return visits claim without the dialog.
+  // When the attendee has to choose one of several code types, they read the
+  // instructions first so the steps can guide their choice before any code
+  // is dispensed.
   const mustReadInstructions =
     !!event?.claimInstructions &&
     eligibility?.eligible === true &&
@@ -210,6 +216,24 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const getsAll =
     event?.claimMode === "all" && (event?.codeTypes.length ?? 0) > 1;
   const mustChoose = !getsAll && (event?.codeTypes.length ?? 0) > 1;
+  const mustReadBeforeChoosing = mustChoose && mustReadInstructions;
+
+  async function handleConfirmRead() {
+    if (previewMode) {
+      setPreviewRead(true);
+      setChooseReadOpen(false);
+      return;
+    }
+    setConfirmingRead(true);
+    try {
+      await markInstructionsRead({ slug });
+      setChooseReadOpen(false);
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
+      setConfirmingRead(false);
+    }
+  }
   const valueFor = (type: string) => {
     const value = event?.codeTypeValues?.[blockKey(type)] ?? event?.creditAmount;
     return value
@@ -641,6 +665,98 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         eventName={event.name}
                         variant="outline"
                         className="self-start"
+                      />
+                    ) : null}
+                    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="min-w-0 truncate">
+                        Signed in as{" "}
+                        <span className="text-foreground">
+                          {signedInAs ?? "verified user"}
+                        </span>
+                      </span>
+                      <SignOutButton redirectUrl={returnUrl}>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="shrink-0 text-muted-foreground"
+                        >
+                          Switch
+                        </Button>
+                      </SignOutButton>
+                    </div>
+                  </div>
+                ) : mustReadBeforeChoosing ? (
+                  <div className="flex flex-col gap-5">
+                    {codeTypes.some((type) => valueFor(type)) ? (
+                      <ul className="flex flex-col gap-3">
+                        {codeTypes.map((type) => {
+                          const summary = valueFor(type);
+                          return summary ? (
+                            <li key={type}>
+                              <CodeValue label={type} summary={summary} />
+                            </li>
+                          ) : null;
+                        })}
+                      </ul>
+                    ) : null}
+                    <p className="text-base leading-relaxed text-muted-foreground">
+                      {event.dynamic ? "You're in." : "You're on the list."}{" "}
+                      Before choosing your code, take a moment to read how to
+                      redeem it.
+                    </p>
+                    <Dialog
+                      open={chooseReadOpen}
+                      onOpenChange={setChooseReadOpen}
+                    >
+                      <DialogTrigger
+                        render={
+                          <Button
+                            variant="brand"
+                            size="lg"
+                            className="w-full"
+                          />
+                        }
+                      >
+                        <BookOpen data-icon="inline-start" />
+                        Read how to redeem
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="font-heading tracking-tight">
+                            How to redeem your code
+                          </DialogTitle>
+                          <DialogDescription>
+                            Read these before choosing your code. You can copy
+                            them to keep for later.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <RedemptionInstructions
+                          value={event.claimInstructions ?? ""}
+                        />
+                        <Button
+                          variant="brand"
+                          size="lg"
+                          className="w-full"
+                          disabled={confirmingRead}
+                          aria-busy={confirmingRead}
+                          onClick={handleConfirmRead}
+                        >
+                          {confirmingRead ? (
+                            <Spinner data-icon="inline-start" />
+                          ) : (
+                            <Check data-icon="inline-start" />
+                          )}
+                          Got it, choose my code
+                        </Button>
+                      </DialogContent>
+                    </Dialog>
+                    {event.contactEmail ? (
+                      <GetInTouch
+                        email={event.contactEmail}
+                        eventName={event.name}
+                        variant="ghost"
+                        size="sm"
+                        className="self-center text-muted-foreground"
                       />
                     ) : null}
                     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
