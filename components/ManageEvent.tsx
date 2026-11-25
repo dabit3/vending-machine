@@ -2754,16 +2754,6 @@ export function PreviewClaimButton({
   );
 }
 
-function eventAccessMode(
-  event: Pick<Doc<"events">, "allowedDomains" | "dynamic">
-): ClaimAccessMode {
-  return hasAllowedDomains(event)
-    ? "domain"
-    : event.dynamic
-      ? "dynamic"
-      : "list";
-}
-
 function EventDetailsForm({
   event,
   canDelete,
@@ -2780,8 +2770,14 @@ function EventDetailsForm({
   const setEventArchived = useMutation(api.events.setArchived);
   const router = useRouter();
 
-  const [savedEvent, setSavedEvent] = useState(event);
   const [name, setName] = useState(event.name);
+  // A rename from the page heading reaches this form too, unless the Name
+  // field holds an edit of its own.
+  const [savedName, setSavedName] = useState(event.name);
+  if (event.name !== savedName) {
+    setSavedName(event.name);
+    if (name.trim() === savedName) setName(event.name);
+  }
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [adminNoteDraft, setAdminNoteDraft] = useState<string | null>(null);
@@ -2793,7 +2789,11 @@ function EventDetailsForm({
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
-  const initialAccessMode = eventAccessMode(event);
+  const initialAccessMode: ClaimAccessMode = hasAllowedDomains(event)
+    ? "domain"
+    : event.dynamic
+      ? "dynamic"
+      : "list";
   const [accessMode, setAccessMode] = useState<ClaimAccessMode>(initialAccessMode);
   const [allowedDomainsInput, setAllowedDomainsInput] = useState(
     (event.allowedDomains ?? []).join(", ")
@@ -2808,51 +2808,13 @@ function EventDetailsForm({
     event.signInMessage ?? ""
   );
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
-  const parsedDomains = parseAllowedDomains(allowedDomainsInput);
-
-  // Sync untouched fields when the event updates externally (e.g. page heading
-  // rename or an edit in another tab) so stale local state does not mark the
-  // form dirty or overwrite newer values on Save & preview.
-  if (event !== savedEvent) {
-    const prevAccessMode = eventAccessMode(savedEvent);
-    const prevSavedDomains = savedEvent.allowedDomains ?? [];
-    const domainsUntouched =
-      parsedDomains.invalid.length === 0 &&
-      parsedDomains.domains.length === prevSavedDomains.length &&
-      parsedDomains.domains.every((d, i) => d === prevSavedDomains[i]);
-
-    setSavedEvent(event);
-    if (name.trim() === savedEvent.name) setName(event.name);
-    if (slugify(slug) === savedEvent.slug) setSlug(event.slug);
-    if (description.trim() === (savedEvent.description ?? "")) {
-      setDescription(event.description ?? "");
-    }
-    if (eventDate === (savedEvent.eventDate ?? "")) {
-      setEventDate(event.eventDate ?? "");
-    }
-    if (eventEndDate === (savedEvent.eventEndDate ?? "")) {
-      setEventEndDate(event.eventEndDate ?? "");
-    }
-    if (claimInstructions.trim() === (savedEvent.claimInstructions ?? "")) {
-      setClaimInstructions(event.claimInstructions ?? "");
-    }
-    if (accessMode === prevAccessMode) setAccessMode(initialAccessMode);
-    if (domainsUntouched) {
-      setAllowedDomainsInput((event.allowedDomains ?? []).join(", "));
-    }
-    if (walkUpSkipsReview === (savedEvent.walkUpSkipsReview ?? false)) {
-      setWalkUpSkipsReview(event.walkUpSkipsReview ?? false);
-    }
-    if (identity === (savedEvent.identity ?? "email")) {
-      setIdentity(event.identity ?? "email");
-    }
-    if (signInMessage.trim() === (savedEvent.signInMessage ?? "")) {
-      setSignInMessage(event.signInMessage ?? "");
-    }
-    if (contactEmail.trim().toLowerCase() === (savedEvent.contactEmail ?? "")) {
-      setContactEmail(event.contactEmail ?? "");
-    }
+  const [hasLocalEdits, setHasLocalEdits] = useState(false);
+  const editVersionRef = useRef(0);
+  function markEdited() {
+    editVersionRef.current += 1;
+    setHasLocalEdits(true);
   }
+  const parsedDomains = parseAllowedDomains(allowedDomainsInput);
   const savedDomains = event.allowedDomains ?? [];
   const domainsDirty =
     accessMode === "domain" &&
@@ -2879,8 +2841,8 @@ function EventDetailsForm({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
+    onDirtyChange?.(hasLocalEdits && dirty);
+  }, [hasLocalEdits, dirty, onDirtyChange]);
 
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
@@ -2927,6 +2889,7 @@ function EventDetailsForm({
     const nextSlug = slugify(slug);
     setSlug(nextSlug);
     const submittedAdminNote = adminNoteDraft;
+    const editVersion = editVersionRef.current;
     try {
       await updateEvent({
         id: event._id,
@@ -2947,6 +2910,9 @@ function EventDetailsForm({
       setAdminNoteDraft((current) =>
         current === submittedAdminNote ? null : current
       );
+      if (editVersionRef.current === editVersion) {
+        setHasLocalEdits(false);
+      }
       toast.success("Event saved");
       return { ok: true, slug: nextSlug };
     } catch (err) {
@@ -3019,7 +2985,10 @@ function EventDetailsForm({
                 id="detail-name"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  markEdited();
+                  setName(e.target.value);
+                }}
               />
             </Field>
             <Field>
@@ -3028,7 +2997,10 @@ function EventDetailsForm({
                 id="detail-slug"
                 required
                 value={slug}
-                onChange={setSlug}
+                onChange={(next) => {
+                  markEdited();
+                  setSlug(next);
+                }}
               />
             </Field>
             <EventDatesField
@@ -3036,6 +3008,7 @@ function EventDetailsForm({
               startDate={eventDate}
               endDate={eventEndDate}
               onChange={(dates) => {
+                markEdited();
                 setEventDate(dates.startDate);
                 setEventEndDate(dates.endDate);
               }}
@@ -3047,6 +3020,7 @@ function EventDetailsForm({
                 id="detail-identity"
                 value={identity}
                 onChange={(next) => {
+                  markEdited();
                   setIdentity(next);
                   if (next === "x" && accessMode === "domain") {
                     setAccessMode("list");
@@ -3063,27 +3037,43 @@ function EventDetailsForm({
               className="sm:col-span-2"
               idPrefix="detail"
               description={description}
-              onDescriptionChange={setDescription}
+              onDescriptionChange={(next) => {
+                markEdited();
+                setDescription(next);
+              }}
               instructions={claimInstructions}
-              onInstructionsChange={setClaimInstructions}
+              onInstructionsChange={(next) => {
+                markEdited();
+                setClaimInstructions(next);
+              }}
               instructionsDescription="When set, attendees see a “Redemption steps” button after claiming their code."
               signInMessage={signInMessage}
-              onSignInMessageChange={setSignInMessage}
+              onSignInMessageChange={(next) => {
+                markEdited();
+                setSignInMessage(next);
+              }}
               identity={identity}
               contactEmail={contactEmail}
-              onContactEmailChange={setContactEmail}
+              onContactEmailChange={(next) => {
+                markEdited();
+                setContactEmail(next);
+              }}
             />
             <AdminNoteField
               id="detail-admin-note"
               className="sm:col-span-2"
               value={adminNote}
-              onChange={setAdminNoteDraft}
+              onChange={(next) => {
+                markEdited();
+                setAdminNoteDraft(next);
+              }}
             />
             <ClaimAccessPicker
               id="detail-access"
               className="sm:col-span-2"
               value={accessMode}
               onChange={(next) => {
+                markEdited();
                 setAccessMode(next);
                 if (next !== "list") setWalkUpSkipsReview(false);
               }}
@@ -3094,7 +3084,10 @@ function EventDetailsForm({
                 id="detail-allowed-domains"
                 className="sm:col-span-2"
                 value={allowedDomainsInput}
-                onChange={setAllowedDomainsInput}
+                onChange={(next) => {
+                  markEdited();
+                  setAllowedDomainsInput(next);
+                }}
               />
             ) : accessMode === "dynamic" ? (
               <DynamicEventWarning className="sm:col-span-2" />
@@ -3103,7 +3096,10 @@ function EventDetailsForm({
                 id="detail-walkup-review"
                 className="sm:col-span-2"
                 checked={walkUpSkipsReview}
-                onChange={setWalkUpSkipsReview}
+                onChange={(next) => {
+                  markEdited();
+                  setWalkUpSkipsReview(next);
+                }}
               />
             )}
           </FieldGroup>
