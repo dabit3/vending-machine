@@ -2746,6 +2746,7 @@ function EventDetailsForm({
       }
     }
     setSlug(slugify(slug));
+    const submittedAdminNote = adminNoteDraft;
     try {
       await updateEvent({
         id: event._id,
@@ -2763,7 +2764,9 @@ function EventDetailsForm({
         signInMessage,
         contactEmail,
       });
-      setAdminNoteDraft(null);
+      setAdminNoteDraft((current) =>
+        current === submittedAdminNote ? null : current
+      );
       toast.success("Event saved");
     } catch (err) {
       toast.error(
