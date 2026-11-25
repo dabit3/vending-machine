@@ -84,6 +84,15 @@ test("blacklisting blocks already-listed attendees, releases reservations, and b
     await user.mutation(api.waitlist.requestAccess, { slug: "list-ev" })
   ).toMatchObject({ ok: false });
 
+  // Walk-up / re-adding an already-listed blacklisted attendee reports blacklisted.
+  expect(
+    await admin.mutation(api.emails.add, {
+      eventId: ev.id,
+      emails: ["bad@example.com"],
+      walkUp: true,
+    })
+  ).toMatchObject({ added: 0, skipped: 0, blacklisted: 1 });
+
   // Removing from blacklist restores eligibility on the list event.
   const [entry] = await admin.query(api.blacklist.list, {});
   await admin.mutation(api.blacklist.remove, { id: entry._id });
