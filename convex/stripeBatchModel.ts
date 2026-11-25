@@ -130,11 +130,15 @@ async function resolveDestination(
     return {
       error: "This code block is archived. Unarchive it before adding codes.",
     } as const;
-  const existing = await ctx.db
-    .query("codes")
-    .withIndex("by_event", (q) => q.eq("eventId", eventId))
-    .collect();
-  const types = [...activeCodeTypes(event, existing)];
+  const types = event.codeTypes
+    ? [...event.codeTypes]
+    : activeCodeTypes(
+        event,
+        await ctx.db
+          .query("codes")
+          .withIndex("by_event", (q) => q.eq("eventId", eventId))
+          .collect()
+      );
   if (!types.includes(codeType)) types.push(codeType);
   if (types.length > 2)
     return {
@@ -151,7 +155,7 @@ async function resolveDestination(
       error:
         "This block has a different value. Use a separate block for this batch.",
     } as const;
-  return { error: null, event, codeType, existing, types, value } as const;
+  return { error: null, event, codeType, types, value } as const;
 }
 
 export async function attachBatchToEvent(
@@ -176,10 +180,17 @@ export async function attachBatchToEvent(
     requestedType,
   );
   if (destination.error !== null) return destination.error;
-  const { event, codeType, existing, types, value } = destination;
-  const existingCodes = new Set(existing.map((code) => code.code));
-  if (batch.codes.some((code) => existingCodes.has(code.code)))
-    return "Some codes are already in this event. No codes were added.";
+  const { event, codeType, types, value } = destination;
+  for (const code of batch.codes) {
+    const duplicate = await ctx.db
+      .query("codes")
+      .withIndex("by_event_code", (q) =>
+        q.eq("eventId", eventId).eq("code", code.code)
+      )
+      .first();
+    if (duplicate)
+      return "Some codes are already in this event. No codes were added.";
+  }
   for (const code of batch.codes) {
     await ctx.db.insert("codes", {
       eventId,
@@ -187,6 +198,7 @@ export async function attachBatchToEvent(
       codeType: codeType || undefined,
       expiresAt: batch.expiresAt,
       stripeBatchId: batch._id,
+      claimKey: Math.random(),
     });
   }
   await ctx.db.patch(eventId, {

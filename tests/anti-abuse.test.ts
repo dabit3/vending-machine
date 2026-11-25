@@ -217,9 +217,14 @@ test("dynamic events refuse second claims via email aliases or same Clerk accoun
     email: "alice@gmail.com",
     emailVerified: true,
   });
-  expect(
-    await first.mutation(api.claims.claim, { slug: "workshop", name: "Alice" })
-  ).toMatchObject({ ok: true, code: "W1" });
+  const firstClaim = await first.mutation(api.claims.claim, {
+    slug: "workshop",
+    name: "Alice",
+  });
+  expect(firstClaim.ok).toBe(true);
+  if (firstClaim.ok) {
+    expect(["W1", "W2", "W3"]).toContain(firstClaim.code);
+  }
 
   // Different Clerk account with a +tag / dot alias of the same Gmail inbox.
   const alias = t.withIdentity({
@@ -282,14 +287,16 @@ test("dynamic events with instructions refuse duplicate aliases and secondary em
   await first.mutation(api.claims.markInstructionsRead, {
     slug: "multi-workshop",
   });
-  expect(
-    await first.mutation(api.claims.claim, {
-      slug: "multi-workshop",
-      codeType: "Pro",
-      name: "Alice",
-      instructionsRead: true,
-    })
-  ).toMatchObject({ ok: true, code: "PRO1" });
+  const firstClaim = await first.mutation(api.claims.claim, {
+    slug: "multi-workshop",
+    codeType: "Pro",
+    name: "Alice",
+    instructionsRead: true,
+  });
+  expect(firstClaim.ok).toBe(true);
+  if (firstClaim.ok) {
+    expect(["PRO1", "PRO2"]).toContain(firstClaim.code);
+  }
 
   // Duplicate alias and same-Clerk secondary email both see eligible: false
   // and calling markInstructionsRead does not enroll them in `emails` or `events.mine`.
@@ -379,8 +386,10 @@ test("60-day cooldown enforces across email aliases and across email + X for the
   }
 
   // Releasing one code clears canonical/userId fields so the cooldown lifts.
-  const [evACode] = await admin.query(api.codes.list, { eventId: evA.id });
-  await admin.mutation(api.codes.release, { id: evACode._id });
+  const evACodes = await admin.query(api.codes.list, { eventId: evA.id });
+  const evACode = evACodes.find((c) => c.claimedBy === "bob@gmail.com");
+  expect(evACode).toBeDefined();
+  await admin.mutation(api.codes.release, { id: evACode!._id });
   expect(
     await g3.mutation(api.claims.claim, { slug: "ev-c", name: "Bob" })
   ).toMatchObject({ ok: true });

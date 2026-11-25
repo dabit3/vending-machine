@@ -184,13 +184,13 @@ test("X events key eligibility and claims on the synced handle, not the email", 
   expect(await user.query(api.events.getBySlug, { slug: "meetup" })).toMatchObject({
     identity: "x",
   });
+  const claimed = await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" });
+  expect(claimed).toMatchObject({ ok: true });
+  if (!claimed.ok) throw new Error("claim failed");
+  expect(["A", "B"]).toContain(claimed.code);
   expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({
     ok: true,
-    code: "A",
-  });
-  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({
-    ok: true,
-    code: "A",
+    code: claimed.code,
     alreadyClaimed: true,
   });
   await t.run(async (ctx) => {
@@ -198,12 +198,12 @@ test("X events key eligibility and claims on the synced handle, not the email", 
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", event.id))
       .collect();
-    expect(codes.find((c) => c.code === "A")?.claimedBy).toBe("@alice_x");
+    expect(codes.find((c) => c.code === claimed.code)?.claimedBy).toBe("@alice_x");
   });
 
   // The claim shows up under the viewer's events and codes.
   expect(await user.query(api.events.mine, {})).toMatchObject([{ slug: "meetup", claimed: true }]);
-  expect(await user.query(api.codes.mine, {})).toMatchObject([{ code: "A" }]);
+  expect(await user.query(api.codes.mine, {})).toMatchObject([{ code: claimed.code }]);
 
   // Another signed-in user whose handle isn't listed.
   await linkX(bob.subject, "@someone_else");
@@ -228,13 +228,13 @@ test("dynamic X events give one code per handle and record it", async () => {
     reason: "no_x_account",
   });
   await linkX(bob.subject, "@bobby");
+  const claimed = await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" });
+  expect(claimed).toMatchObject({ ok: true });
+  if (!claimed.ok) throw new Error("claim failed");
+  expect(["A", "B"]).toContain(claimed.code);
   expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({
     ok: true,
-    code: "A",
-  });
-  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({
-    ok: true,
-    code: "A",
+    code: claimed.code,
     alreadyClaimed: true,
   });
   await t.run(async (ctx) => {
@@ -251,13 +251,17 @@ test("a re-linked or renamed handle keeps the earlier claim with the old key", a
   await asAdmin.mutation(api.emails.add, { eventId: event.id, emails: ["@old_name", "@new_name"] });
   const user = t.withIdentity(alice);
   await linkX(alice.subject, "@old_name");
-  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({ ok: true, code: "A" });
+  const first = await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" });
+  expect(first).toMatchObject({ ok: true });
+  if (!first.ok) throw new Error("first claim failed");
+  expect(["A", "B"]).toContain(first.code);
+  const otherCode = first.code === "A" ? "B" : "A";
 
   // Same Clerk user, handle changed on X and re-synced: a fresh identity for
   // this event, so the list decides whether they can claim again.
   await linkX(alice.subject, "@new_name");
   expect(await user.query(api.xAccounts.mine, {})).toEqual({ handle: "@new_name" });
-  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({ ok: true, code: "B" });
+  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({ ok: true, code: otherCode });
 
   // A different Clerk user linking the same X account takes the mapping over.
   await linkX(bob.subject, "@new_name");
@@ -265,7 +269,7 @@ test("a re-linked or renamed handle keeps the earlier claim with the old key", a
   expect(await t.withIdentity(bob).query(api.claims.eligibility, { slug: "meetup" })).toMatchObject({
     eligible: true,
     identity: "@new_name",
-    claimed: { code: "B" },
+    claimed: { code: otherCode },
   });
 });
 
@@ -283,13 +287,16 @@ test("email events ignore a synced X handle and keep working for legacy rows", a
     eligible: true,
     identity: "alice@example.com",
   });
-  expect(await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" })).toMatchObject({ ok: true, code: "A" });
+  const claimed = await user.mutation(api.claims.claim, { slug: "meetup", name: "Test Attendee" });
+  expect(claimed).toMatchObject({ ok: true });
+  if (!claimed.ok) throw new Error("claim failed");
+  expect(["A", "B"]).toContain(claimed.code);
   await t.run(async (ctx) => {
     const codes = await ctx.db
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", event.id))
       .collect();
-    expect(codes.find((c) => c.code === "A")?.claimedBy).toBe("alice@example.com");
+    expect(codes.find((c) => c.code === claimed.code)?.claimedBy).toBe("alice@example.com");
   });
   // Unverified email on an email event is still rejected.
   expect(

@@ -213,12 +213,23 @@ export default defineSchema({
     reservedFor: v.optional(v.string()),
     // Stripe batch the code came from; missing on manual and older codes.
     stripeBatchId: v.optional(v.id("stripeBatches")),
+    // Uniform random key in [0, 1) so concurrent claims seek to disjoint
+    // positions instead of colliding on the first unclaimed row.
+    claimKey: v.optional(v.number()),
   })
     .index("by_event", ["eventId"])
+    .index("by_event_code", ["eventId", "code"])
     .index("by_event_claimedBy", ["eventId", "claimedBy"])
     .index("by_event_claimedByCanonical", ["eventId", "claimedByCanonical"])
     .index("by_event_claimedByUserId", ["eventId", "claimedByUserId"])
+    .index("by_event_claimedBy_claimKey", ["eventId", "claimedBy", "claimKey"])
     .index("by_event_codeType_claimedBy", ["eventId", "codeType", "claimedBy"])
+    .index("by_event_codeType_claimedBy_claimKey", [
+      "eventId",
+      "codeType",
+      "claimedBy",
+      "claimKey",
+    ])
     .index("by_event_reservedFor", ["eventId", "reservedFor"])
     .index("by_claimedBy", ["claimedBy"])
     .index("by_claimedByCanonical", ["claimedByCanonical"])

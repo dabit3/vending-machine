@@ -5,7 +5,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { v } from "convex/values";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { isEventAdmin, requireEventAdmin } from "./admins";
 import { logAudit } from "./auditLog";
 import { isBlacklisted } from "./blacklist";
@@ -103,6 +103,19 @@ async function nextForBlock(
   );
 }
 
+// Read-only counterpart of nextForBlock for queries, using the sentinel probe.
+async function probeForBlock(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  block: string | undefined,
+  reserved: Doc<"codes">[]
+) {
+  return (
+    reserved.find((c) => block === undefined || c.codeType === block) ??
+    (await probeAvailable(ctx, event, block))
+  );
+}
+
 async function describeCode(
   ctx: QueryCtx | MutationCtx,
   event: Doc<"events">,
@@ -117,54 +130,40 @@ async function describeCode(
   };
 }
 
-// The unclaimed, unreserved, unexpired code an attendee would receive next,
-// optionally restricted to one block. Archived blocks never dispense. An
-// unrestricted request on an event with archived blocks probes each open
-// block through its own index, so a large archived pool is never scanned.
-// Legacy events without a stored block list fall back to filtering the pool.
-export async function nextAvailable(
+// Highest-claimKey open code in one block (the "sentinel" subscribed to by
+// read-only queries like events.getBySlug and claims.eligibility). Because
+// mutations avoid claiming the sentinel until it is the last open code left,
+// live viewers do not re-run their event subscription on every claim.
+export async function probeBlockCode(
   ctx: QueryCtx | MutationCtx,
-  event: Doc<"events">,
-  requestedType: string | undefined
+  eventId: Id<"events">,
+  codeType: string | undefined
 ): Promise<Doc<"codes"> | null> {
-  if (event.archivedAt !== undefined) return null;
-  if (requestedType !== undefined && isArchivedType(event, requestedType)) {
-    return null;
-  }
-  const archived = event.archivedCodeTypes ?? [];
-  if (requestedType === undefined && archived.length > 0 && event.codeTypes) {
-    for (const typeKey of event.codeTypes) {
-      if (archived.includes(typeKey)) continue;
-      const hit = await firstOpenCode(ctx, event, typeKey || undefined, []);
-      if (hit) return hit;
-    }
-    return null;
-  }
-  return await firstOpenCode(ctx, event, requestedType, archived);
+  return await ctx.db
+    .query("codes")
+    .withIndex("by_event_codeType_claimedBy_claimKey", (q) =>
+      q
+        .eq("eventId", eventId)
+        .eq("codeType", codeType)
+        .eq("claimedBy", undefined)
+    )
+    .order("desc")
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .first();
 }
 
-async function firstOpenCode(
+async function probeAnyCode(
   ctx: QueryCtx | MutationCtx,
-  event: Doc<"events">,
-  requestedType: string | undefined,
+  eventId: Id<"events">,
   excludedTypes: string[]
-) {
-  const codes =
-    requestedType !== undefined
-      ? ctx.db
-          .query("codes")
-          .withIndex("by_event_codeType_claimedBy", (q) =>
-            q
-              .eq("eventId", event._id)
-              .eq("codeType", requestedType)
-              .eq("claimedBy", undefined)
-          )
-      : ctx.db
-          .query("codes")
-          .withIndex("by_event_claimedBy", (q) =>
-            q.eq("eventId", event._id).eq("claimedBy", undefined)
-          );
-  return await codes
+): Promise<Doc<"codes"> | null> {
+  return await ctx.db
+    .query("codes")
+    .withIndex("by_event_claimedBy_claimKey", (q) =>
+      q.eq("eventId", eventId).eq("claimedBy", undefined)
+    )
+    .order("desc")
     .filter(notExpired)
     .filter((q) => q.eq(q.field("reservedFor"), undefined))
     .filter((q) =>
@@ -221,6 +220,141 @@ async function otherIdentityClaimedHere(
     }
   }
   return null;
+}
+
+// Read-only availability probe for queries (eligibility preview and pending
+// blocks), reading the sentinel rather than competing with live claims.
+export async function probeAvailable(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  requestedType: string | undefined
+): Promise<Doc<"codes"> | null> {
+  if (event.archivedAt !== undefined) return null;
+  if (requestedType !== undefined) {
+    if (isArchivedType(event, requestedType)) return null;
+    return await probeBlockCode(ctx, event._id, requestedType);
+  }
+  const archived = event.archivedCodeTypes ?? [];
+  if (event.codeTypes) {
+    for (const typeKey of event.codeTypes) {
+      if (archived.includes(typeKey)) continue;
+      const hit = await probeBlockCode(ctx, event._id, typeKey || undefined);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  return await probeAnyCode(ctx, event._id, archived);
+}
+
+// The unclaimed, unreserved, unexpired code a mutation will dispense next,
+// optionally restricted to one block. Seeks from a random claimKey cursor so
+// concurrent claims read disjoint index ranges and avoid write conflicts, and
+// leaves the highest-claimKey sentinel untouched until it is the last open
+// code in the block.
+export async function nextAvailable(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  requestedType: string | undefined,
+  cursor: number = Math.random()
+): Promise<Doc<"codes"> | null> {
+  if (event.archivedAt !== undefined) return null;
+  if (requestedType !== undefined) {
+    if (isArchivedType(event, requestedType)) return null;
+    return await pickBlockCode(ctx, event._id, requestedType, cursor);
+  }
+  const archived = event.archivedCodeTypes ?? [];
+  if (event.codeTypes) {
+    for (const typeKey of event.codeTypes) {
+      if (archived.includes(typeKey)) continue;
+      const hit = await pickBlockCode(
+        ctx,
+        event._id,
+        typeKey || undefined,
+        cursor
+      );
+      if (hit) return hit;
+    }
+    return null;
+  }
+  return await pickAnyCode(ctx, event._id, archived, cursor);
+}
+
+async function pickBlockCode(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+  codeType: string | undefined,
+  cursor: number
+): Promise<Doc<"codes"> | null> {
+  // Taking two rows guarantees forward[0] is strictly below the highest-
+  // claimKey sentinel whenever at least two open codes exist at or above
+  // cursor. If only the sentinel (or nothing) is at or above cursor, wrap
+  // around below cursor and only dispense the sentinel when it is last.
+  const forward = await ctx.db
+    .query("codes")
+    .withIndex("by_event_codeType_claimedBy_claimKey", (q) =>
+      q
+        .eq("eventId", eventId)
+        .eq("codeType", codeType)
+        .eq("claimedBy", undefined)
+        .gte("claimKey", cursor)
+    )
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .take(2);
+  if (forward.length >= 2) return forward[0];
+  const wrapped = await ctx.db
+    .query("codes")
+    .withIndex("by_event_codeType_claimedBy_claimKey", (q) =>
+      q
+        .eq("eventId", eventId)
+        .eq("codeType", codeType)
+        .eq("claimedBy", undefined)
+        .lt("claimKey", cursor)
+    )
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .first();
+  return wrapped ?? forward[0] ?? null;
+}
+
+async function pickAnyCode(
+  ctx: QueryCtx | MutationCtx,
+  eventId: Id<"events">,
+  excludedTypes: string[],
+  cursor: number
+): Promise<Doc<"codes"> | null> {
+  const notExcluded = (
+    q: Parameters<
+      Parameters<
+        ReturnType<typeof ctx.db.query<"codes">>["filter"]
+      >[0]
+    >[0]
+  ) =>
+    q.and(
+      ...excludedTypes.map((t) =>
+        q.neq(q.field("codeType"), t === "" ? undefined : t)
+      )
+    );
+  const forward = await ctx.db
+    .query("codes")
+    .withIndex("by_event_claimedBy_claimKey", (q) =>
+      q.eq("eventId", eventId).eq("claimedBy", undefined).gte("claimKey", cursor)
+    )
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .filter(notExcluded)
+    .take(2);
+  if (forward.length >= 2) return forward[0];
+  const wrapped = await ctx.db
+    .query("codes")
+    .withIndex("by_event_claimedBy_claimKey", (q) =>
+      q.eq("eventId", eventId).eq("claimedBy", undefined).lt("claimKey", cursor)
+    )
+    .filter(notExpired)
+    .filter((q) => q.eq(q.field("reservedFor"), undefined))
+    .filter(notExcluded)
+    .first();
+  return wrapped ?? forward[0] ?? null;
 }
 
 // Dynamic events have no pre-uploaded participant list: the first time a
@@ -285,7 +419,7 @@ export const eligibility = query({
       const options = codeTypes.length > 1 ? codeTypes : [undefined];
       const previewCodes = await Promise.all(
         options.map(async (codeType) => {
-          const next = await nextAvailable(ctx, event, codeType);
+          const next = await probeAvailable(ctx, event, codeType);
           return {
             codeType,
             expiresAt: next?.expiresAt,
@@ -323,7 +457,7 @@ export const eligibility = query({
         const reserved = await reservedFor(ctx, event, key);
         for (const block of openBlocks(event)) {
           if (have.has(block ?? "")) continue;
-          if (await nextForBlock(ctx, event, block, reserved)) {
+          if (await probeForBlock(ctx, event, block, reserved)) {
             pendingTypes.push(block ?? "");
           }
         }
