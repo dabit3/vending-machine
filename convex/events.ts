@@ -215,6 +215,7 @@ export const getBySlug = query({
       claimMode: event.claimMode === "all" ? ("all" as const) : ("one" as const),
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,
+      claimMessage: event.claimMessage,
       contactEmail: event.contactEmail,
       // Lets the claim page show a manage link to this event's admins.
       viewerIsAdmin: await isEventAdmin(ctx, event._id),
@@ -266,6 +267,7 @@ export const get = query({
       claimMode: event.claimMode,
       identity: eventIdentity(event),
       signInMessage: event.signInMessage,
+      claimMessage: event.claimMessage,
       contactEmail: event.contactEmail,
       createdBy: event.createdBy,
       archivedAt: event.archivedAt,
@@ -599,6 +601,7 @@ export const create = mutation({
     walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
+    claimMessage: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     // Accepted but ignored: sent by admin forms loaded before the Hidden
     // option was removed.
@@ -668,6 +671,7 @@ export const create = mutation({
           : undefined,
       identity: args.identity === "x" ? "x" : undefined,
       signInMessage: args.signInMessage?.trim() || undefined,
+      claimMessage: args.claimMessage?.trim() || undefined,
       contactEmail: resolveContactEmail(args.contactEmail),
       createdBy: creator,
       claimMode: args.claimMode === "all" ? "all" : undefined,
@@ -734,6 +738,7 @@ export const update = mutation({
     walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
+    claimMessage: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     hidden: v.optional(v.boolean()),
   },
@@ -823,9 +828,12 @@ export const update = mutation({
       ...(args.identity !== undefined
         ? { identity: args.identity === "x" ? ("x" as const) : undefined }
         : {}),
-      // Same for `signInMessage` and `adminNote`: absent means unchanged, "" clears it.
+      // Same for `signInMessage`, `claimMessage`, and `adminNote`: absent means unchanged, "" clears it.
       ...(args.signInMessage !== undefined
         ? { signInMessage: args.signInMessage.trim() || undefined }
+        : {}),
+      ...(args.claimMessage !== undefined
+        ? { claimMessage: args.claimMessage.trim() || undefined }
         : {}),
       ...(args.adminNote !== undefined
         ? { adminNote: args.adminNote.trim() || undefined }

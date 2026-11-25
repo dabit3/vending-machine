@@ -15,6 +15,7 @@ type MockEvent = {
   dynamic?: boolean;
   identity: "email" | "x";
   signInMessage?: string;
+  claimMessage?: string;
   contactEmail?: string;
   claimMode: "one" | "all";
   codeTypes: string[];
@@ -133,4 +134,22 @@ test("dispense-all multi-block events keep the one-step read-and-dispense flow",
   expect(html).toContain("Your codes are dispensed as soon as you open the redemption steps.");
   expect(html).toContain("Read how to redeem");
   expect(html).not.toContain("Before choosing your code");
+});
+
+test("custom claimMessage replaces the default eligible-attendee message", () => {
+  state.event!.claimMessage = "Welcome! Open the steps to claim your **Devin** credit.";
+  const multiHtml = renderToStaticMarkup(<ClaimPage slug="launch" />);
+  expect(multiHtml).toContain("<strong>Devin</strong>");
+  expect(multiHtml).not.toContain("Before choosing your code");
+
+  state.event!.codeTypes = [""];
+  state.event!.codeTypeValues = undefined;
+  const singleHtml = renderToStaticMarkup(<ClaimPage slug="launch" />);
+  expect(singleHtml).toContain("<strong>Devin</strong>");
+  expect(singleHtml).not.toContain("dispensed as soon as you open the redemption steps");
+
+  state.event!.claimInstructions = undefined;
+  const noInstructionsHtml = renderToStaticMarkup(<ClaimPage slug="launch" />);
+  expect(noInstructionsHtml).toContain("<strong>Devin</strong>");
+  expect(noInstructionsHtml).toContain("Dispense my code");
 });

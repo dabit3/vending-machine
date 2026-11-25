@@ -1,12 +1,13 @@
 "use client";
 
-import { FileText, ListChecks, Mail, MessageSquareText } from "lucide-react";
+import { FileText, ListChecks, Mail, MessageCircle, MessageSquareText } from "lucide-react";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
   CLAIM_INSTRUCTION_PRESETS,
   claimInstructionsMode,
 } from "@/lib/claim-instructions";
 import { ClaimInstructionsField } from "@/components/ClaimInstructionsField";
+import { ClaimMessageField } from "@/components/ClaimMessageField";
 import { ContactEmailField } from "@/components/ContactEmailField";
 import { OptionalSettings } from "@/components/OptionalSettings";
 import { SignInMessageField } from "@/components/SignInMessageField";
@@ -34,6 +35,8 @@ export function EventOptionalSettings({
   instructionsDescription,
   signInMessage,
   onSignInMessageChange,
+  claimMessage,
+  onClaimMessageChange,
   identity,
   contactEmail,
   onContactEmailChange,
@@ -47,6 +50,8 @@ export function EventOptionalSettings({
   instructionsDescription: string;
   signInMessage: string;
   onSignInMessageChange: (value: string) => void;
+  claimMessage: string;
+  onClaimMessageChange: (value: string) => void;
   identity: AttendeeIdentity;
   contactEmail: string;
   onContactEmailChange: (value: string) => void;
@@ -131,6 +136,25 @@ export function EventOptionalSettings({
                 value={signInMessage}
                 onChange={onSignInMessageChange}
                 identity={identity}
+                autoFocus={focus}
+              />
+            ),
+          },
+          {
+            key: "claimMessage",
+            id: `${idPrefix}-claim-message`,
+            title: "Claim message",
+            addLabel: "Set custom claim message",
+            description: "A note shown to eligible attendees before claiming.",
+            icon: MessageCircle,
+            set: claimMessage !== "",
+            onClear: () => onClaimMessageChange(""),
+            clearLabel: "Use default",
+            render: (focus) => (
+              <ClaimMessageField
+                id={`${idPrefix}-claim-message`}
+                value={claimMessage}
+                onChange={onClaimMessageChange}
                 autoFocus={focus}
               />
             ),

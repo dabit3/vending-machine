@@ -85,7 +85,7 @@ test("removing a block keeps claimed codes and their value, and rename moves Uni
     stripeArchiveSync: undefined, eventDate: undefined, eventEndDate: undefined,
     claimInstructions: undefined, dynamic: undefined, allowedDomains: undefined, walkUpSkipsReview: undefined,
     claimMode: undefined, identity: "email", signInMessage: undefined,
-    contactEmail: undefined, createdBy: undefined, archivedAt: undefined,
+    claimMessage: undefined, contactEmail: undefined, createdBy: undefined, archivedAt: undefined,
   });
   store.setQuery(api.codes.list, { eventId }, [code, { ...code, _id: "claimed" as Id<"codes">, claimedBy: email.email }]);
   removeTypeOptimistic(store, { eventId, codeType: "Pro" });

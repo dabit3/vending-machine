@@ -2807,6 +2807,13 @@ function EventDetailsForm({
   const [signInMessage, setSignInMessage] = useState(
     event.signInMessage ?? ""
   );
+  const [claimMessageDraft, setClaimMessageDraft] = useState<string | null>(
+    null
+  );
+  const claimMessage = claimMessageDraft ?? event.claimMessage ?? "";
+  const claimMessageChanged =
+    claimMessageDraft !== null &&
+    claimMessageDraft.trim() !== (event.claimMessage ?? "");
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
   const [hasLocalEdits, setHasLocalEdits] = useState(false);
   const editVersionRef = useRef(0);
@@ -2834,6 +2841,7 @@ function EventDetailsForm({
     walkUpSkipsReview !== (event.walkUpSkipsReview ?? false) ||
     identity !== (event.identity ?? "email") ||
     signInMessage.trim() !== (event.signInMessage ?? "") ||
+    claimMessageChanged ||
     contactEmail.trim().toLowerCase() !== (event.contactEmail ?? "");
 
   const formElRef = useRef<HTMLFormElement>(null);
@@ -2889,6 +2897,7 @@ function EventDetailsForm({
     const nextSlug = slugify(slug);
     setSlug(nextSlug);
     const submittedAdminNote = adminNoteDraft;
+    const submittedClaimMessage = claimMessageDraft;
     const editVersion = editVersionRef.current;
     try {
       await updateEvent({
@@ -2905,10 +2914,14 @@ function EventDetailsForm({
         walkUpSkipsReview: accessMode === "list" ? walkUpSkipsReview : false,
         identity,
         signInMessage,
+        ...(claimMessageChanged ? { claimMessage } : {}),
         contactEmail,
       });
       setAdminNoteDraft((current) =>
         current === submittedAdminNote ? null : current
+      );
+      setClaimMessageDraft((current) =>
+        current === submittedClaimMessage ? null : current
       );
       if (editVersionRef.current === editVersion) {
         setHasLocalEdits(false);
@@ -3051,6 +3064,11 @@ function EventDetailsForm({
               onSignInMessageChange={(next) => {
                 markEdited();
                 setSignInMessage(next);
+              }}
+              claimMessage={claimMessage}
+              onClaimMessageChange={(next) => {
+                markEdited();
+                setClaimMessageDraft(next);
               }}
               identity={identity}
               contactEmail={contactEmail}

@@ -380,3 +380,19 @@ test("email and X events keep an optional sign-in message", async () => {
   await asAdmin.mutation(api.events.create, { name: "Email", slug: "email-event", identity: "email", signInMessage: " Use your work email. " });
   expect((await t.query(api.events.getBySlug, { slug: "email-event" }))?.signInMessage).toBe("Use your work email.");
 });
+
+test("events keep an optional claim message", async () => {
+  const { t, asAdmin, event } = await setup({ identity: "email", codes: [] });
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.claimMessage).toBeUndefined();
+  const base = { id: event.id, name: "Meetup", slug: "meetup", identity: "email" as const };
+  await asAdmin.mutation(api.events.update, { ...base, claimMessage: "  Open the steps to grab your code.  " });
+  expect((await t.query(api.events.getBySlug, { slug: "meetup" }))?.claimMessage).toBe("Open the steps to grab your code.");
+  // Forms that don't send the field leave it as is; whitespace clears it.
+  await asAdmin.mutation(api.events.update, base);
+  expect((await asAdmin.query(api.events.get, { id: event.id }))?.claimMessage).toBe("Open the steps to grab your code.");
+  await asAdmin.mutation(api.events.update, { ...base, claimMessage: "  " });
+  expect((await asAdmin.query(api.events.get, { id: event.id }))?.claimMessage).toBeUndefined();
+
+  await asAdmin.mutation(api.events.create, { name: "Custom", slug: "custom-claim", identity: "email", claimMessage: " Welcome in! " });
+  expect((await t.query(api.events.getBySlug, { slug: "custom-claim" }))?.claimMessage).toBe("Welcome in!");
+});
