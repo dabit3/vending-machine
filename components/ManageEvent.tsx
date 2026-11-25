@@ -2675,7 +2675,10 @@ function EventDetailsForm({
   }
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
-  const [adminNote, setAdminNote] = useState(event.adminNote ?? "");
+  const [adminNoteDraft, setAdminNoteDraft] = useState<string | null>(null);
+  const adminNote = adminNoteDraft ?? event.adminNote ?? "";
+  const adminNoteChanged =
+    adminNoteDraft !== null && adminNoteDraft.trim() !== (event.adminNote ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [eventEndDate, setEventEndDate] = useState(event.eventEndDate ?? "");
   const [claimInstructions, setClaimInstructions] = useState(
@@ -2711,7 +2714,7 @@ function EventDetailsForm({
     name.trim() !== event.name ||
     slugify(slug) !== event.slug ||
     description.trim() !== (event.description ?? "") ||
-    adminNote.trim() !== (event.adminNote ?? "") ||
+    adminNoteChanged ||
     eventDate !== (event.eventDate ?? "") ||
     eventEndDate !== (event.eventEndDate ?? "") ||
     claimInstructions.trim() !== (event.claimInstructions ?? "") ||
@@ -2749,7 +2752,7 @@ function EventDetailsForm({
         name,
         slug,
         description: description || undefined,
-        adminNote,
+        ...(adminNoteChanged ? { adminNote } : {}),
         eventDate: eventDate || undefined,
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
@@ -2760,6 +2763,7 @@ function EventDetailsForm({
         signInMessage,
         contactEmail,
       });
+      setAdminNoteDraft(null);
       toast.success("Event saved");
     } catch (err) {
       toast.error(
@@ -2875,7 +2879,7 @@ function EventDetailsForm({
               id="detail-admin-note"
               className="sm:col-span-2"
               value={adminNote}
-              onChange={setAdminNote}
+              onChange={setAdminNoteDraft}
             />
             <ClaimAccessPicker
               id="detail-access"
