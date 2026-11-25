@@ -644,7 +644,12 @@ export const release = mutation({
         `${code.code} is now claimed by ${code.claimedBy}, not ${args.claimedBy}. Nothing was released.`
       );
     }
-    await ctx.db.patch(code._id, { claimedBy: undefined, claimedAt: undefined });
+    await ctx.db.patch(code._id, {
+      claimedBy: undefined,
+      claimedByCanonical: undefined,
+      claimedByUserId: undefined,
+      claimedAt: undefined,
+    });
     // Dynamic events enroll attendees when they claim, so a claimant left
     // with no code is taken off again and the hidden event leaves their home
     // page. List events keep the attendee, who can claim again.

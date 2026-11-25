@@ -7,7 +7,7 @@ import { isBlacklisted } from "./blacklist";
 import { logAudit } from "./auditLog";
 import { eventIdentity, resolveViewer } from "./identity";
 import { nextAvailable } from "./claims";
-import { isXHandleKey } from "../lib/attendee-identity";
+import { canonicalIdentityKey, isXHandleKey } from "../lib/attendee-identity";
 
 // Attendees not on an event's whitelist can request access. Requests are
 // keyed on the signed-in user's identity for the event (verified email, or
@@ -35,6 +35,13 @@ export const requestAccess = mutation({
       };
     }
     const email = viewer.key;
+
+    if (await isBlacklisted(ctx, email)) {
+      return {
+        ok: false as const,
+        error: "You are not eligible to request access for this event.",
+      };
+    }
 
     const whitelisted = await ctx.db
       .query("emails")
@@ -209,6 +216,7 @@ export const approve = mutation({
       await ctx.db.insert("emails", {
         eventId: request.eventId,
         email: request.email,
+        canonicalEmail: canonicalIdentityKey(request.email),
       });
     }
     // Approving an access request resolves any pending duplicate-review flag

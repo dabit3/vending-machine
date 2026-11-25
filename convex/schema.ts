@@ -147,6 +147,9 @@ export default defineSchema({
   emails: defineTable({
     eventId: v.id("events"),
     email: v.string(),
+    // Canonical identity key (strips +tag / Gmail dots) for alias-aware
+    // blacklist, duplicate-review, and reservation cleanup lookups.
+    canonicalEmail: v.optional(v.string()),
     // When the attendee confirmed reading the redemption instructions,
     // required once (per event) before claiming when instructions exist.
     instructionsViewedAt: v.optional(v.number()),
@@ -164,12 +167,17 @@ export default defineSchema({
   })
     .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"])
-    .index("by_email", ["email"]),
+    .index("by_event_canonicalEmail", ["eventId", "canonicalEmail"])
+    .index("by_email", ["email"])
+    .index("by_canonicalEmail", ["canonicalEmail"]),
 
   blacklistedEmails: defineTable({
     email: v.string(),
+    canonicalEmail: v.optional(v.string()),
     addedBy: v.optional(v.string()),
-  }).index("by_email", ["email"]),
+  })
+    .index("by_email", ["email"])
+    .index("by_canonicalEmail", ["canonicalEmail"]),
 
   blacklistHits: defineTable({
     eventId: v.id("events"),
@@ -194,6 +202,11 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     codeType: v.optional(v.string()),
     claimedBy: v.optional(v.string()),
+    // Canonical identity key and Clerk subject of the claimant, used to
+    // enforce cooldowns and dynamic-event limits across email aliases and
+    // linked identities.
+    claimedByCanonical: v.optional(v.string()),
+    claimedByUserId: v.optional(v.string()),
     claimedAt: v.optional(v.number()),
     reservedFor: v.optional(v.string()),
     // Stripe batch the code came from; missing on manual and older codes.
@@ -201,9 +214,13 @@ export default defineSchema({
   })
     .index("by_event", ["eventId"])
     .index("by_event_claimedBy", ["eventId", "claimedBy"])
+    .index("by_event_claimedByCanonical", ["eventId", "claimedByCanonical"])
+    .index("by_event_claimedByUserId", ["eventId", "claimedByUserId"])
     .index("by_event_codeType_claimedBy", ["eventId", "codeType", "claimedBy"])
     .index("by_event_reservedFor", ["eventId", "reservedFor"])
-    .index("by_claimedBy", ["claimedBy"]),
+    .index("by_claimedBy", ["claimedBy"])
+    .index("by_claimedByCanonical", ["claimedByCanonical"])
+    .index("by_claimedByUserId", ["claimedByUserId"]),
 
   accessRequests: defineTable({
     eventId: v.id("events"),

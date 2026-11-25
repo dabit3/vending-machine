@@ -15,6 +15,7 @@ import { claimHistory } from "./claimCooldown";
 import { dropTypeIfEmpty } from "./codes";
 import { notExpired } from "./codeExpiry";
 import { resolveViewer } from "./identity";
+import { canonicalIdentityKey } from "../lib/attendee-identity";
 import { cleanClaimantName } from "../lib/claimant-name";
 import { CLAIM_WINDOW_DAYS, formatClaimDate } from "../lib/claim-cooldown";
 
@@ -176,20 +177,70 @@ async function firstOpenCode(
     .first();
 }
 
+// Detects when the same person has already claimed on a dynamic event under a
+// different raw key: either the same Clerk account (`userId`) with a changed
+// email/handle, or an email alias with the same canonical address (+tag /
+// Gmail dots). List events defer to the organizer's explicit participant list.
+async function otherIdentityClaimedHere(
+  ctx: QueryCtx | MutationCtx,
+  event: Doc<"events">,
+  key: string,
+  userId?: string
+): Promise<"account" | "alias" | null> {
+  if (!event.dynamic) return null;
+  if (userId) {
+    const byAccount = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedByUserId", (q) =>
+        q.eq("eventId", event._id).eq("claimedByUserId", userId)
+      )
+      .collect();
+    if (byAccount.some((c) => c.claimedBy !== key)) {
+      return "account";
+    }
+  }
+  const canonical = canonicalIdentityKey(key);
+  const byCanonical = await ctx.db
+    .query("codes")
+    .withIndex("by_event_claimedByCanonical", (q) =>
+      q.eq("eventId", event._id).eq("claimedByCanonical", canonical)
+    )
+    .collect();
+  if (byCanonical.some((c) => c.claimedBy !== key)) {
+    return "alias";
+  }
+  if (canonical !== key) {
+    const legacyBase = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", event._id).eq("claimedBy", canonical)
+      )
+      .first();
+    if (legacyBase) {
+      return "alias";
+    }
+  }
+  return null;
+}
+
 // Dynamic events have no pre-uploaded participant list: the first time a
 // signed-in verified identity interacts with the event it is enrolled on the
 // spot, so the usual per-attendee claim and instructions tracking applies.
-// Blacklisted addresses are never enrolled.
+// Blacklisted addresses are never eligible, even if already listed.
 async function findOrEnrollParticipant(
   ctx: MutationCtx,
   event: Doc<"events">,
   key: string
 ) {
+  if (await isBlacklisted(ctx, key)) return null;
   const existing = await findParticipantRow(ctx, event, key);
   if (existing) return existing.blockedAt === undefined ? existing : null;
   if (!event.dynamic) return null;
-  if (await isBlacklisted(ctx, key)) return null;
-  const id = await ctx.db.insert("emails", { eventId: event._id, email: key });
+  const id = await ctx.db.insert("emails", {
+    eventId: event._id,
+    email: key,
+    canonicalEmail: canonicalIdentityKey(key),
+  });
   return await ctx.db.get(id);
 }
 
@@ -250,11 +301,14 @@ export const eligibility = query({
         previewCodes,
       };
     }
-    const walkUpEligible =
-      event.dynamic && !row && !(await isBlacklisted(ctx, key));
+    if (await isBlacklisted(ctx, key)) {
+      return { eligible: false as const, reason: "not_listed" as const, identity: key };
+    }
+    const walkUpEligible = event.dynamic && !row;
     if (!allowed && !walkUpEligible) {
       return { eligible: false as const, reason: "not_listed" as const, identity: key };
     }
+    const userId = viewer.ok ? viewer.userId : undefined;
     const claimedRows = await claimedHere(ctx, event, key);
     const instructionsViewed = allowed?.instructionsViewedAt !== undefined;
     if (claimedRows.length > 0) {
@@ -287,7 +341,7 @@ export const eligibility = query({
     }
     const cooldown = cooldownWaived(allowed)
       ? undefined
-      : await claimHistory(ctx, key);
+      : await claimHistory(ctx, key, userId);
     return {
       eligible: true as const,
       identity: key,
@@ -388,21 +442,46 @@ export const claim = mutation({
       };
     }
     const key = viewer.key;
+    const userId = viewer.userId;
+    const notEligibleError = event.dynamic
+      ? `${key} is not eligible to claim a code for this event.`
+      : viewer.kind === "x"
+        ? `${key} is not on the participant list for this event. Sign in with the X account you registered with.`
+        : `${key} is not on the participant list for this event. Sign in with the email you registered with.`;
 
-    const allowed = await findOrEnrollParticipant(ctx, event, key);
-    if (!allowed) {
-      return {
-        ok: false as const,
-        error: event.dynamic
-          ? `${key} is not eligible to claim a code for this event.`
-          : viewer.kind === "x"
-            ? `${key} is not on the participant list for this event. Sign in with the X account you registered with.`
-            : `${key} is not on the participant list for this event. Sign in with the email you registered with.`,
-      };
+    if (await isBlacklisted(ctx, key)) {
+      return { ok: false as const, error: notEligibleError };
     }
 
     const all = dispensesAll(event);
     const claimedRows = await claimedHere(ctx, event, key);
+    if (claimedRows.length === 0) {
+      const duplicateKind = await otherIdentityClaimedHere(
+        ctx,
+        event,
+        key,
+        userId
+      );
+      if (duplicateKind === "account") {
+        return {
+          ok: false as const,
+          error: "Your account has already claimed a code for this event.",
+        };
+      }
+      if (duplicateKind === "alias") {
+        return {
+          ok: false as const,
+          error:
+            "A code for this event has already been claimed with this email address.",
+        };
+      }
+    }
+
+    const allowed = await findOrEnrollParticipant(ctx, event, key);
+    if (!allowed) {
+      return { ok: false as const, error: notEligibleError };
+    }
+
     if (claimedRows.length > 0 && !all) {
       const codes = await Promise.all(
         claimedRows.map((c) => describeCode(ctx, event, c))
@@ -415,7 +494,7 @@ export const claim = mutation({
     const cooldown =
       cooldownWaived(allowed) || claimedRows.length > 0
         ? undefined
-        : await claimHistory(ctx, key);
+        : await claimHistory(ctx, key, userId);
     if (cooldown?.eligibleAt !== undefined) {
       return {
         ok: false as const,
@@ -467,6 +546,8 @@ export const claim = mutation({
         if (!next) continue;
         await ctx.db.patch(next._id, {
           claimedBy: key,
+          claimedByCanonical: canonicalIdentityKey(key),
+          claimedByUserId: userId,
           claimedAt: Date.now(),
           reservedFor: undefined,
         });
@@ -511,6 +592,8 @@ export const claim = mutation({
 
     await ctx.db.patch(available._id, {
       claimedBy: key,
+      claimedByCanonical: canonicalIdentityKey(key),
+      claimedByUserId: userId,
       claimedAt: Date.now(),
       reservedFor: undefined,
     });
