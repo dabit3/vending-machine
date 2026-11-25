@@ -372,6 +372,23 @@ test("60-day cooldown enforces across email aliases and across email + X for the
       name: "Carol",
     })
   ).toMatchObject({ ok: false });
+
+  // Organizers see Carol's account-linked cooldown in listCooldowns so they can waive it.
+  const evE = await admin.mutation(api.events.create, {
+    name: "Event E",
+    slug: "ev-e",
+  });
+  await admin.mutation(api.codes.add, { eventId: evE.id, codes: ["E1"] });
+  await t.run((ctx) =>
+    ctx.db.insert("emails", { eventId: evE.id, email: "carol@example.com" })
+  );
+  const cooldowns = await admin.query(api.emails.listCooldowns, {
+    eventId: evE.id,
+    paginationOpts: { numItems: 50, cursor: null },
+  });
+  expect(cooldowns.page).toMatchObject([
+    { email: "carol@example.com", recent: 2, waived: false },
+  ]);
 });
 
 test("uploading an email alias across events flags it for duplicate review", async () => {
