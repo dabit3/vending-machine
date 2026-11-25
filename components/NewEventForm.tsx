@@ -21,6 +21,11 @@ import type { GenerationInput } from "@/convex/stripeValidation";
 import { slugify } from "@/lib/slug";
 import { DEFAULT_EVENT_SUPPORT_EMAIL } from "@/lib/app-name";
 import { parseOrganizerEmails } from "@/lib/organizer-emails";
+import {
+  formatAllowedDomains,
+  MAX_ALLOWED_DOMAINS,
+  parseAllowedDomains,
+} from "@/lib/allowed-domains";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import {
   emptyStripeForm,
@@ -33,12 +38,14 @@ import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
+  AllowedDomainsField,
+  ClaimAccessPicker,
   EventDatesField,
-  DynamicToggle,
   WalkUpReviewToggle,
   ClaimModeToggle,
   IdentityPicker,
   SlugInput,
+  type ClaimAccessMode,
 } from "@/components/EventFormFields";
 import {
   ConfirmStripeGeneration,
@@ -134,7 +141,8 @@ export default function NewEventForm({
   const [eventEndDate, setEventEndDate] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [dynamic, setDynamic] = useState(false);
+  const [accessMode, setAccessMode] = useState<ClaimAccessMode>("list");
+  const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
   const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(false);
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
@@ -206,10 +214,33 @@ export default function NewEventForm({
       setError("Fix the organizer email before creating the event.");
       return;
     }
+    const parsedDomains =
+      accessMode === "domain"
+        ? parseAllowedDomains(allowedDomainsInput)
+        : { domains: [], invalid: [] };
+    if (accessMode === "domain") {
+      if (parsedDomains.invalid.length > 0) {
+        setError(
+          `Enter valid email domains (for example, acme.com): ${parsedDomains.invalid.join(", ")}`,
+        );
+        return;
+      }
+      if (parsedDomains.domains.length === 0) {
+        setError("Enter at least one allowed company email domain.");
+        return;
+      }
+      if (parsedDomains.domains.length > MAX_ALLOWED_DOMAINS) {
+        setError(
+          `Add up to ${MAX_ALLOWED_DOMAINS} allowed email domains per event.`,
+        );
+        return;
+      }
+    }
     lock.current = true;
     setBusy(true);
     setError(null);
     try {
+      const dynamic = accessMode === "dynamic";
       const event = await create({
         name,
         slug: slug || undefined,
@@ -218,7 +249,10 @@ export default function NewEventForm({
         description: description || undefined,
         claimInstructions: instructions || undefined,
         dynamic,
-        walkUpSkipsReview: !dynamic && walkUpSkipsReview ? true : undefined,
+        allowedDomains:
+          accessMode === "domain" ? parsedDomains.domains : undefined,
+        walkUpSkipsReview:
+          accessMode === "list" && walkUpSkipsReview ? true : undefined,
         identity,
         signInMessage: signInMessage || undefined,
         contactEmail: contactEmail || undefined,
@@ -228,8 +262,12 @@ export default function NewEventForm({
       });
       toast.success(`Event “${name}” created`, {
         description: generations.length > 0
-          ? "Codes are generating in the background. Add your attendees while you wait."
-          : "Add attendees to let them claim their codes.",
+          ? accessMode === "domain"
+            ? `Codes are generating in the background. Share the link with ${formatAllowedDomains(parsedDomains.domains)} employees.`
+            : "Codes are generating in the background. Add your attendees while you wait."
+          : accessMode === "domain"
+            ? `Share the link with ${formatAllowedDomains(parsedDomains.domains)} employees so they can claim their codes.`
+            : "Add attendees to let them claim their codes.",
       });
       router.push(`/admin/events/${event.id}`);
     } catch (error) {
@@ -466,20 +504,34 @@ export default function NewEventForm({
                     <IdentityPicker
                       id="event-identity"
                       value={identity}
-                      onChange={setIdentity}
+                      onChange={(next) => {
+                        setIdentity(next);
+                        if (next === "x" && accessMode === "domain") {
+                          setAccessMode("list");
+                        }
+                      }}
                       description={
                         identity === "x"
                           ? "Attendees sign in with X and codes go to the @handles on your list. X sign-in must be enabled in Clerk."
-                          : "Attendees sign in with the email address on your list."
+                          : "Attendees sign in with a verified email address."
                       }
                     />
-                    <DynamicToggle
-                      id="event-dynamic"
-                      checked={dynamic}
-                      onChange={setDynamic}
+                    <ClaimAccessPicker
+                      id="event-access"
+                      value={accessMode}
+                      onChange={(next) => {
+                        setAccessMode(next);
+                        if (next !== "list") setWalkUpSkipsReview(false);
+                      }}
                       identity={identity}
                     />
-                    {dynamic ? (
+                    {accessMode === "domain" ? (
+                      <AllowedDomainsField
+                        id="event-allowed-domains"
+                        value={allowedDomainsInput}
+                        onChange={setAllowedDomainsInput}
+                      />
+                    ) : accessMode === "dynamic" ? (
                       <DynamicEventWarning />
                     ) : (
                       <WalkUpReviewToggle

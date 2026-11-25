@@ -1,4 +1,5 @@
 import { AtSign, Mail } from "lucide-react";
+import { formatAllowedDomains } from "@/lib/allowed-domains";
 import type { AttendeeIdentity } from "@/lib/attendee-identity";
 import { MarkdownText } from "@/components/MarkdownText";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -10,10 +11,12 @@ const hintSpacing = "gap-1 px-3 py-3.5";
 export function SignInHint({
   identity,
   dynamic,
+  allowedDomains,
   message,
 }: {
   identity: AttendeeIdentity;
   dynamic?: boolean;
+  allowedDomains?: string[];
   message?: string;
 }) {
   const byHandle = identity === "x";
@@ -23,6 +26,19 @@ export function SignInHint({
         {byHandle ? <AtSign /> : <Mail />}
         <AlertDescription>
           <MarkdownText value={message} />
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  if (allowedDomains && allowedDomains.length > 0) {
+    const domainsLabel = formatAllowedDomains(allowedDomains);
+    return (
+      <Alert className={hintSpacing}>
+        <Mail />
+        <AlertTitle>Sign in with your {domainsLabel} work email</AlertTitle>
+        <AlertDescription>
+          Only verified {domainsLabel} email addresses can claim a code from
+          this link, one per email address.
         </AlertDescription>
       </Alert>
     );

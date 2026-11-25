@@ -247,6 +247,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     eventDate,
     eventEndDate: undefined,
     dynamic: undefined,
+    allowedDomains: undefined,
     identity: "email" as const,
     favorite: false,
     archived: false,
@@ -287,6 +288,7 @@ test("the dashboard shows who created an event when it is known", () => {
     eventDate: undefined,
     eventEndDate: undefined,
     dynamic: undefined,
+    allowedDomains: undefined,
     identity: "email" as const,
     favorite: false,
     archived: false,
@@ -310,6 +312,7 @@ test("the dashboard shows an event's date only when it has one", () => {
     eventDate,
     eventEndDate: undefined,
     dynamic: undefined,
+    allowedDomains: undefined,
     identity: "email" as const,
     favorite: false,
     archived: false,
@@ -322,6 +325,28 @@ test("the dashboard shows an event's date only when it has one", () => {
   expect(html).not.toContain("<time");
   state.events = [event("dated", "2099-07-04")];
   expect(renderToStaticMarkup(<AdminDashboard />)).toContain("Jul 4, 2099");
+});
+
+test("the dashboard renders a badge for company-domain events", () => {
+  state.events = [
+    {
+      _id: "ev_acme" as Id<"events">,
+      _creationTime: 0,
+      name: "Acme Corp",
+      slug: "acme",
+      description: undefined,
+      eventDate: undefined,
+      eventEndDate: undefined,
+      dynamic: undefined,
+      allowedDomains: ["acme.com", "acme.io"],
+      identity: "email" as const,
+      favorite: false,
+      archived: false,
+      createdBy: undefined,
+    },
+  ];
+  const html = renderToStaticMarkup(<AdminDashboard />);
+  expect(html).toContain("@acme.com +1");
 });
 
 test("the codes page opens a library with an explicit create action", () => {
@@ -374,7 +399,9 @@ test("new event form exposes all three code sources and keeps page settings opti
 
 test("dynamic warning is hidden until the box is ticked and spells out the consequences", () => {
   const form = renderToStaticMarkup(<NewEventForm />);
-  expect(form).toContain("Dynamic: anyone can claim");
+  expect(form).toContain("Participant list");
+  expect(form).toContain("Company domain");
+  expect(form).toContain("Anyone (dynamic)");
   expect(form).not.toContain("Warning: anyone with the link can take a code");
   const warning = renderToStaticMarkup(<DynamicEventWarning />);
   expect(warning).toContain('role="alert"');

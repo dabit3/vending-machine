@@ -54,6 +54,7 @@ interface ManagedEventItem {
   eventDate?: string;
   eventEndDate?: string;
   dynamic?: boolean;
+  allowedDomains?: string[];
   identity?: "email" | "x";
   createdBy?: string;
   favorite?: boolean;
@@ -86,6 +87,14 @@ function AdminEventRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-heading font-medium tracking-tight">
             <span className="min-w-0 wrap-anywhere">{event.name}</span>
+            {event.allowedDomains && event.allowedDomains.length > 0 ? (
+              <Badge variant="outline" className="font-mono">
+                @{event.allowedDomains[0]}
+                {event.allowedDomains.length > 1
+                  ? ` +${event.allowedDomains.length - 1}`
+                  : ""}
+              </Badge>
+            ) : null}
             {event.dynamic ? <Badge variant="outline">Dynamic</Badge> : null}
             {event.identity === "x" ? (
               <Badge variant="outline">X handles</Badge>
@@ -134,7 +143,11 @@ export default function AdminDashboard() {
     ? events?.filter(
         (e) =>
           e.name.toLowerCase().includes(nameFilter) ||
-          e.slug.includes(nameFilter)
+          e.slug.includes(nameFilter) ||
+          (e.allowedDomains?.some((d) =>
+            d.includes(nameFilter.replace(/^@/, ""))
+          ) ??
+            false)
       )
     : events;
 

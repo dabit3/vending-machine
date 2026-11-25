@@ -8,6 +8,11 @@ import { logAudit } from "./auditLog";
 import { eventIdentity, resolveViewer } from "./identity";
 import { nextAvailable } from "./claims";
 import { canonicalIdentityKey, isXHandleKey } from "../lib/attendee-identity";
+import {
+  formatAllowedDomains,
+  hasAllowedDomains,
+  matchesAllowedDomain,
+} from "../lib/allowed-domains";
 
 // Attendees not on an event's whitelist can request access. Requests are
 // keyed on the signed-in user's identity for the event (verified email, or
@@ -36,13 +41,22 @@ export const requestAccess = mutation({
     }
     const email = viewer.key;
 
+    if (
+      hasAllowedDomains(event) &&
+      !matchesAllowedDomain(email, event.allowedDomains)
+    ) {
+      return {
+        ok: false as const,
+        error: `Only ${formatAllowedDomains(event.allowedDomains!)} email addresses can claim a code for this event.`,
+      };
+    }
+
     if (await isBlacklisted(ctx, email)) {
       return {
         ok: false as const,
         error: "You are not eligible to request access for this event.",
       };
     }
-
     const whitelisted = await ctx.db
       .query("emails")
       .withIndex("by_event_email", (q) =>

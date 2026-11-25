@@ -3,6 +3,10 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
 import {
+  MAX_ALLOWED_DOMAINS,
+  normalizeAllowedDomainsList,
+} from "../lib/allowed-domains";
+import {
   MAX_ORGANIZERS_ON_CREATE,
   parseOrganizerEmails,
 } from "../lib/organizer-emails";
@@ -206,6 +210,7 @@ export const getBySlug = query({
       codeTypeValues: event.codeTypeValues,
       codeTypeTerms,
       dynamic: event.dynamic ?? false,
+      allowedDomains: event.allowedDomains,
       // "all": one claim dispenses a code from every block listed below.
       claimMode: event.claimMode === "all" ? ("all" as const) : ("one" as const),
       identity: eventIdentity(event),
@@ -255,6 +260,7 @@ export const get = query({
       eventEndDate: event.eventEndDate,
       claimInstructions: event.claimInstructions,
       dynamic: event.dynamic,
+      allowedDomains: event.allowedDomains,
       walkUpSkipsReview: event.walkUpSkipsReview,
       claimMode: event.claimMode,
       identity: eventIdentity(event),
@@ -298,6 +304,7 @@ export const listManaged = query({
       eventEndDate: event.eventEndDate,
       favorite: starred.has(event._id),
       dynamic: event.dynamic,
+      allowedDomains: event.allowedDomains,
       identity: eventIdentity(event),
       createdBy: event.createdBy,
       archived: event.archivedAt !== undefined,
@@ -459,6 +466,7 @@ export const searchByAttendee = query({
         eventDate: event.eventDate,
         eventEndDate: event.eventEndDate,
         dynamic: event.dynamic,
+        allowedDomains: event.allowedDomains,
         identity: eventIdentity(event),
         createdBy: event.createdBy,
         ...match,
@@ -584,6 +592,7 @@ export const create = mutation({
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    allowedDomains: v.optional(v.array(v.string())),
     walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
@@ -635,6 +644,11 @@ export const create = mutation({
       slug = `${base}-${Math.random().toString(36).slice(2, 8)}`;
     }
     const eventDate = normalizeEventDate(args.eventDate);
+    const allowedDomains = resolveAllowedDomains(
+      args.allowedDomains,
+      args.identity === "x" ? "x" : "email"
+    );
+    const dynamic = !allowedDomains && args.dynamic ? true : undefined;
     const id = await ctx.db.insert("events", {
       name: args.name.trim(),
       slug,
@@ -642,9 +656,12 @@ export const create = mutation({
       eventDate,
       eventEndDate: resolveEventEndDate(eventDate, args.eventEndDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      dynamic: args.dynamic || undefined,
+      dynamic,
+      allowedDomains,
       walkUpSkipsReview:
-        !args.dynamic && args.walkUpSkipsReview ? true : undefined,
+        !dynamic && !allowedDomains && args.walkUpSkipsReview
+          ? true
+          : undefined,
       identity: args.identity === "x" ? "x" : undefined,
       signInMessage: args.signInMessage?.trim() || undefined,
       contactEmail: resolveContactEmail(args.contactEmail),
@@ -708,6 +725,7 @@ export const update = mutation({
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
     dynamic: v.optional(v.boolean()),
+    allowedDomains: v.optional(v.array(v.string())),
     walkUpSkipsReview: v.optional(v.boolean()),
     identity: v.optional(identityValidator),
     signInMessage: v.optional(v.string()),
@@ -762,6 +780,15 @@ export const update = mutation({
       }
     }
     const eventDate = normalizeEventDate(args.eventDate);
+    const effectiveIdentity = args.identity ?? eventIdentity(current);
+    const nextAllowedDomains =
+      args.allowedDomains !== undefined
+        ? resolveAllowedDomains(args.allowedDomains, effectiveIdentity)
+        : args.dynamic
+          ? undefined
+          : resolveAllowedDomains(current.allowedDomains, effectiveIdentity);
+    const nextDynamic =
+      !nextAllowedDomains && args.dynamic ? true : undefined;
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       slug,
@@ -774,11 +801,14 @@ export const update = mutation({
         args.eventEndDate ?? current.eventEndDate
       ),
       claimInstructions: args.claimInstructions?.trim() || undefined,
-      dynamic: args.dynamic || undefined,
+      dynamic: nextDynamic,
+      ...(args.allowedDomains !== undefined || args.dynamic
+        ? { allowedDomains: nextAllowedDomains }
+        : {}),
       // Absent means unchanged, so older admin forms don't clear it. Dynamic
-      // events have no review step, so turning dynamic on drops the flag
-      // rather than leaving it to resurface if the event goes back to a list.
-      ...(args.dynamic
+      // and domain-restricted events have no review step, so enabling either
+      // drops the flag rather than leaving it to resurface later.
+      ...(nextDynamic || nextAllowedDomains
         ? { walkUpSkipsReview: undefined }
         : args.walkUpSkipsReview !== undefined
           ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined }
@@ -827,6 +857,31 @@ function resolveContactEmail(raw: string | undefined): string | undefined {
   if (!email || !CONTACT_EMAIL_RE.test(email))
     throw new ConvexError("Enter a valid contact email address.");
   return email;
+}
+
+function resolveAllowedDomains(
+  raw: readonly string[] | undefined,
+  identity: "email" | "x"
+): string[] | undefined {
+  if (raw === undefined || raw.length === 0) return undefined;
+  const { domains, invalid } = normalizeAllowedDomainsList(raw);
+  if (invalid.length > 0) {
+    throw new ConvexError(
+      `Enter valid email domains (for example, acme.com): ${invalid.join(", ")}`
+    );
+  }
+  if (domains.length === 0) return undefined;
+  if (identity === "x") {
+    throw new ConvexError(
+      "Allowed email domains only apply to email-identified events."
+    );
+  }
+  if (domains.length > MAX_ALLOWED_DOMAINS) {
+    throw new ConvexError(
+      `Add up to ${MAX_ALLOWED_DOMAINS} allowed email domains per event.`
+    );
+  }
+  return domains;
 }
 
 // Archives or unarchives a whole event. Archiving also archives every code
