@@ -1,21 +1,56 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
-import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
+import {
+  canonicalIdentityKey,
+  normalizeEmail,
+  normalizeXHandle,
+} from "../lib/attendee-identity";
+
+// Canonical keys for legacy blacklist rows created before `canonicalEmail`
+// was stored. Callers that check many addresses in a loop (bulk uploads,
+// paginated cooldowns) fetch this set once and pass it into `isBlacklisted`.
+export async function legacyBlacklistedCanonicals(
+  ctx: QueryCtx | MutationCtx
+): Promise<Set<string>> {
+  const legacyRows = await ctx.db
+    .query("blacklistedEmails")
+    .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", undefined))
+    .collect();
+  return new Set(legacyRows.map((row) => canonicalIdentityKey(row.email)));
+}
 
 // App-wide blacklist managed exclusively by global admins. Blacklisted
 // identities (email addresses or "@handle" X handles) are rejected whenever
-// they would be added to any event's eligible list.
+// they would be added to any event or attempt to claim / request access.
+// Matches both exact stored keys and canonical email forms (ignoring +tag
+// subaddresses and Gmail dots) so legacy rows and aliases are all enforced.
 export async function isBlacklisted(
   ctx: QueryCtx | MutationCtx,
-  email: string
+  email: string,
+  legacyCanonicals?: Set<string>
 ) {
-  const match = await ctx.db
+  const exact = await ctx.db
     .query("blacklistedEmails")
     .withIndex("by_email", (q) => q.eq("email", email))
-    .unique();
-  return match !== null;
+    .first();
+  if (exact) return true;
+  const canonical = canonicalIdentityKey(email);
+  if (canonical !== email) {
+    const legacyCanonical = await ctx.db
+      .query("blacklistedEmails")
+      .withIndex("by_email", (q) => q.eq("email", canonical))
+      .first();
+    if (legacyCanonical) return true;
+  }
+  const byCanonical = await ctx.db
+    .query("blacklistedEmails")
+    .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
+    .first();
+  if (byCanonical) return true;
+  const legacy = legacyCanonicals ?? (await legacyBlacklistedCanonicals(ctx));
+  return legacy.has(canonical);
 }
 
 // Records that a blacklisted address was rejected while being added to an
@@ -55,25 +90,73 @@ export const add = mutation({
     if (!email) {
       throw new Error("Enter a valid email address or @handle");
     }
-    const existing = await ctx.db
-      .query("blacklistedEmails")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .unique();
-    if (existing) throw new Error(`${email} is already blacklisted`);
+    if (await isBlacklisted(ctx, email)) {
+      throw new Error(`${email} is already blacklisted`);
+    }
+    const canonical = canonicalIdentityKey(email);
     const { email: actorEmail } = await adminEmailStatus(ctx);
     await ctx.db.insert("blacklistedEmails", {
       email,
+      canonicalEmail: canonical,
       addedBy: actorEmail ?? undefined,
     });
-    // Pending duplicate-review flags for the address can never be approved
-    // now, so convert them into per-event blacklist rejections.
-    const pendingFlags = await ctx.db
+    // Pending duplicate-review flags for the address (or any canonical alias)
+    // can never be approved now, so convert them into per-event blacklist
+    // rejections.
+    const pendingFlags = new Map<Id<"flaggedEmails">, Doc<"flaggedEmails">>();
+    const flagKeys = canonical === email ? [email] : [email, canonical];
+    for (const flagKey of flagKeys) {
+      for (const flag of await ctx.db
+        .query("flaggedEmails")
+        .withIndex("by_email", (q) => q.eq("email", flagKey))
+        .collect()) {
+        pendingFlags.set(flag._id, flag);
+      }
+    }
+    for (const flag of await ctx.db
       .query("flaggedEmails")
-      .withIndex("by_email", (q) => q.eq("email", email))
-      .collect();
-    for (const flag of pendingFlags) {
+      .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
+      .collect()) {
+      pendingFlags.set(flag._id, flag);
+    }
+    for (const flag of pendingFlags.values()) {
       await ctx.db.delete(flag._id);
-      await recordBlacklistHit(ctx, flag.eventId, email);
+      await recordBlacklistHit(ctx, flag.eventId, flag.email);
+    }
+    // Release any unclaimed code reservations held for this identity (or its
+    // canonical aliases) so codes are not locked away for a blacklisted user.
+    const listedRows = new Map<Id<"emails">, Doc<"emails">>();
+    for (const row of await ctx.db
+      .query("emails")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .collect()) {
+      listedRows.set(row._id, row);
+    }
+    if (canonical !== email) {
+      for (const row of await ctx.db
+        .query("emails")
+        .withIndex("by_email", (q) => q.eq("email", canonical))
+        .collect()) {
+        listedRows.set(row._id, row);
+      }
+    }
+    for (const row of await ctx.db
+      .query("emails")
+      .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
+      .collect()) {
+      listedRows.set(row._id, row);
+    }
+    for (const row of listedRows.values()) {
+      const reserved = await ctx.db
+        .query("codes")
+        .withIndex("by_event_reservedFor", (q) =>
+          q.eq("eventId", row.eventId).eq("reservedFor", row.email)
+        )
+        .filter((q) => q.eq(q.field("claimedBy"), undefined))
+        .collect();
+      for (const code of reserved) {
+        await ctx.db.patch(code._id, { reservedFor: undefined });
+      }
     }
   },
 });

@@ -31,6 +31,32 @@ export function normalizeEmail(raw: string): string | null {
   return value.includes("@") && !value.startsWith("@") ? value : null;
 }
 
+// Canonical form of a normalized identity key for anti-abuse checks
+// (blacklist, cross-event cooldown, duplicate flagging, and dynamic-event
+// double-claim prevention). Strips "+tag" subaddressing on all email domains,
+// maps googlemail.com to gmail.com, and strips dots in Gmail local parts.
+// X handles ("@handle") are already canonical.
+export function canonicalIdentityKey(key: string): string {
+  const trimmed = key.trim().toLowerCase();
+  if (!trimmed || trimmed.startsWith("@")) return trimmed;
+  const at = trimmed.lastIndexOf("@");
+  if (at <= 0) return trimmed;
+  let local = trimmed.slice(0, at);
+  let domain = trimmed.slice(at + 1);
+  const plus = local.indexOf("+");
+  if (plus > 0) {
+    local = local.slice(0, plus);
+  }
+  if (domain === "googlemail.com") {
+    domain = "gmail.com";
+  }
+  if (domain === "gmail.com") {
+    const stripped = local.replace(/\./g, "");
+    if (stripped) local = stripped;
+  }
+  return `${local}@${domain}`;
+}
+
 export function normalizeIdentityKey(
   identity: AttendeeIdentity,
   raw: string

@@ -665,6 +665,8 @@ export const release = mutation({
     }
     await ctx.db.patch(code._id, {
       claimedBy: undefined,
+      claimedByCanonical: undefined,
+      claimedByUserId: undefined,
       claimedAt: undefined,
       ...(code.claimKey === undefined ? { claimKey: Math.random() } : {}),
     });

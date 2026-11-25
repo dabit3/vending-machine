@@ -37,7 +37,7 @@ export async function viewerIdentityKeys(ctx: QueryCtx | MutationCtx) {
 }
 
 export type ViewerResolution =
-  | { ok: true; key: string; kind: AttendeeIdentity }
+  | { ok: true; key: string; kind: AttendeeIdentity; userId: string }
   | { ok: false; reason: "unauthenticated" | "unverified" | "no_x_account" };
 
 // Resolves the key an event uses to recognize the signed-in viewer: their
@@ -52,9 +52,11 @@ export async function resolveViewer(
   if (kind === "x") {
     const handle = await viewerXHandle(ctx);
     return handle
-      ? { ok: true, key: handle, kind }
+      ? { ok: true, key: handle, kind, userId: identity.subject }
       : { ok: false, reason: "no_x_account" };
   }
   const email = await viewerEmail(ctx);
-  return email ? { ok: true, key: email, kind } : { ok: false, reason: "unverified" };
+  return email
+    ? { ok: true, key: email, kind, userId: identity.subject }
+    : { ok: false, reason: "unverified" };
 }

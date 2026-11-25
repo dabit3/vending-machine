@@ -2,11 +2,18 @@ import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
-import { isBlacklisted, recordBlacklistHit } from "./blacklist";
+import {
+  isBlacklisted,
+  legacyBlacklistedCanonicals,
+  recordBlacklistHit,
+} from "./blacklist";
 import { logAudit } from "./auditLog";
 import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
-import { normalizeIdentityKey } from "../lib/attendee-identity";
+import {
+  canonicalIdentityKey,
+  normalizeIdentityKey,
+} from "../lib/attendee-identity";
 import { claimHistory } from "./claimCooldown";
 import { paginationOptsValidator } from "convex/server";
 
@@ -52,6 +59,7 @@ export const add = mutation({
     let flagged = 0;
     let blacklisted = 0;
     const seen = new Set<string>();
+    const legacyBlacklist = await legacyBlacklistedCanonicals(ctx);
     for (const raw of args.emails) {
       const email = normalizeIdentityKey(identity, raw);
       if (!email || seen.has(email)) {
@@ -59,6 +67,22 @@ export const add = mutation({
         continue;
       }
       seen.add(email);
+      if (await isBlacklisted(ctx, email, legacyBlacklist)) {
+        await recordBlacklistHit(ctx, args.eventId, email);
+        // A pending review flag can never be approved for a blacklisted
+        // address, so it's superseded by the rejection record.
+        const pendingFlag = await ctx.db
+          .query("flaggedEmails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", args.eventId).eq("email", email)
+          )
+          .unique();
+        if (pendingFlag) {
+          await ctx.db.delete(pendingFlag._id);
+        }
+        blacklisted++;
+        continue;
+      }
       const existing = await ctx.db
         .query("emails")
         .withIndex("by_event_email", (q) =>
@@ -81,33 +105,37 @@ export const add = mutation({
         skipped++;
         continue;
       }
-      if (await isBlacklisted(ctx, email)) {
-        await recordBlacklistHit(ctx, args.eventId, email);
-        // A pending review flag can never be approved for a blacklisted
-        // address, so it's superseded by the rejection record.
-        const pendingFlag = await ctx.db
-          .query("flaggedEmails")
-          .withIndex("by_event_email", (q) =>
-            q.eq("eventId", args.eventId).eq("email", email)
-          )
-          .unique();
-        if (pendingFlag) {
-          await ctx.db.delete(pendingFlag._id);
+      // Emails already signed up for other events (exact or canonical alias)
+      // are held for manual review instead of being added directly, unless
+      // this event lets walk-up additions skip that review.
+      const canonical = canonicalIdentityKey(email);
+      let otherEvents: Doc<"emails">[] = [];
+      if (!skipReview) {
+        const matches = new Map<Id<"emails">, Doc<"emails">>();
+        for (const row of await ctx.db
+          .query("emails")
+          .withIndex("by_email", (q) => q.eq("email", email))
+          .collect()) {
+          if (row.eventId !== args.eventId) matches.set(row._id, row);
         }
-        blacklisted++;
-        continue;
+        if (canonical !== email) {
+          for (const row of await ctx.db
+            .query("emails")
+            .withIndex("by_email", (q) => q.eq("email", canonical))
+            .collect()) {
+            if (row.eventId !== args.eventId) matches.set(row._id, row);
+          }
+        }
+        for (const row of await ctx.db
+          .query("emails")
+          .withIndex("by_canonicalEmail", (q) =>
+            q.eq("canonicalEmail", canonical)
+          )
+          .collect()) {
+          if (row.eventId !== args.eventId) matches.set(row._id, row);
+        }
+        otherEvents = [...matches.values()];
       }
-      // Emails already signed up for other events are held for manual
-      // review instead of being added directly, unless this event lets
-      // walk-up additions skip that review.
-      const otherEvents = skipReview
-        ? []
-        : (
-            await ctx.db
-              .query("emails")
-              .withIndex("by_email", (q) => q.eq("email", email))
-              .collect()
-          ).filter((e) => e.eventId !== args.eventId);
       if (otherEvents.length > 0) {
         const alreadyFlagged = await ctx.db
           .query("flaggedEmails")
@@ -126,13 +154,18 @@ export const add = mutation({
           await ctx.db.insert("flaggedEmails", {
             eventId: args.eventId,
             email,
+            canonicalEmail: canonical,
             matchedEventIds,
           });
           flagged++;
         }
         continue;
       }
-      await ctx.db.insert("emails", { eventId: args.eventId, email });
+      await ctx.db.insert("emails", {
+        eventId: args.eventId,
+        email,
+        canonicalEmail: canonical,
+      });
       // A stale review entry (e.g. left over after the matching event was
       // deleted) is resolved by the address becoming eligible normally.
       const staleFlag = await ctx.db
@@ -181,8 +214,10 @@ export const listCooldowns = query({
       eligibleAt?: number;
       waived: boolean;
     }[] = [];
+    const legacyBlacklist = await legacyBlacklistedCanonicals(ctx);
     for (const row of result.page) {
       if (row.blockedAt !== undefined) continue;
+      if (await isBlacklisted(ctx, row.email, legacyBlacklist)) continue;
       const claimedHere = await ctx.db
         .query("codes")
         .withIndex("by_event_claimedBy", (q) =>
@@ -276,13 +311,29 @@ export const listFlagged = query({
         }
         if (!info) continue;
         // The stored matches are a snapshot; only show events where the
-        // address is still on the eligible list.
-        const stillListed = await ctx.db
-          .query("emails")
-          .withIndex("by_event_email", (q) =>
-            q.eq("eventId", eventId).eq("email", f.email)
-          )
-          .unique();
+        // address (or its canonical alias) is still on the eligible list.
+        const canonical = canonicalIdentityKey(f.email);
+        const stillListed =
+          (await ctx.db
+            .query("emails")
+            .withIndex("by_event_email", (q) =>
+              q.eq("eventId", eventId).eq("email", f.email)
+            )
+            .first()) ??
+          (canonical !== f.email
+            ? await ctx.db
+                .query("emails")
+                .withIndex("by_event_email", (q) =>
+                  q.eq("eventId", eventId).eq("email", canonical)
+                )
+                .first()
+            : null) ??
+          (await ctx.db
+            .query("emails")
+            .withIndex("by_event_canonicalEmail", (q) =>
+              q.eq("eventId", eventId).eq("canonicalEmail", canonical)
+            )
+            .first());
         if (!stillListed) continue;
         if (info.canSee) {
           matchedEvents.push({ id: eventId, name: info.name });
@@ -327,6 +378,7 @@ export const approveFlagged = mutation({
       await ctx.db.insert("emails", {
         eventId: flagged.eventId,
         email: flagged.email,
+        canonicalEmail: canonicalIdentityKey(flagged.email),
       });
     }
     await ctx.db.delete(args.id);
