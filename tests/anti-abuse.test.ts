@@ -160,6 +160,22 @@ test("blacklist matches canonical email aliases for both legacy and new blacklis
     })
   ).toMatchObject({ added: 0, blacklisted: 1 });
 
+  // Legacy blacklist row stored as a non-canonical alias without canonicalEmail.
+  await t.run((ctx) =>
+    ctx.db.insert("blacklistedEmails", { email: "legacy.alias+old@gmail.com" })
+  );
+  const otherAliasUser = t.withIdentity({
+    subject: "alias-2",
+    email: "legacyalias+new@googlemail.com",
+    emailVerified: true,
+  });
+  expect(
+    await otherAliasUser.mutation(api.claims.claim, {
+      slug: "open-drop",
+      name: "Other Alias",
+    })
+  ).toMatchObject({ ok: false });
+
   // New blacklist row added with a +tag also blocks the base address.
   await admin.mutation(api.blacklist.add, { email: "spammer+tag@gmail.com" });
   const baseUser = t.withIdentity({

@@ -34,7 +34,15 @@ export async function isBlacklisted(
     .query("blacklistedEmails")
     .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
     .first();
-  return byCanonical !== null;
+  if (byCanonical) return true;
+  // Legacy blacklist rows created before `canonicalEmail` was stored have
+  // `canonicalEmail === undefined`; check only those so an unmigrated alias
+  // ban (e.g. `a.b+old@gmail.com`) still blocks other aliases (`ab+new@gmail.com`).
+  const legacyRows = await ctx.db
+    .query("blacklistedEmails")
+    .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", undefined))
+    .collect();
+  return legacyRows.some((row) => canonicalIdentityKey(row.email) === canonical);
 }
 
 // Records that a blacklisted address was rejected while being added to an
