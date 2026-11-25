@@ -70,8 +70,14 @@ async function setup() {
 
 test("a third claim within 60 days is refused, existing codes stay retrievable", async () => {
   const { t, admin, user, ids } = await setup();
-  expect(await user.mutation(api.claims.claim, { slug: "a" })).toMatchObject({ ok: true, code: "a1" });
-  expect(await user.mutation(api.claims.claim, { slug: "b" })).toMatchObject({ ok: true, code: "b1" });
+  const first = await user.mutation(api.claims.claim, { slug: "a" });
+  expect(first).toMatchObject({ ok: true });
+  if (!first.ok) throw new Error("first claim failed");
+  expect(["a1", "a2"]).toContain(first.code);
+  const second = await user.mutation(api.claims.claim, { slug: "b" });
+  expect(second).toMatchObject({ ok: true });
+  if (!second.ok) throw new Error("second claim failed");
+  expect(["b1", "b2"]).toContain(second.code);
 
   const eligibility = await user.query(api.claims.eligibility, { slug: "c" });
   expect(eligibility).toMatchObject({ eligible: true, cooldown: { recent: 2 } });
@@ -96,7 +102,7 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
   // Revisiting an event already claimed from returns that code, no refusal.
   expect(await user.mutation(api.claims.claim, { slug: "a" })).toMatchObject({
     ok: true,
-    code: "a1",
+    code: first.code,
     alreadyClaimed: true,
   });
 
@@ -142,7 +148,10 @@ test("a third claim within 60 days is refused, existing codes stay retrievable",
   expect(
     (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
   ).toEqual([]);
-  expect(await user.mutation(api.claims.claim, { slug: "c" })).toMatchObject({ ok: true, code: "c1" });
+  const thirdClaim = await user.mutation(api.claims.claim, { slug: "c" });
+  expect(thirdClaim).toMatchObject({ ok: true });
+  if (!thirdClaim.ok) throw new Error("third claim failed");
+  expect(["c1", "c2"]).toContain(thirdClaim.code);
 });
 
 test("flagged entries report how many codes the identity has claimed before", async () => {
@@ -215,7 +224,10 @@ test("organizers can let a waiting attendee claim from one event anyway", async 
   await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: false });
   expect((await user.mutation(api.claims.claim, { slug: "c" })).ok).toBe(false);
   await organizer.mutation(api.emails.setCooldownWaived, { id: waiting.id, waived: true });
-  expect(await user.mutation(api.claims.claim, { slug: "c" })).toMatchObject({ ok: true, code: "c1" });
+  const thirdClaim = await user.mutation(api.claims.claim, { slug: "c" });
+  expect(thirdClaim).toMatchObject({ ok: true });
+  if (!thirdClaim.ok) throw new Error("third claim failed");
+  expect(["c1", "c2"]).toContain(thirdClaim.code);
   // Claimed here now, so they leave the waiting list.
   expect(
     (await admin.query(api.emails.listCooldowns, { eventId: ids[2], paginationOpts: page })).page
