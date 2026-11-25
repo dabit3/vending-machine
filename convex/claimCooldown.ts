@@ -49,16 +49,20 @@ export async function claimHistory(
   );
 
   const userIds = new Set<string>();
-  if (userId) userIds.add(userId);
-  for (const row of byId.values()) {
-    if (row.claimedByUserId) userIds.add(row.claimedByUserId);
-  }
-  if (isXHandleKey(key)) {
+  if (userId) {
+    // When the caller knows the signed-in account, query only that account so
+    // a reassigned X handle never inherits a former owner's unrelated claims.
+    userIds.add(userId);
+  } else if (isXHandleKey(key)) {
     const xAccount = await ctx.db
       .query("xAccounts")
       .withIndex("by_handle", (q) => q.eq("handle", key))
       .first();
     if (xAccount) userIds.add(xAccount.clerkUserId);
+  } else {
+    for (const row of byId.values()) {
+      if (row.claimedByUserId) userIds.add(row.claimedByUserId);
+    }
   }
 
   for (const uid of userIds) {

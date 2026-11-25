@@ -389,6 +389,31 @@ test("60-day cooldown enforces across email aliases and across email + X for the
   expect(cooldowns.page).toMatchObject([
     { email: "carol@example.com", recent: 2, waived: false },
   ]);
+
+  // If @carol is reassigned to a different Clerk user, the new owner does NOT
+  // inherit Carol's unrelated email claim from Event A.
+  await t.run(async (ctx) => {
+    const existing = await ctx.db
+      .query("xAccounts")
+      .withIndex("by_handle", (q) => q.eq("handle", "@carol"))
+      .unique();
+    await ctx.db.patch(existing!._id, { clerkUserId: "new-carol-owner" });
+  });
+  const evX2 = await admin.mutation(api.events.create, {
+    name: "X Event 2",
+    slug: "ev-x2",
+    dynamic: true,
+    identity: "x",
+  });
+  await admin.mutation(api.codes.add, { eventId: evX2.id, codes: ["X2"] });
+  const newOwner = t.withIdentity({
+    subject: "new-carol-owner",
+    email: "new-owner@example.com",
+    emailVerified: true,
+  });
+  expect(
+    await newOwner.query(api.claims.eligibility, { slug: "ev-x2" })
+  ).not.toHaveProperty("cooldown");
 });
 
 test("uploading an email alias across events flags it for duplicate review", async () => {
