@@ -114,13 +114,21 @@ import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
+  AllowedDomainsField,
+  ClaimAccessPicker,
   EventDatesField,
-  DynamicToggle,
   WalkUpReviewToggle,
   ClaimModeToggle,
   IdentityPicker,
   SlugInput,
+  type ClaimAccessMode,
 } from "@/components/EventFormFields";
+import {
+  formatAllowedDomains,
+  hasAllowedDomains,
+  MAX_ALLOWED_DOMAINS,
+  parseAllowedDomains,
+} from "@/lib/allowed-domains";
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const event = useQuery(api.events.get, { id });
@@ -238,9 +246,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const claimedDisplay = useCountUp(claimedCount);
   const unclaimedEmailCount =
     emails?.filter((e) => !claimedCodesByEmail.has(e.email)).length ?? 0;
-  // Dynamic events have no participant list to manage; the emails card only
-  // shows who has actually claimed a code.
+  // Dynamic and company-domain events have no participant list to manage;
+  // the emails card only shows who has actually claimed a code.
   const isDynamic = event?.dynamic === true;
+  const isDomainRestricted = hasAllowedDomains(event);
+  const isSelfEnrolling = isDynamic || isDomainRestricted;
   const identity = event?.identity ?? "email";
   const byHandle = identity === "x";
   const labels = identityLabels(identity);
@@ -255,7 +265,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         claimed: boolean;
         blocked?: boolean;
       }[]
-    | undefined = isDynamic
+    | undefined = isSelfEnrolling
     ? codes &&
       [...claimedCodesByEmail.keys()].map((email) => ({
         email,
@@ -270,8 +280,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         blocked: e.blockedAt !== undefined,
       }));
   const isGlobalAdmin = access?.isGlobalAdmin === true;
-  // Dynamic lists are claimants only, so the status filter doesn't apply.
-  const activeEmailFilter: EmailStatusFilter = isDynamic ? "all" : emailFilter;
+  // Self-enrolling lists are claimants only, so the status filter doesn't apply.
+  const activeEmailFilter: EmailStatusFilter = isSelfEnrolling ? "all" : emailFilter;
   const visibleEmails =
     listedEmails && filterEmails(listedEmails, emailSearch, activeEmailFilter);
   const unclaimedCodeCount = codeCount - claimedCount;
@@ -757,11 +767,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <StatCard
           label={
-            isDynamic ? `Claimed ${labels.plural}` : `Eligible ${labels.plural}`
+            isSelfEnrolling ? `Claimed ${labels.plural}` : `Eligible ${labels.plural}`
           }
           value={listedEmails?.length}
           sub={
-            !isDynamic && emails && codes
+            !isSelfEnrolling && emails && codes
               ? `${unclaimedEmailCount} yet to claim`
               : undefined
           }
@@ -937,7 +947,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Inbox className="size-4 text-muted-dim" aria-hidden />
-              {isDynamic
+              {isSelfEnrolling
                 ? `Claimed ${labels.plural}`
                 : `Eligible ${labels.plural}`}
               {listedEmails ? (
@@ -945,9 +955,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               ) : null}
             </CardTitle>
             <CardDescription>
-              {isDynamic
-                ? `This event is dynamic: anyone who signs in${byHandle ? " with X" : ""} can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
-                : `Only these ${labels.addressPlural} can claim a code.${byHandle ? " Attendees sign in with X." : ""}${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
+              {isDomainRestricted && event?.allowedDomains
+                ? `Anyone who signs in with a verified ${formatAllowedDomains(event.allowedDomains)} email can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
+                : isDynamic
+                  ? `This event is dynamic: anyone who signs in${byHandle ? " with X" : ""} can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
+                  : `Only these ${labels.addressPlural} can claim a code.${byHandle ? " Attendees sign in with X." : ""}${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
               {listedEmails && listedEmails.length > 0 ? (
@@ -956,7 +968,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   Export
                 </Button>
               ) : null}
-              {isDynamic ? null : (
+              {isSelfEnrolling ? null : (
                 <UploadButton
                   busy={emailBusy}
                   onFile={(f) =>
@@ -969,7 +981,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   }
                 />
               )}
-              {isGlobalAdmin && !isDynamic && emails && emails.length > 0 ? (
+              {isGlobalAdmin && !isSelfEnrolling && emails && emails.length > 0 ? (
                 <AlertDialog>
                   <AlertDialogTrigger
                     render={
@@ -1014,7 +1026,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           {/* Scroll the body rather than clip it when the sibling codes card is
               shorter than the form, the waiting section and the list minimum. */}
           <CardContent className="flex flex-col gap-4 lg:h-0 lg:grow lg:overflow-y-auto">
-            {isDynamic ? null : (
+            {isSelfEnrolling ? null : (
               <form onSubmit={handleAddEmails} className="flex flex-col gap-3">
                 <Textarea
                   aria-label={`${labels.addressPlural} to add`}
@@ -1066,7 +1078,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     className="text-sm"
                   />
                 </InputGroup>
-                {isDynamic ? null : (
+                {isSelfEnrolling ? null : (
                   <ToggleGroup
                     aria-label={`Filter ${labels.plural} by claim status`}
                     value={[emailFilter]}
@@ -1092,7 +1104,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 )}
               </div>
             ) : null}
-            {!isDynamic && emails && codes && unclaimedEmailCount > 0 ? (
+            {!isSelfEnrolling && emails && codes && unclaimedEmailCount > 0 ? (
               <div className="flex justify-end">
                 <AlertDialog>
                   <AlertDialogTrigger
@@ -1224,7 +1236,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   key: emailId ?? e.email,
                   label: e.email,
                   detail: e.name,
-                  claimed: e.claimed && !isDynamic,
+                  claimed: e.claimed && !isSelfEnrolling,
                   blocked: e.blocked,
                   onToggleBlock:
                     emailId === undefined
@@ -1261,7 +1273,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   ? emailSearch.trim()
                     ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}${labels.plural} match "${emailSearch.trim()}".`
                     : `No ${activeEmailFilter} ${labels.plural} yet.`
-                  : isDynamic
+                  : isSelfEnrolling
                     ? "No one has claimed yet."
                     : `No ${labels.plural} yet.`
               }
@@ -1582,7 +1594,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     and returns it to the pool for someone else to claim.{" "}
                     {releaseTarget?.claimedBy} has already seen the code, so
                     only release it if they will not redeem it.{" "}
-                    {isDynamic
+                    {isSelfEnrolling
                       ? "They can claim again from the event link."
                       : `They stay on the list and can claim again unless you remove or block them.`}
                   </AlertDialogDescription>
@@ -2650,7 +2662,15 @@ function EventDetailsForm({
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
-  const [dynamic, setDynamic] = useState(event.dynamic ?? false);
+  const initialAccessMode: ClaimAccessMode = hasAllowedDomains(event)
+    ? "domain"
+    : event.dynamic
+      ? "dynamic"
+      : "list";
+  const [accessMode, setAccessMode] = useState<ClaimAccessMode>(initialAccessMode);
+  const [allowedDomainsInput, setAllowedDomainsInput] = useState(
+    (event.allowedDomains ?? []).join(", ")
+  );
   const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(
     event.walkUpSkipsReview ?? false
   );
@@ -2661,6 +2681,13 @@ function EventDetailsForm({
     event.signInMessage ?? ""
   );
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
+  const parsedDomains = parseAllowedDomains(allowedDomainsInput);
+  const savedDomains = event.allowedDomains ?? [];
+  const domainsDirty =
+    accessMode === "domain" &&
+    (parsedDomains.invalid.length > 0 ||
+      parsedDomains.domains.length !== savedDomains.length ||
+      parsedDomains.domains.some((d, i) => d !== savedDomains[i]));
   const dirty =
     name.trim() !== event.name ||
     slugify(slug) !== event.slug ||
@@ -2668,7 +2695,8 @@ function EventDetailsForm({
     eventDate !== (event.eventDate ?? "") ||
     eventEndDate !== (event.eventEndDate ?? "") ||
     claimInstructions.trim() !== (event.claimInstructions ?? "") ||
-    dynamic !== (event.dynamic ?? false) ||
+    accessMode !== initialAccessMode ||
+    domainsDirty ||
     walkUpSkipsReview !== (event.walkUpSkipsReview ?? false) ||
     identity !== (event.identity ?? "email") ||
     signInMessage.trim() !== (event.signInMessage ?? "") ||
@@ -2676,6 +2704,24 @@ function EventDetailsForm({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (accessMode === "domain") {
+      if (parsedDomains.invalid.length > 0) {
+        toast.error(
+          `Enter valid email domains (for example, acme.com): ${parsedDomains.invalid.join(", ")}`
+        );
+        return;
+      }
+      if (parsedDomains.domains.length === 0) {
+        toast.error("Enter at least one allowed company email domain.");
+        return;
+      }
+      if (parsedDomains.domains.length > MAX_ALLOWED_DOMAINS) {
+        toast.error(
+          `Add up to ${MAX_ALLOWED_DOMAINS} allowed email domains per event.`
+        );
+        return;
+      }
+    }
     setSlug(slugify(slug));
     try {
       await updateEvent({
@@ -2686,8 +2732,9 @@ function EventDetailsForm({
         eventDate: eventDate || undefined,
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
-        dynamic: dynamic || undefined,
-        walkUpSkipsReview: dynamic ? false : walkUpSkipsReview,
+        dynamic: accessMode === "dynamic" ? true : undefined,
+        allowedDomains: accessMode === "domain" ? parsedDomains.domains : [],
+        walkUpSkipsReview: accessMode === "list" ? walkUpSkipsReview : false,
         identity,
         signInMessage,
         contactEmail,
@@ -2776,11 +2823,16 @@ function EventDetailsForm({
               <IdentityPicker
                 id="detail-identity"
                 value={identity}
-                onChange={setIdentity}
+                onChange={(next) => {
+                  setIdentity(next);
+                  if (next === "x" && accessMode === "domain") {
+                    setAccessMode("list");
+                  }
+                }}
                 description={
                   identity === "x"
                     ? "Attendees sign in with X; the list holds @handles. Can only be changed while the event has no participants or claims."
-                    : "Attendees sign in with the email on the list. Can only be changed while the event has no participants or claims."
+                    : "Attendees sign in with a verified email address. Can only be changed while the event has no participants or claims."
                 }
               />
             </div>
@@ -2798,19 +2850,24 @@ function EventDetailsForm({
               contactEmail={contactEmail}
               onContactEmailChange={setContactEmail}
             />
-            <DynamicToggle
-              id="detail-dynamic"
+            <ClaimAccessPicker
+              id="detail-access"
               className="sm:col-span-2"
-              checked={dynamic}
+              value={accessMode}
               onChange={(next) => {
-                setDynamic(next);
-                // Dynamic events have no review step; drop the hidden choice
-                // so it can't come back when switching to a list later.
-                if (next) setWalkUpSkipsReview(false);
+                setAccessMode(next);
+                if (next !== "list") setWalkUpSkipsReview(false);
               }}
               identity={identity}
             />
-            {dynamic ? (
+            {accessMode === "domain" ? (
+              <AllowedDomainsField
+                id="detail-allowed-domains"
+                className="sm:col-span-2"
+                value={allowedDomainsInput}
+                onChange={setAllowedDomainsInput}
+              />
+            ) : accessMode === "dynamic" ? (
               <DynamicEventWarning className="sm:col-span-2" />
             ) : (
               <WalkUpReviewToggle

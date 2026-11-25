@@ -18,6 +18,11 @@ import { resolveViewer } from "./identity";
 import { canonicalIdentityKey } from "../lib/attendee-identity";
 import { cleanClaimantName } from "../lib/claimant-name";
 import { CLAIM_WINDOW_DAYS, formatClaimDate } from "../lib/claim-cooldown";
+import {
+  formatAllowedDomains,
+  hasAllowedDomains,
+  matchesAllowedDomain,
+} from "../lib/allowed-domains";
 
 // Participant rows are keyed by the event's identity kind: a lowercased email
 // or an "@handle" (see lib/attendee-identity.ts). Includes blocked rows.
@@ -176,17 +181,18 @@ async function probeAnyCode(
     .first();
 }
 
-// Detects when the same person has already claimed on a dynamic event under a
-// different raw key: either the same Clerk account (`userId`) with a changed
-// email/handle, or an email alias with the same canonical address (+tag /
-// Gmail dots). List events defer to the organizer's explicit participant list.
+// Detects when the same person has already claimed on a self-enrolling event
+// (dynamic or company-domain) under a different raw key: either the same Clerk
+// account (`userId`) with a changed email/handle, or an email alias with the
+// same canonical address (+tag / Gmail dots). List events defer to the
+// organizer's explicit participant list.
 async function otherIdentityClaimedHere(
   ctx: QueryCtx | MutationCtx,
   event: Doc<"events">,
   key: string,
   userId?: string
 ): Promise<"account" | "alias" | null> {
-  if (!event.dynamic) return null;
+  if (!event.dynamic && !hasAllowedDomains(event)) return null;
   if (userId) {
     const byAccount = await ctx.db
       .query("codes")
@@ -357,19 +363,24 @@ async function pickAnyCode(
   return wrapped ?? forward[0] ?? null;
 }
 
-// Dynamic events have no pre-uploaded participant list: the first time a
-// signed-in verified identity interacts with the event it is enrolled on the
-// spot, so the usual per-attendee claim and instructions tracking applies.
-// Blacklisted addresses are never eligible, even if already listed.
+// Dynamic and domain-restricted events have no pre-uploaded participant list:
+// the first time an eligible signed-in verified identity interacts with the
+// event it is enrolled on the spot, so the usual per-attendee claim and
+// instructions tracking applies. Blacklisted addresses are never eligible,
+// even if already listed.
 async function findOrEnrollParticipant(
   ctx: MutationCtx,
   event: Doc<"events">,
   key: string
 ) {
   if (await isBlacklisted(ctx, key)) return null;
+  const domainRestricted = hasAllowedDomains(event);
+  if (domainRestricted && !matchesAllowedDomain(key, event.allowedDomains)) {
+    return null;
+  }
   const existing = await findParticipantRow(ctx, event, key);
   if (existing) return existing.blockedAt === undefined ? existing : null;
-  if (!event.dynamic) return null;
+  if (!event.dynamic && !domainRestricted) return null;
   const id = await ctx.db.insert("emails", {
     eventId: event._id,
     email: key,
@@ -435,10 +446,19 @@ export const eligibility = query({
         previewCodes,
       };
     }
+    const domainRestricted = hasAllowedDomains(event);
+    if (domainRestricted && !matchesAllowedDomain(key, event.allowedDomains)) {
+      return {
+        eligible: false as const,
+        reason: "wrong_domain" as const,
+        identity: key,
+        allowedDomains: event.allowedDomains,
+      };
+    }
     if (await isBlacklisted(ctx, key)) {
       return { eligible: false as const, reason: "not_listed" as const, identity: key };
     }
-    const walkUpEligible = event.dynamic && !row;
+    const walkUpEligible = (event.dynamic || domainRestricted) && !row;
     if (!allowed && !walkUpEligible) {
       return { eligible: false as const, reason: "not_listed" as const, identity: key };
     }
@@ -591,12 +611,19 @@ export const claim = mutation({
     }
     const key = viewer.key;
     const userId = viewer.userId;
-    const notEligibleError = event.dynamic
-      ? `${key} is not eligible to claim a code for this event.`
-      : viewer.kind === "x"
-        ? `${key} is not on the participant list for this event. Sign in with the X account you registered with.`
-        : `${key} is not on the participant list for this event. Sign in with the email you registered with.`;
+    const domainRestricted = hasAllowedDomains(event);
+    const notEligibleError =
+      domainRestricted && !matchesAllowedDomain(key, event.allowedDomains)
+        ? `Only ${formatAllowedDomains(event.allowedDomains!)} email addresses can claim a code for this event. Sign in with your work email.`
+        : event.dynamic || domainRestricted
+          ? `${key} is not eligible to claim a code for this event.`
+          : viewer.kind === "x"
+            ? `${key} is not on the participant list for this event. Sign in with the X account you registered with.`
+            : `${key} is not on the participant list for this event. Sign in with the email you registered with.`;
 
+    if (domainRestricted && !matchesAllowedDomain(key, event.allowedDomains)) {
+      return { ok: false as const, error: notEligibleError };
+    }
     if (await isBlacklisted(ctx, key)) {
       return { ok: false as const, error: notEligibleError };
     }
@@ -659,10 +686,12 @@ export const claim = mutation({
       };
     }
 
-    // Only dynamic events ask for a name; list events never show the field,
-    // so a name sent there is ignored rather than written onto the list.
-    const name = event.dynamic ? cleanClaimantName(args.name) : undefined;
-    if (event.dynamic && !name && !allowed.name) {
+    // Only dynamic and domain-restricted events ask for a name; list events
+    // never show the field, so a name sent there is ignored rather than
+    // written onto the list.
+    const selfEnrolling = Boolean(event.dynamic || domainRestricted);
+    const name = selfEnrolling ? cleanClaimantName(args.name) : undefined;
+    if (selfEnrolling && !name && !allowed.name) {
       return {
         ok: false as const,
         error: "Enter your name to claim your code.",

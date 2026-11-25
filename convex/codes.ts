@@ -11,6 +11,7 @@ import { ConvexError, v } from "convex/values";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
 import { viewerIdentityKeys } from "./identity";
 import { logAudit } from "./auditLog";
+import { hasAllowedDomains } from "../lib/allowed-domains";
 import {
   activeCodeTypes,
   blockKey,
@@ -670,11 +671,11 @@ export const release = mutation({
       claimedAt: undefined,
       ...(code.claimKey === undefined ? { claimKey: Math.random() } : {}),
     });
-    // Dynamic events enroll attendees when they claim, so a claimant left
-    // with no code is taken off again and the hidden event leaves their home
-    // page. List events keep the attendee, who can claim again.
+    // Dynamic and domain-restricted events enroll attendees when they claim,
+    // so a claimant left with no code is taken off again and the hidden event
+    // leaves their home page. List events keep the attendee, who can claim again.
     const event = await ctx.db.get(code.eventId);
-    if (event?.dynamic) {
+    if (event?.dynamic || hasAllowedDomains(event)) {
       const claimedBy = code.claimedBy;
       const remaining = await ctx.db
         .query("codes")

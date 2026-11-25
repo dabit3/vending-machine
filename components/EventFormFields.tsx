@@ -1,14 +1,30 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AtSign, CalendarDays, Mail, Plus, X } from "lucide-react";
+import {
+  AlertTriangle,
+  AtSign,
+  Building2,
+  CalendarDays,
+  Link2,
+  Mail,
+  Plus,
+  Users,
+  X,
+} from "lucide-react";
 import { APP_URL } from "@/lib/app-name";
+import {
+  isPublicEmailDomain,
+  parseAllowedDomains,
+} from "@/lib/allowed-domains";
 import {
   ATTENDEE_IDENTITIES,
   type AttendeeIdentity,
 } from "@/lib/attendee-identity";
 import { formatEventDate } from "@/lib/event-date";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,9 +32,11 @@ import {
   Field,
   FieldContent,
   FieldDescription,
+  FieldError,
   FieldLabel,
   FieldTitle,
 } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
@@ -399,6 +417,145 @@ export function WalkUpReviewToggle({
         </FieldContent>
       </Field>
     </FieldLabel>
+  );
+}
+
+export type ClaimAccessMode = "list" | "domain" | "dynamic";
+
+export function ClaimAccessPicker({
+  id,
+  value,
+  onChange,
+  identity,
+  className,
+}: {
+  id: string;
+  value: ClaimAccessMode;
+  onChange: (value: ClaimAccessMode) => void;
+  identity: AttendeeIdentity;
+  className?: string;
+}) {
+  const byHandle = identity === "x";
+  return (
+    <Field className={className}>
+      <FieldLabel id={`${id}-label`}>Who can claim</FieldLabel>
+      <ToggleGroup
+        id={id}
+        aria-labelledby={`${id}-label`}
+        aria-describedby={`${id}-description`}
+        className={cn(
+          "grid w-full grid-cols-1",
+          byHandle ? "sm:grid-cols-2 sm:w-96" : "sm:grid-cols-3"
+        )}
+        value={[value]}
+        onValueChange={(next) => {
+          const picked = next[0];
+          if (
+            picked === "list" ||
+            picked === "dynamic" ||
+            (picked === "domain" && !byHandle)
+          ) {
+            onChange(picked);
+          }
+        }}
+      >
+        <ToggleGroupItem
+          value="list"
+          variant="outline"
+          className="gap-2 aria-pressed:border-primary/40 aria-pressed:bg-primary/5 dark:aria-pressed:bg-primary/10"
+        >
+          <Users />
+          Participant list
+        </ToggleGroupItem>
+        {!byHandle ? (
+          <ToggleGroupItem
+            value="domain"
+            variant="outline"
+            className="gap-2 aria-pressed:border-primary/40 aria-pressed:bg-primary/5 dark:aria-pressed:bg-primary/10"
+          >
+            <Building2 />
+            Company domain
+          </ToggleGroupItem>
+        ) : null}
+        <ToggleGroupItem
+          value="dynamic"
+          variant="outline"
+          className="gap-2 aria-pressed:border-primary/40 aria-pressed:bg-primary/5 dark:aria-pressed:bg-primary/10"
+        >
+          <Link2 />
+          Anyone (dynamic)
+        </ToggleGroupItem>
+      </ToggleGroup>
+      <FieldDescription id={`${id}-description`}>
+        {value === "domain"
+          ? "No participant list needed. Any employee who signs in with a verified work email on an allowed domain gets one code."
+          : value === "dynamic"
+            ? `No participant list needed. Anyone who signs in from the claim URL or QR code gets one code per ${byHandle ? "X account" : "email address"}.`
+            : byHandle
+              ? "Only the X handles you add to this event can claim."
+              : "Only the email addresses you add to this event can claim."}
+      </FieldDescription>
+    </Field>
+  );
+}
+
+export function AllowedDomainsField({
+  id,
+  value,
+  onChange,
+  className,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  const { domains, invalid } = parseAllowedDomains(value);
+  const publicDomains = domains.filter(isPublicEmailDomain);
+  return (
+    <Field className={className}>
+      <FieldLabel htmlFor={id}>Allowed email domains</FieldLabel>
+      <Input
+        id={id}
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="acme.com, acme.io"
+        aria-invalid={invalid.length > 0 || undefined}
+        aria-describedby={`${id}-description`}
+      />
+      <FieldDescription id={`${id}-description`}>
+        Enter one or more company domains separated by commas (for example,{" "}
+        <span className="font-mono">acme.com</span>). Only verified emails on
+        these domains can claim.
+      </FieldDescription>
+      {domains.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5 pt-1" aria-label="Parsed allowed domains">
+          {domains.map((domain) => (
+            <Badge key={domain} variant="secondary" className="font-mono text-xs">
+              @{domain}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+      {invalid.length > 0 ? (
+        <FieldError>
+          {invalid.some((token) => token.includes("@") && !token.startsWith("@"))
+            ? `Enter a domain like acme.com, not a full email address: ${invalid.join(", ")}`
+            : `Not a valid domain: ${invalid.join(", ")}`}
+        </FieldError>
+      ) : null}
+      {publicDomains.length > 0 ? (
+        <Alert className="border-amber-500/40">
+          <AlertTriangle className="text-amber-500" aria-hidden />
+          <AlertDescription>
+            {publicDomains.map((d) => `@${d}`).join(", ")}{" "}
+            {publicDomains.length === 1 ? "is a public email provider" : "are public email providers"}{" "}
+            — anyone with an address there will be able to claim a code.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+    </Field>
   );
 }
 

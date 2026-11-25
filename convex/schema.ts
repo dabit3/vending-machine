@@ -73,6 +73,11 @@ export default defineSchema({
     // can claim, and is recorded in `emails` on first contact so it can only
     // claim once.
     dynamic: v.optional(v.boolean()),
+    // Optional company email domains (lowercased, e.g. ["acme.com"]) that can
+    // claim without a participant list. Only applies to email-identified
+    // events: any verified email on one of these domains is enrolled on first
+    // contact, while emails from other domains are rejected.
+    allowedDomains: v.optional(v.array(v.string())),
     // When set, attendees added on the walk-up page who already appear in
     // another event become eligible immediately instead of being held in
     // `flaggedEmails` for organizer approval. Bulk uploads still flag.

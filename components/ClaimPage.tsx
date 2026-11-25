@@ -84,6 +84,7 @@ import { codeExpiry } from "@/lib/code-expiry";
 import { withClaimRetry } from "@/lib/claim-retry";
 import { stillHeld } from "@/lib/receipt";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
+import { formatAllowedDomains, hasAllowedDomains } from "@/lib/allowed-domains";
 
 type ClaimedCode = {
   code: string;
@@ -264,11 +265,13 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
   const receiptCodes = result?.ok
     ? stillHeld(result.codes ?? [result], heldCodes)
     : [];
+  const selfEnrolling =
+    event?.dynamic === true || hasAllowedDomains(event);
   const nameValue = flattenClaimantName(
     claimantName ?? user?.fullName ?? ""
   ).slice(0, MAX_CLAIMANT_NAME);
   const needsName =
-    event?.dynamic === true && cleanClaimantName(nameValue) === undefined;
+    selfEnrolling && cleanClaimantName(nameValue) === undefined;
 
   // `withInstructions` is the first claim on an event with redemption
   // instructions: one press dispenses the code and opens the steps.
@@ -311,7 +314,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
         claim({
           slug,
           codeType: mustChoose && selectedType ? selectedType : undefined,
-          name: event?.dynamic ? nameValue.trim() : undefined,
+          name: selfEnrolling ? nameValue.trim() : undefined,
           instructionsRead: withInstructions || undefined,
         }),
       );
@@ -501,6 +504,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     <SignInHint
                       identity={byHandle ? "x" : "email"}
                       dynamic={event.dynamic}
+                      allowedDomains={event.allowedDomains}
                       message={event.signInMessage}
                     />
                     <SignInButton
@@ -559,9 +563,13 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                             ? xSync === "done"
                               ? "No X account on your sign-in"
                               : "Couldn't check your X account"
-                            : event.dynamic
-                              ? "You can't claim a code for this event"
-                              : "You're not on the list for this event"}
+                            : eligibility.reason === "wrong_domain" &&
+                                event.allowedDomains &&
+                                event.allowedDomains.length > 0
+                              ? `Sign in with your ${formatAllowedDomains(event.allowedDomains)} email`
+                              : selfEnrolling
+                                ? "You can't claim a code for this event"
+                                : "You're not on the list for this event"}
                       </AlertTitle>
                       <AlertDescription>
                         {eligibility.reason === "unverified" ? (
@@ -572,7 +580,19 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                             : xSync === "not_configured"
                               ? "X sign-in isn't set up for this site yet. Ask your organizer."
                               : "Something went wrong looking up your X handle. Reload to try again."
-                        ) : event.dynamic ? (
+                        ) : eligibility.reason === "wrong_domain" &&
+                            event.allowedDomains &&
+                            event.allowedDomains.length > 0 ? (
+                          <>
+                            <span className="font-medium text-foreground">
+                              {eligibility.identity ?? `This ${identityNoun}`}
+                            </span>{" "}
+                            isn&apos;t from an allowed company domain. Switch
+                            accounts and sign in with a verified{" "}
+                            {formatAllowedDomains(event.allowedDomains)} email
+                            address.
+                          </>
+                        ) : selfEnrolling ? (
                           <>
                             <span className="font-medium text-foreground">
                               {eligibility.identity ?? `This ${identityNoun}`}
@@ -703,7 +723,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       </ul>
                     ) : null}
                     <p className="text-base leading-relaxed text-muted-foreground">
-                      {event.dynamic ? "You're in." : "You're on the list."}{" "}
+                      {selfEnrolling ? "You're in." : "You're on the list."}{" "}
                       Before choosing your code, take a moment to read how to
                       redeem it.
                     </p>
@@ -794,7 +814,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                     ) : null}
                     {mustReadInstructions ? (
                       <p className="text-base leading-relaxed text-muted-foreground">
-                        {event.dynamic ? "You're in." : "You're on the list."}{" "}
+                        {selfEnrolling ? "You're in." : "You're on the list."}{" "}
                         Your {getsAll ? "codes are" : "code is"} dispensed as
                         soon as you open the redemption steps.
                       </p>
@@ -837,7 +857,7 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         </div>
                       </fieldset>
                     ) : null}
-                    {event.dynamic ? (
+                    {selfEnrolling ? (
                       <div className="flex flex-col gap-1.5">
                         <label
                           htmlFor="claimant-name"

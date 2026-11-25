@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { blockKey } from "@/convex/blockValues";
 import { normalizeEmail, normalizeXHandle } from "@/lib/attendee-identity";
+import { hasAllowedDomains, normalizeAllowedDomainsList } from "@/lib/allowed-domains";
 import { slugify } from "@/lib/slug";
 
 type Query = FunctionReference<"query">;
@@ -141,7 +142,7 @@ export function releaseCodeOptimistic(store: OptimisticLocalStore, args: Functio
     const target = codes.find((code) => code._id === args.id);
     if (!target?.claimedBy || (args.claimedBy !== undefined && target.claimedBy !== args.claimedBy)) return codes;
     const event = store.getQuery(api.events.get, { id: queryArgs.eventId });
-    if (event?.dynamic && !codes.some((code) => code._id !== target._id && code.claimedBy === target.claimedBy)) {
+    if ((event?.dynamic || hasAllowedDomains(event)) && !codes.some((code) => code._id !== target._id && code.claimedBy === target.claimedBy)) {
       update(store, api.emails.list, (rows, emailArgs) => emailArgs.eventId === queryArgs.eventId ? rows.filter((row) => row.email !== target.claimedBy || row.blockedAt !== undefined) : rows);
     }
     return codes.map((code) => code._id === args.id ? { ...code, claimedBy: undefined, claimedAt: undefined } : code);
@@ -245,13 +246,24 @@ export function updateEventOptimistic(store: OptimisticLocalStore, args: Functio
   if (!current) return;
   const date = args.eventDate?.trim() || undefined;
   const end = (args.eventEndDate ?? current.eventEndDate)?.trim();
+  const nextAllowedDomains =
+    args.allowedDomains !== undefined
+      ? (() => {
+          const { domains } = normalizeAllowedDomainsList(args.allowedDomains);
+          return domains.length > 0 ? domains : undefined;
+        })()
+      : args.dynamic
+        ? undefined
+        : current.allowedDomains;
+  const nextDynamic = !nextAllowedDomains && args.dynamic ? true : undefined;
   eventPatch(store, args.id, {
     name: args.name.trim(), slug: slugify(args.slug),
     description: args.description?.trim() || undefined,
     eventDate: date, eventEndDate: date && end && end > date ? end : undefined,
     claimInstructions: args.claimInstructions?.trim() || undefined,
-    dynamic: args.dynamic || undefined,
-    ...(args.dynamic ? { walkUpSkipsReview: undefined } : args.walkUpSkipsReview !== undefined ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined } : {}),
+    dynamic: nextDynamic,
+    ...(args.allowedDomains !== undefined || args.dynamic ? { allowedDomains: nextAllowedDomains } : {}),
+    ...(nextDynamic || nextAllowedDomains ? { walkUpSkipsReview: undefined } : args.walkUpSkipsReview !== undefined ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined } : {}),
     ...(args.identity !== undefined ? { identity: args.identity === "x" ? "x" : undefined } : {}),
     ...(args.signInMessage !== undefined ? { signInMessage: args.signInMessage.trim() || undefined } : {}),
     ...(args.contactEmail !== undefined ? { contactEmail: args.contactEmail.trim().toLowerCase() || undefined } : {}),
