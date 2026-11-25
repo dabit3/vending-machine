@@ -16,6 +16,7 @@ import StripeCodeStudio from "../components/StripeCodeStudio";
 import { StripeGenerationFields } from "../components/StripeGenerationFields";
 import { emptyStripeForm } from "../lib/stripe-form";
 import NewCodeBlockPage from "../app/admin/codes/new/page";
+import { openSavedPreview, PreviewClaimButton } from "../components/ManageEvent";
 
 const state = vi.hoisted(() => ({
   authenticated: true,
@@ -704,4 +705,95 @@ test("saved redemption instructions show the chosen mode in the title with detai
   );
   expect(custom).toContain("· Custom");
   expect(custom).not.toContain("Go to billing.");
+});
+
+test("PreviewClaimButton links directly when clean and prompts Save & preview when dirty", () => {
+  const clean = renderToStaticMarkup(
+    <PreviewClaimButton
+      slug="launch"
+      dirty={false}
+      saving={false}
+      onSaveAndPreview={() => {}}
+    />,
+  );
+  expect(clean).toContain('href="/launch?preview=1"');
+  expect(clean).toContain("Preview claim");
+  expect(clean).not.toContain("Save &amp; preview");
+
+  const dirty = renderToStaticMarkup(
+    <PreviewClaimButton
+      slug="launch"
+      dirty={true}
+      saving={false}
+      onSaveAndPreview={() => {}}
+    />,
+  );
+  expect(dirty).toContain("Save &amp; preview");
+  expect(dirty).not.toContain('href="/launch?preview=1"');
+  expect(dirty).not.toContain('disabled=""');
+
+  const saving = renderToStaticMarkup(
+    <PreviewClaimButton
+      slug="launch"
+      dirty={true}
+      saving={true}
+      onSaveAndPreview={() => {}}
+    />,
+  );
+  expect(saving).toContain("Saving...");
+  expect(saving).toContain('aria-busy="true"');
+  expect(saving).toContain('disabled=""');
+});
+
+test("openSavedPreview validates first, saves, and opens the updated slug preview", async () => {
+  const openTab = vi.fn();
+  const invalidForm = {
+    validate: vi.fn(() => false),
+    save: vi.fn(async () => ({ ok: true as const, slug: "nope" })),
+  };
+  expect(await openSavedPreview(invalidForm, openTab)).toBe(false);
+  expect(openTab).not.toHaveBeenCalled();
+  expect(invalidForm.save).not.toHaveBeenCalled();
+
+  const tab = {
+    opener: {} as unknown,
+    closed: false,
+    close: vi.fn(),
+    location: { replace: vi.fn() },
+  };
+  openTab.mockReturnValueOnce(tab);
+  const failingForm = {
+    validate: vi.fn(() => true),
+    save: vi.fn(async () => ({ ok: false as const })),
+  };
+  expect(await openSavedPreview(failingForm, openTab)).toBe(false);
+  expect(tab.opener).toBeNull();
+  expect(tab.close).toHaveBeenCalledTimes(1);
+  expect(tab.location.replace).not.toHaveBeenCalled();
+
+  const okTab = {
+    opener: {} as unknown,
+    closed: false,
+    close: vi.fn(),
+    location: { replace: vi.fn() },
+  };
+  openTab.mockReturnValueOnce(okTab);
+  const okForm = {
+    validate: vi.fn(() => true),
+    save: vi.fn(async () => ({ ok: true as const, slug: "renamed-launch" })),
+  };
+  expect(await openSavedPreview(okForm, openTab)).toBe(true);
+  expect(okTab.opener).toBeNull();
+  expect(okTab.location.replace).toHaveBeenCalledWith("/renamed-launch?preview=1");
+  expect(okTab.close).not.toHaveBeenCalled();
+
+  const blockedOpen = vi.fn(() => null);
+  expect(await openSavedPreview(okForm, blockedOpen)).toBe(true);
+  expect(blockedOpen).toHaveBeenNthCalledWith(1, "", "_blank");
+  expect(blockedOpen).toHaveBeenNthCalledWith(
+    2,
+    "/renamed-launch?preview=1",
+    "_blank",
+    "noopener,noreferrer",
+  );
 });
