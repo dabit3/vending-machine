@@ -339,6 +339,13 @@ export const eligibility = query({
         pendingTypes,
       };
     }
+    if (await otherIdentityClaimedHere(ctx, event, key, userId)) {
+      return {
+        eligible: false as const,
+        reason: "not_listed" as const,
+        identity: key,
+      };
+    }
     const cooldown = cooldownWaived(allowed)
       ? undefined
       : await claimHistory(ctx, key, userId);
@@ -366,6 +373,13 @@ export const markInstructionsRead = mutation({
     if (!event) return;
     const viewer = await resolveViewer(ctx, event);
     if (!viewer.ok) return;
+    const claimedRows = await claimedHere(ctx, event, viewer.key);
+    if (
+      claimedRows.length === 0 &&
+      (await otherIdentityClaimedHere(ctx, event, viewer.key, viewer.userId))
+    ) {
+      return;
+    }
     const allowed = await findOrEnrollParticipant(ctx, event, viewer.key);
     if (!allowed || allowed.instructionsViewedAt !== undefined) return;
     await ctx.db.patch(allowed._id, { instructionsViewedAt: Date.now() });

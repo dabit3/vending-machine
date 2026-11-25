@@ -255,6 +255,69 @@ test("dynamic events refuse second claims via email aliases or same Clerk accoun
   }
 });
 
+test("dynamic events with instructions refuse duplicate aliases and secondary emails in eligibility and markInstructionsRead without enrolling them", async () => {
+  const { t, admin } = await setup();
+  const ev = await admin.mutation(api.events.create, {
+    name: "Multi-Choice Workshop",
+    slug: "multi-workshop",
+    dynamic: true,
+    claimInstructions: "Read before picking a block",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: ev.id,
+    codes: ["PRO1", "PRO2"],
+    codeType: "Pro",
+  });
+  await admin.mutation(api.codes.add, {
+    eventId: ev.id,
+    codes: ["MAX1", "MAX2"],
+    codeType: "Max",
+  });
+
+  const first = t.withIdentity({
+    subject: "clerk-1",
+    email: "alice@gmail.com",
+    emailVerified: true,
+  });
+  await first.mutation(api.claims.markInstructionsRead, {
+    slug: "multi-workshop",
+  });
+  expect(
+    await first.mutation(api.claims.claim, {
+      slug: "multi-workshop",
+      codeType: "Pro",
+      name: "Alice",
+      instructionsRead: true,
+    })
+  ).toMatchObject({ ok: true, code: "PRO1" });
+
+  // Duplicate alias and same-Clerk secondary email both see eligible: false
+  // and calling markInstructionsRead does not enroll them in `emails` or `events.mine`.
+  const alias = t.withIdentity({
+    subject: "clerk-2",
+    email: "a.l.i.c.e+2@googlemail.com",
+    emailVerified: true,
+  });
+  const sameClerkDiffEmail = t.withIdentity({
+    subject: "clerk-1",
+    email: "alice-alt@other.com",
+    emailVerified: true,
+  });
+
+  for (const duplicate of [alias, sameClerkDiffEmail]) {
+    expect(
+      await duplicate.query(api.claims.eligibility, { slug: "multi-workshop" })
+    ).toMatchObject({ eligible: false, reason: "not_listed" });
+    await duplicate.mutation(api.claims.markInstructionsRead, {
+      slug: "multi-workshop",
+    });
+    expect(await duplicate.query(api.events.mine, {})).toEqual([]);
+  }
+
+  const listed = await admin.query(api.emails.list, { eventId: ev.id });
+  expect(listed.map((r) => r.email)).toEqual(["alice@gmail.com"]);
+});
+
 test("60-day cooldown enforces across email aliases and across email + X for the same Clerk account", async () => {
   const { t, admin } = await setup();
   const evA = await admin.mutation(api.events.create, {
