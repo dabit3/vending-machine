@@ -2874,6 +2874,7 @@ function EventDetailsForm({
     signInMessage.trim() !== (event.signInMessage ?? "") ||
     contactEmail.trim().toLowerCase() !== (event.contactEmail ?? "");
 
+  const formElRef = useRef<HTMLFormElement>(null);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
 
@@ -2884,6 +2885,9 @@ function EventDetailsForm({
   useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   function validateForm(): boolean {
+    if (formElRef.current && !formElRef.current.reportValidity()) {
+      return false;
+    }
     if (!name.trim()) {
       toast.error("Event name is required.");
       return false;
@@ -3007,7 +3011,7 @@ function EventDetailsForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="flex flex-col gap-6">
+        <form ref={formElRef} onSubmit={handleSave} className="flex flex-col gap-6">
           <FieldGroup className="grid gap-5 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="detail-name">Name</FieldLabel>
