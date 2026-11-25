@@ -81,6 +81,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { codeExpiry } from "@/lib/code-expiry";
+import { withClaimRetry } from "@/lib/claim-retry";
 import { stillHeld } from "@/lib/receipt";
 import { useViewerAuth } from "@/lib/use-viewer-auth";
 
@@ -306,12 +307,14 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
     // Keep the receipt on screen while collecting a remaining code.
     setResult((current) => (current?.ok ? current : null));
     try {
-      const res = await claim({
-        slug,
-        codeType: mustChoose && selectedType ? selectedType : undefined,
-        name: event?.dynamic ? nameValue.trim() : undefined,
-        instructionsRead: withInstructions || undefined,
-      });
+      const res = await withClaimRetry(() =>
+        claim({
+          slug,
+          codeType: mustChoose && selectedType ? selectedType : undefined,
+          name: event?.dynamic ? nameValue.trim() : undefined,
+          instructionsRead: withInstructions || undefined,
+        }),
+      );
       setResult(res);
       if (res.ok && withInstructions) setReadOpen(true);
     } catch {

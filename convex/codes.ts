@@ -118,13 +118,17 @@ export async function addCodesToEvent(
       "This code block is archived. Unarchive it before adding codes."
     );
   }
-  const existing = await ctx.db
-    .query("codes")
-    .withIndex("by_event", (q) => q.eq("eventId", eventId))
-    .collect();
+  const ordered = event.codeTypes
+    ? [...event.codeTypes]
+    : activeCodeTypes(
+        event,
+        await ctx.db
+          .query("codes")
+          .withIndex("by_event", (q) => q.eq("eventId", eventId))
+          .collect()
+      );
   // Events support at most two code types, and both must be named so
   // attendees can tell them apart on the claim page.
-  const ordered = [...activeCodeTypes(event, existing)];
   const resultingTypes = new Set(ordered);
   resultingTypes.add(codeType ?? "");
   if (resultingTypes.size > 2) {
@@ -135,17 +139,32 @@ export async function addCodesToEvent(
       "Both code blocks need a name so attendees can tell them apart. Name the existing block (next to its badge above the form), then add the new block."
     );
   }
-  const existingSet = new Set(existing.map((c) => c.code));
+  const seen = new Set<string>();
   let added = 0;
   let skipped = 0;
   for (const raw of input.codes) {
     const code = raw.trim();
-    if (!code || existingSet.has(code)) {
+    if (!code || seen.has(code)) {
       skipped++;
       continue;
     }
-    existingSet.add(code);
-    await ctx.db.insert("codes", { eventId, code, codeType });
+    seen.add(code);
+    const duplicate = await ctx.db
+      .query("codes")
+      .withIndex("by_event_code", (q) =>
+        q.eq("eventId", eventId).eq("code", code)
+      )
+      .first();
+    if (duplicate) {
+      skipped++;
+      continue;
+    }
+    await ctx.db.insert("codes", {
+      eventId,
+      code,
+      codeType,
+      claimKey: Math.random(),
+    });
     added++;
   }
   // Keep the event's denormalized type list in sync so availability checks
@@ -644,7 +663,11 @@ export const release = mutation({
         `${code.code} is now claimed by ${code.claimedBy}, not ${args.claimedBy}. Nothing was released.`
       );
     }
-    await ctx.db.patch(code._id, { claimedBy: undefined, claimedAt: undefined });
+    await ctx.db.patch(code._id, {
+      claimedBy: undefined,
+      claimedAt: undefined,
+      ...(code.claimKey === undefined ? { claimKey: Math.random() } : {}),
+    });
     // Dynamic events enroll attendees when they claim, so a claimant left
     // with no code is taken off again and the hidden event leaves their home
     // page. List events keep the attendee, who can claim again.
@@ -675,5 +698,27 @@ export const release = mutation({
       details: `Released claimed code ${code.code} from ${code.claimedBy} back to the pool`,
     });
     return { released: true as const, claimedBy: code.claimedBy };
+  },
+});
+
+// One-off: assign random claimKeys to existing unclaimed codes created before
+// claimKey existed, so pre-existing live events also spread concurrent claims.
+// Start with `npx convex run codes:backfillClaimKeys`.
+export const backfillClaimKeys = internalMutation({
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("codes")
+      .paginate({ cursor: args.cursor ?? null, numItems: 200 });
+    for (const row of page.page) {
+      if (row.claimedBy === undefined && row.claimKey === undefined) {
+        await ctx.db.patch(row._id, { claimKey: Math.random() });
+      }
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.codes.backfillClaimKeys, {
+        cursor: page.continueCursor,
+      });
+    }
   },
 });

@@ -8,6 +8,7 @@ import {
 } from "../lib/organizer-emails";
 import { attachBatchToEvent, startBatch } from "./stripeBatchModel";
 import { addCodesToEvent, startStripeSync } from "./codes";
+import { probeBlockCode } from "./claims";
 import { logAudit } from "./auditLog";
 import { truncateStripeBatchName } from "../lib/stripe-name";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
@@ -165,17 +166,11 @@ export const getBySlug = query({
     // Terms of the code each block would dispense next, for the type picker.
     const codeTypeTerms: Record<string, CodeTerms> = {};
     for (const typeKey of candidateTypes) {
-      const hit = await ctx.db
-        .query("codes")
-        .withIndex("by_event_codeType_claimedBy", (q) =>
-          q
-            .eq("eventId", event._id)
-            .eq("codeType", typeKey === "" ? undefined : typeKey)
-            .eq("claimedBy", undefined)
-        )
-        .filter(notExpired)
-        .filter((q) => q.eq(q.field("reservedFor"), undefined))
-        .first();
+      const hit = await probeBlockCode(
+        ctx,
+        event._id,
+        typeKey === "" ? undefined : typeKey
+      );
       if (hit) availableTypes.add(typeKey);
       const terms = hit ? await codeTerms(ctx, hit) : undefined;
       if (terms) codeTypeTerms[blockKey(typeKey)] = terms;

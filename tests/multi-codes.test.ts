@@ -49,37 +49,41 @@ test("event creation stores both pasted blocks, in order, with values and the cl
 test("one claim dispenses a code from every block", async () => {
   const { user } = await setup("all");
   const res = await user.mutation(api.claims.claim, { slug: "launch" });
-  expect(res).toMatchObject({ ok: true, alreadyClaimed: false, code: "MAX-1" });
+  expect(res).toMatchObject({ ok: true, alreadyClaimed: false });
   if (!res.ok) throw new Error("claim failed");
+  expect(["MAX-1", "MAX-2"]).toContain(res.code);
+  const maxCode = res.code;
   expect(res.codes).toEqual([
-    expect.objectContaining({ code: "MAX-1", codeType: "Max plan", creditAmount: "200" }),
+    expect.objectContaining({ code: maxCode, codeType: "Max plan", creditAmount: "200" }),
     expect.objectContaining({ code: "USE-1", codeType: "On-demand usage", creditAmount: "5000" }),
   ]);
 
   // Claiming again hands back the same pair.
   const again = await user.mutation(api.claims.claim, { slug: "launch" });
   expect(again).toMatchObject({ ok: true, alreadyClaimed: true });
-  if (again.ok) expect(again.codes.map((c) => c.code)).toEqual(["MAX-1", "USE-1"]);
+  if (again.ok) expect(again.codes.map((c) => c.code)).toEqual([maxCode, "USE-1"]);
 
   const eligibility = await user.query(api.claims.eligibility, { slug: "launch" });
   expect(eligibility).toMatchObject({
     eligible: true,
-    claimed: { code: "MAX-1" },
+    claimed: { code: maxCode },
     pendingTypes: [],
   });
   if (eligibility.eligible && "claimedCodes" in eligibility) {
-    expect(eligibility.claimedCodes?.map((c) => c.code)).toEqual(["MAX-1", "USE-1"]);
+    expect(eligibility.claimedCodes?.map((c) => c.code)).toEqual([maxCode, "USE-1"]);
   }
 });
 
 test("a block that ran out is skipped and can be collected once restocked", async () => {
   const { admin, event, user, second } = await setup("all");
-  await user.mutation(api.claims.claim, { slug: "launch" });
+  const first = await user.mutation(api.claims.claim, { slug: "launch" });
+  if (!first.ok) throw new Error("first claim failed");
+  const remainingMax = first.code === "MAX-1" ? "MAX-2" : "MAX-1";
 
   // On-demand usage is now empty: the next attendee still gets Max plan.
   const partial = await second.mutation(api.claims.claim, { slug: "launch" });
   expect(partial).toMatchObject({ ok: true, alreadyClaimed: false });
-  if (partial.ok) expect(partial.codes.map((c) => c.code)).toEqual(["MAX-2"]);
+  if (partial.ok) expect(partial.codes.map((c) => c.code)).toEqual([remainingMax]);
   expect(
     await second.query(api.claims.eligibility, { slug: "launch" }),
   ).toMatchObject({ eligible: true, pendingTypes: [] });
@@ -94,7 +98,7 @@ test("a block that ran out is skipped and can be collected once restocked", asyn
   ).toMatchObject({ eligible: true, pendingTypes: ["On-demand usage"] });
   const rest = await second.mutation(api.claims.claim, { slug: "launch" });
   expect(rest).toMatchObject({ ok: true, alreadyClaimed: false });
-  if (rest.ok) expect(rest.codes.map((c) => c.code)).toEqual(["MAX-2", "USE-2"]);
+  if (rest.ok) expect(rest.codes.map((c) => c.code)).toEqual([remainingMax, "USE-2"]);
 });
 
 test("nothing left in any block is an error", async () => {
@@ -121,7 +125,11 @@ test("an archived block is left out of the pair", async () => {
     archived: true,
   });
   const res = await user.mutation(api.claims.claim, { slug: "launch" });
-  expect(res.ok && res.codes.map((c) => c.code)).toEqual(["MAX-1"]);
+  expect(res.ok).toBe(true);
+  if (res.ok) {
+    expect(res.codes).toHaveLength(1);
+    expect(["MAX-1", "MAX-2"]).toContain(res.codes[0].code);
+  }
 });
 
 test("the default mode still dispenses one code of the attendee's choice", async () => {
@@ -139,7 +147,10 @@ test("the default mode still dispenses one code of the attendee's choice", async
 
 test("setClaimMode switches an event and lets earlier attendees collect the other code", async () => {
   const { admin, event, user, second } = await setup();
-  await user.mutation(api.claims.claim, { slug: "launch", codeType: "Max plan" });
+  const initial = await user.mutation(api.claims.claim, { slug: "launch", codeType: "Max plan" });
+  expect(initial).toMatchObject({ ok: true });
+  if (!initial.ok) throw new Error("initial claim failed");
+  expect(["MAX-1", "MAX-2"]).toContain(initial.code);
   await expect(
     second.mutation(api.events.setClaimMode, { id: event.id, claimMode: "all" }),
   ).rejects.toThrow(/Not an admin/);
@@ -148,7 +159,7 @@ test("setClaimMode switches an event and lets earlier attendees collect the othe
     await user.query(api.claims.eligibility, { slug: "launch" }),
   ).toMatchObject({ pendingTypes: ["On-demand usage"] });
   const res = await user.mutation(api.claims.claim, { slug: "launch" });
-  expect(res.ok && res.codes.map((c) => c.code)).toEqual(["MAX-1", "USE-1"]);
+  expect(res.ok && res.codes.map((c) => c.code)).toEqual([initial.code, "USE-1"]);
 
   // Back to one each: both codes stay on the receipt.
   await admin.mutation(api.events.setClaimMode, { id: event.id, claimMode: "one" });
