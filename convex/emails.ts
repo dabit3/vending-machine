@@ -2,7 +2,11 @@ import { mutation, query, type MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { adminEmailStatus, requireAdmin, requireEventAdmin } from "./admins";
-import { isBlacklisted, recordBlacklistHit } from "./blacklist";
+import {
+  isBlacklisted,
+  legacyBlacklistedCanonicals,
+  recordBlacklistHit,
+} from "./blacklist";
 import { logAudit } from "./auditLog";
 import { eventIdentity } from "./identity";
 import { UPLOAD_CHUNK_SIZE } from "../lib/upload-limits";
@@ -55,6 +59,7 @@ export const add = mutation({
     let flagged = 0;
     let blacklisted = 0;
     const seen = new Set<string>();
+    const legacyBlacklist = await legacyBlacklistedCanonicals(ctx);
     for (const raw of args.emails) {
       const email = normalizeIdentityKey(identity, raw);
       if (!email || seen.has(email)) {
@@ -62,7 +67,7 @@ export const add = mutation({
         continue;
       }
       seen.add(email);
-      if (await isBlacklisted(ctx, email)) {
+      if (await isBlacklisted(ctx, email, legacyBlacklist)) {
         await recordBlacklistHit(ctx, args.eventId, email);
         // A pending review flag can never be approved for a blacklisted
         // address, so it's superseded by the rejection record.
@@ -209,9 +214,10 @@ export const listCooldowns = query({
       eligibleAt?: number;
       waived: boolean;
     }[] = [];
+    const legacyBlacklist = await legacyBlacklistedCanonicals(ctx);
     for (const row of result.page) {
       if (row.blockedAt !== undefined) continue;
-      if (await isBlacklisted(ctx, row.email)) continue;
+      if (await isBlacklisted(ctx, row.email, legacyBlacklist)) continue;
       const claimedHere = await ctx.db
         .query("codes")
         .withIndex("by_event_claimedBy", (q) =>

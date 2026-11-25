@@ -8,6 +8,19 @@ import {
   normalizeXHandle,
 } from "../lib/attendee-identity";
 
+// Canonical keys for legacy blacklist rows created before `canonicalEmail`
+// was stored. Callers that check many addresses in a loop (bulk uploads,
+// paginated cooldowns) fetch this set once and pass it into `isBlacklisted`.
+export async function legacyBlacklistedCanonicals(
+  ctx: QueryCtx | MutationCtx
+): Promise<Set<string>> {
+  const legacyRows = await ctx.db
+    .query("blacklistedEmails")
+    .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", undefined))
+    .collect();
+  return new Set(legacyRows.map((row) => canonicalIdentityKey(row.email)));
+}
+
 // App-wide blacklist managed exclusively by global admins. Blacklisted
 // identities (email addresses or "@handle" X handles) are rejected whenever
 // they would be added to any event or attempt to claim / request access.
@@ -15,7 +28,8 @@ import {
 // subaddresses and Gmail dots) so legacy rows and aliases are all enforced.
 export async function isBlacklisted(
   ctx: QueryCtx | MutationCtx,
-  email: string
+  email: string,
+  legacyCanonicals?: Set<string>
 ) {
   const exact = await ctx.db
     .query("blacklistedEmails")
@@ -35,14 +49,8 @@ export async function isBlacklisted(
     .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
     .first();
   if (byCanonical) return true;
-  // Legacy blacklist rows created before `canonicalEmail` was stored have
-  // `canonicalEmail === undefined`; check only those so an unmigrated alias
-  // ban (e.g. `a.b+old@gmail.com`) still blocks other aliases (`ab+new@gmail.com`).
-  const legacyRows = await ctx.db
-    .query("blacklistedEmails")
-    .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", undefined))
-    .collect();
-  return legacyRows.some((row) => canonicalIdentityKey(row.email) === canonical);
+  const legacy = legacyCanonicals ?? (await legacyBlacklistedCanonicals(ctx));
+  return legacy.has(canonical);
 }
 
 // Records that a blacklisted address was rejected while being added to an
