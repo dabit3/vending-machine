@@ -38,6 +38,7 @@ import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { SavedBatchPicker } from "@/components/StripeBatchDetails";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
+  AdminNoteField,
   AllowedDomainsField,
   ClaimAccessPicker,
   EventDatesField,
@@ -140,6 +141,7 @@ export default function NewEventForm({
   const [eventDate, setEventDate] = useState("");
   const [eventEndDate, setEventEndDate] = useState("");
   const [description, setDescription] = useState("");
+  const [adminNote, setAdminNote] = useState("");
   const [instructions, setInstructions] = useState("");
   const [accessMode, setAccessMode] = useState<ClaimAccessMode>("list");
   const [allowedDomainsInput, setAllowedDomainsInput] = useState("");
@@ -247,6 +249,7 @@ export default function NewEventForm({
         eventDate: eventDate || undefined,
         eventEndDate: eventEndDate || undefined,
         description: description || undefined,
+        adminNote: adminNote || undefined,
         claimInstructions: instructions || undefined,
         dynamic,
         allowedDomains:
@@ -471,6 +474,11 @@ export default function NewEventForm({
                   identity={identity}
                   contactEmail={contactEmail}
                   onContactEmailChange={setContactEmail}
+                />
+                <AdminNoteField
+                  id="event-admin-note"
+                  value={adminNote}
+                  onChange={setAdminNote}
                 />
                 <details className="group rounded-lg border bg-muted/30 open:bg-transparent">
                   <summary className="flex cursor-pointer list-none items-center gap-3 rounded-lg px-4 py-3 transition-colors outline-none select-none hover:bg-muted/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">

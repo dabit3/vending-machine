@@ -244,6 +244,7 @@ test("the dashboard collapses events 14+ days old behind a view-more button", ()
     name: `Event ${id}`,
     slug: id,
     description: undefined,
+    adminNote: undefined,
     eventDate,
     eventEndDate: undefined,
     dynamic: undefined,
@@ -285,6 +286,7 @@ test("the dashboard shows who created an event when it is known", () => {
     name: `Event ${id}`,
     slug: id,
     description: undefined,
+    adminNote: undefined,
     eventDate: undefined,
     eventEndDate: undefined,
     dynamic: undefined,
@@ -309,6 +311,7 @@ test("the dashboard shows an event's date only when it has one", () => {
     name: `Event ${id}`,
     slug: id,
     description: undefined,
+    adminNote: undefined,
     eventDate,
     eventEndDate: undefined,
     dynamic: undefined,
@@ -335,6 +338,7 @@ test("the dashboard renders a badge for company-domain events", () => {
       name: "Acme Corp",
       slug: "acme",
       description: undefined,
+    adminNote: undefined,
       eventDate: undefined,
       eventEndDate: undefined,
       dynamic: undefined,
@@ -347,6 +351,35 @@ test("the dashboard renders a badge for company-domain events", () => {
   ];
   const html = renderToStaticMarkup(<AdminDashboard />);
   expect(html).toContain("@acme.com +1");
+});
+
+test("the dashboard shows an event's admin note preview and NewEventForm includes Admin note", () => {
+  state.events = [
+    {
+      _id: "ev_note" as Id<"events">,
+      _creationTime: 0,
+      name: "Partner Event",
+      slug: "partner",
+      description: undefined,
+      adminNote: "Requested by Jane in [Slack](https://example.com) for Q4 workshop.",
+      eventDate: undefined,
+      eventEndDate: undefined,
+      dynamic: undefined,
+      allowedDomains: undefined,
+      identity: "email" as const,
+      favorite: false,
+      archived: false,
+      createdBy: undefined,
+    },
+  ];
+  const dashboardHtml = renderToStaticMarkup(<AdminDashboard />);
+  expect(dashboardHtml).toContain("Requested by Jane in Slack for Q4 workshop.");
+  expect(dashboardHtml).not.toContain("https://example.com");
+
+  const formHtml = renderToStaticMarkup(<NewEventForm />);
+  expect(formHtml).toContain("Add admin note");
+  expect(formHtml).toContain("Admins only");
+  expect(formHtml).toContain("never shown to attendees");
 });
 
 test("the codes page opens a library with an explicit create action", () => {

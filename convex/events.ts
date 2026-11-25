@@ -241,6 +241,7 @@ export const get = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
+      adminNote: event.adminNote,
       creditAmount: event.creditAmount,
       codeTypes: event.codeTypes,
       codeTypeValues: event.codeTypeValues,
@@ -300,6 +301,7 @@ export const listManaged = query({
       name: event.name,
       slug: event.slug,
       description: event.description,
+      adminNote: event.adminNote,
       eventDate: event.eventDate,
       eventEndDate: event.eventEndDate,
       favorite: starred.has(event._id),
@@ -588,6 +590,7 @@ export const create = mutation({
     name: v.string(),
     slug: v.optional(v.string()),
     description: v.optional(v.string()),
+    adminNote: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
@@ -653,6 +656,7 @@ export const create = mutation({
       name: args.name.trim(),
       slug,
       description: args.description?.trim() || undefined,
+      adminNote: args.adminNote?.trim() || undefined,
       eventDate,
       eventEndDate: resolveEventEndDate(eventDate, args.eventEndDate),
       claimInstructions: args.claimInstructions?.trim() || undefined,
@@ -721,6 +725,7 @@ export const update = mutation({
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
+    adminNote: v.optional(v.string()),
     eventDate: v.optional(v.string()),
     eventEndDate: v.optional(v.string()),
     claimInstructions: v.optional(v.string()),
@@ -818,9 +823,12 @@ export const update = mutation({
       ...(args.identity !== undefined
         ? { identity: args.identity === "x" ? ("x" as const) : undefined }
         : {}),
-      // Same for `signInMessage`: absent means unchanged, "" clears it.
+      // Same for `signInMessage` and `adminNote`: absent means unchanged, "" clears it.
       ...(args.signInMessage !== undefined
         ? { signInMessage: args.signInMessage.trim() || undefined }
+        : {}),
+      ...(args.adminNote !== undefined
+        ? { adminNote: args.adminNote.trim() || undefined }
         : {}),
       ...(args.contactEmail !== undefined
         ? { contactEmail: resolveContactEmail(args.contactEmail) }

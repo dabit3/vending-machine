@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Lock,
   Plus,
   Search,
   X,
@@ -14,6 +15,7 @@ import {
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
+import { markdownToPlainText } from "@/lib/markdown-plain";
 import FavoriteButton from "@/components/FavoriteButton";
 import AttendeeMatchBadges, {
   type AttendeeMatch,
@@ -51,6 +53,7 @@ interface ManagedEventItem {
   _creationTime: number;
   name: string;
   slug: string;
+  adminNote?: string;
   eventDate?: string;
   eventEndDate?: string;
   dynamic?: boolean;
@@ -105,9 +108,21 @@ function AdminEventRow({
           </div>
           {match ? (
             <AttendeeMatchBadges match={match} />
-          ) : event.createdBy ? (
-            <div className="truncate text-xs text-muted-dim">
-              Created by {event.createdBy}
+          ) : event.adminNote || event.createdBy ? (
+            <div className="flex flex-col gap-0.5">
+              {event.adminNote ? (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Lock className="size-3 shrink-0" aria-hidden />
+                  <span className="truncate">
+                    {markdownToPlainText(event.adminNote)}
+                  </span>
+                </div>
+              ) : null}
+              {event.createdBy ? (
+                <div className="truncate text-xs text-muted-dim">
+                  Created by {event.createdBy}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -144,6 +159,7 @@ export default function AdminDashboard() {
         (e) =>
           e.name.toLowerCase().includes(nameFilter) ||
           e.slug.includes(nameFilter) ||
+          (e.adminNote?.toLowerCase().includes(nameFilter) ?? false) ||
           (e.allowedDomains?.some((d) =>
             d.includes(nameFilter.replace(/^@/, ""))
           ) ??

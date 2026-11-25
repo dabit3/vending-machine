@@ -81,7 +81,7 @@ test("removing a block keeps claimed codes and their value, and rename moves Uni
   store.setQuery(api.events.get, { id: eventId }, {
     _id: eventId, _creationTime: 1, name: "Event", slug: "event",
     codeTypes: ["Pro"], codeTypeValues: { Pro: "$20" },
-    description: undefined, creditAmount: undefined, archivedCodeTypes: undefined,
+    description: undefined, adminNote: undefined, creditAmount: undefined, archivedCodeTypes: undefined,
     stripeArchiveSync: undefined, eventDate: undefined, eventEndDate: undefined,
     claimInstructions: undefined, dynamic: undefined, allowedDomains: undefined, walkUpSkipsReview: undefined,
     claimMode: undefined, identity: "email", signInMessage: undefined,

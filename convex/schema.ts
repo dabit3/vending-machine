@@ -58,6 +58,9 @@ export default defineSchema({
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
+    // Internal note visible only to admins in the admin panel (e.g. why and
+    // how the event was created). Never returned by public queries.
+    adminNote: v.optional(v.string()),
     // Legacy event-wide value; superseded by per-block codeTypeValues.
     creditAmount: v.optional(v.string()),
     eventDate: v.optional(v.string()),
