@@ -159,7 +159,11 @@ export default function AdminDashboard() {
         (e) =>
           e.name.toLowerCase().includes(nameFilter) ||
           e.slug.includes(nameFilter) ||
-          (e.adminNote?.toLowerCase().includes(nameFilter) ?? false) ||
+          (e.adminNote !== undefined &&
+            (markdownToPlainText(e.adminNote)
+              .toLowerCase()
+              .includes(nameFilter) ||
+              e.adminNote.toLowerCase().includes(nameFilter))) ||
           (e.allowedDomains?.some((d) =>
             d.includes(nameFilter.replace(/^@/, ""))
           ) ??
