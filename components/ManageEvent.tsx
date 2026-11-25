@@ -2754,6 +2754,16 @@ export function PreviewClaimButton({
   );
 }
 
+function eventAccessMode(
+  event: Pick<Doc<"events">, "allowedDomains" | "dynamic">
+): ClaimAccessMode {
+  return hasAllowedDomains(event)
+    ? "domain"
+    : event.dynamic
+      ? "dynamic"
+      : "list";
+}
+
 function EventDetailsForm({
   event,
   canDelete,
@@ -2770,14 +2780,8 @@ function EventDetailsForm({
   const setEventArchived = useMutation(api.events.setArchived);
   const router = useRouter();
 
+  const [savedEvent, setSavedEvent] = useState(event);
   const [name, setName] = useState(event.name);
-  // A rename from the page heading reaches this form too, unless the Name
-  // field holds an edit of its own.
-  const [savedName, setSavedName] = useState(event.name);
-  if (event.name !== savedName) {
-    setSavedName(event.name);
-    if (name.trim() === savedName) setName(event.name);
-  }
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
   const [adminNoteDraft, setAdminNoteDraft] = useState<string | null>(null);
@@ -2789,11 +2793,7 @@ function EventDetailsForm({
   const [claimInstructions, setClaimInstructions] = useState(
     event.claimInstructions ?? ""
   );
-  const initialAccessMode: ClaimAccessMode = hasAllowedDomains(event)
-    ? "domain"
-    : event.dynamic
-      ? "dynamic"
-      : "list";
+  const initialAccessMode = eventAccessMode(event);
   const [accessMode, setAccessMode] = useState<ClaimAccessMode>(initialAccessMode);
   const [allowedDomainsInput, setAllowedDomainsInput] = useState(
     (event.allowedDomains ?? []).join(", ")
@@ -2809,6 +2809,50 @@ function EventDetailsForm({
   );
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
   const parsedDomains = parseAllowedDomains(allowedDomainsInput);
+
+  // Sync untouched fields when the event updates externally (e.g. page heading
+  // rename or an edit in another tab) so stale local state does not mark the
+  // form dirty or overwrite newer values on Save & preview.
+  if (event !== savedEvent) {
+    const prevAccessMode = eventAccessMode(savedEvent);
+    const prevSavedDomains = savedEvent.allowedDomains ?? [];
+    const domainsUntouched =
+      parsedDomains.invalid.length === 0 &&
+      parsedDomains.domains.length === prevSavedDomains.length &&
+      parsedDomains.domains.every((d, i) => d === prevSavedDomains[i]);
+
+    setSavedEvent(event);
+    if (name.trim() === savedEvent.name) setName(event.name);
+    if (slugify(slug) === savedEvent.slug) setSlug(event.slug);
+    if (description.trim() === (savedEvent.description ?? "")) {
+      setDescription(event.description ?? "");
+    }
+    if (eventDate === (savedEvent.eventDate ?? "")) {
+      setEventDate(event.eventDate ?? "");
+    }
+    if (eventEndDate === (savedEvent.eventEndDate ?? "")) {
+      setEventEndDate(event.eventEndDate ?? "");
+    }
+    if (claimInstructions.trim() === (savedEvent.claimInstructions ?? "")) {
+      setClaimInstructions(event.claimInstructions ?? "");
+    }
+    if (accessMode === prevAccessMode) setAccessMode(initialAccessMode);
+    if (domainsUntouched) {
+      setAllowedDomainsInput((event.allowedDomains ?? []).join(", "));
+    }
+    if (walkUpSkipsReview === (savedEvent.walkUpSkipsReview ?? false)) {
+      setWalkUpSkipsReview(event.walkUpSkipsReview ?? false);
+    }
+    if (identity === (savedEvent.identity ?? "email")) {
+      setIdentity(event.identity ?? "email");
+    }
+    if (signInMessage.trim() === (savedEvent.signInMessage ?? "")) {
+      setSignInMessage(event.signInMessage ?? "");
+    }
+    if (contactEmail.trim().toLowerCase() === (savedEvent.contactEmail ?? "")) {
+      setContactEmail(event.contactEmail ?? "");
+    }
+  }
   const savedDomains = event.allowedDomains ?? [];
   const domainsDirty =
     accessMode === "domain" &&
