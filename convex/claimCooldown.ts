@@ -49,17 +49,20 @@ export async function claimHistory(
   );
 
   const userIds = new Set<string>();
-  if (userId) {
-    // When the caller knows the signed-in account, query only that account so
-    // a reassigned X handle never inherits a former owner's unrelated claims.
-    userIds.add(userId);
-  } else if (isXHandleKey(key)) {
-    const xAccount = await ctx.db
-      .query("xAccounts")
-      .withIndex("by_handle", (q) => q.eq("handle", key))
-      .first();
-    if (xAccount) userIds.add(xAccount.clerkUserId);
+  if (userId) userIds.add(userId);
+  if (isXHandleKey(key)) {
+    // Only resolve the handle's current owner when no signed-in userId was
+    // passed; a reassigned X handle must not inherit a former owner's claims.
+    if (!userId) {
+      const xAccount = await ctx.db
+        .query("xAccounts")
+        .withIndex("by_handle", (q) => q.eq("handle", key))
+        .first();
+      if (xAccount) userIds.add(xAccount.clerkUserId);
+    }
   } else {
+    // Verified email aliases belong to the same mailbox, so also include any
+    // Clerk account that previously claimed under this canonical email.
     for (const row of byId.values()) {
       if (row.claimedByUserId) userIds.add(row.claimedByUserId);
     }
