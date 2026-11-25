@@ -266,6 +266,7 @@ export function updateEventOptimistic(store: OptimisticLocalStore, args: Functio
     ...(nextDynamic || nextAllowedDomains ? { walkUpSkipsReview: undefined } : args.walkUpSkipsReview !== undefined ? { walkUpSkipsReview: args.walkUpSkipsReview || undefined } : {}),
     ...(args.identity !== undefined ? { identity: args.identity === "x" ? "x" : undefined } : {}),
     ...(args.signInMessage !== undefined ? { signInMessage: args.signInMessage.trim() || undefined } : {}),
+    ...(args.claimMessage !== undefined ? { claimMessage: args.claimMessage.trim() || undefined } : {}),
     ...(args.adminNote !== undefined ? { adminNote: args.adminNote.trim() || undefined } : {}),
     ...(args.contactEmail !== undefined ? { contactEmail: args.contactEmail.trim().toLowerCase() || undefined } : {}),
   });

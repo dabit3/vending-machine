@@ -473,12 +473,13 @@ test("attendee settings use labeled responsive tiles with accessible expansion c
   expect(section).toContain("A welcome and context for your event.");
   expect(section).toContain("Help attendees redeem their codes.");
   expect(section).toContain("A note to show before attendees sign in.");
+  expect(section).toContain("A note shown to eligible attendees before claiming.");
   expect(section).toContain('value="support@cognition.ai"');
-  for (const id of ["description", "instructions", "signin-message"]) {
+  for (const id of ["description", "instructions", "signin-message", "claim-message"]) {
     expect(section).toContain(`aria-controls="event-${id}-panel"`);
     expect(section).toContain(`id="event-${id}-panel" hidden=""`);
   }
-  expect(section?.match(/aria-expanded="false"/g)).toHaveLength(3);
+  expect(section?.match(/aria-expanded="false"/g)).toHaveLength(4);
   expect(section).not.toContain('id="event-organizer-email"');
 });
 
@@ -637,18 +638,22 @@ test("optional settings with a value render expanded with a clear action", () =>
       instructionsDescription="Read first."
       signInMessage="Use your work email."
       onSignInMessageChange={() => {}}
+      claimMessage="Grab your credits below."
+      onClaimMessageChange={() => {}}
       identity="email"
       contactEmail="help@example.com"
       onContactEmailChange={() => {}}
     />,
   );
   expect(html).toContain("Use your work email.");
+  expect(html).toContain("Grab your credits below.");
   expect(html).toContain("Use default");
   expect(html).toContain('value="help@example.com"');
   expect(html).toContain("Remove");
   expect(html).toContain("Add description");
   expect(html).toContain("Set redemption instructions");
   expect(html).not.toContain("Set custom sign-in message");
+  expect(html).not.toContain("Set custom claim message");
   expect(html).not.toContain("Set contact / support email");
 });
 
@@ -663,6 +668,8 @@ test("redemption instructions come before the description in optional settings",
       instructionsDescription="Read first."
       signInMessage=""
       onSignInMessageChange={() => {}}
+      claimMessage=""
+      onClaimMessageChange={() => {}}
       identity="email"
       contactEmail=""
       onContactEmailChange={() => {}}
@@ -682,6 +689,8 @@ test("saved redemption instructions show the chosen mode in the title with detai
     instructionsDescription: "Read first.",
     signInMessage: "",
     onSignInMessageChange: () => {},
+    claimMessage: "",
+    onClaimMessageChange: () => {},
     identity: "email" as const,
     favorite: false,
     contactEmail: "",

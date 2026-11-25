@@ -722,11 +722,18 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                         })}
                       </ul>
                     ) : null}
-                    <p className="text-base leading-relaxed text-muted-foreground">
-                      {selfEnrolling ? "You're in." : "You're on the list."}{" "}
-                      Before choosing your code, take a moment to read how to
-                      redeem it.
-                    </p>
+                    {event.claimMessage ? (
+                      <MarkdownText
+                        value={event.claimMessage}
+                        className="text-base leading-relaxed text-muted-foreground"
+                      />
+                    ) : (
+                      <p className="text-base leading-relaxed text-muted-foreground">
+                        {selfEnrolling ? "You're in." : "You're on the list."}{" "}
+                        Before choosing your code, take a moment to read how to
+                        redeem it.
+                      </p>
+                    )}
                     <Dialog
                       open={chooseReadOpen}
                       onOpenChange={setChooseReadOpen}
@@ -813,11 +820,23 @@ function ClaimPageForViewer({ slug, preview = false }: ClaimPageProps) {
                       <IncludedCodes types={codeTypes} valueFor={valueFor} />
                     ) : null}
                     {mustReadInstructions ? (
-                      <p className="text-base leading-relaxed text-muted-foreground">
-                        {selfEnrolling ? "You're in." : "You're on the list."}{" "}
-                        Your {getsAll ? "codes are" : "code is"} dispensed as
-                        soon as you open the redemption steps.
-                      </p>
+                      event.claimMessage ? (
+                        <MarkdownText
+                          value={event.claimMessage}
+                          className="text-base leading-relaxed text-muted-foreground"
+                        />
+                      ) : (
+                        <p className="text-base leading-relaxed text-muted-foreground">
+                          {selfEnrolling ? "You're in." : "You're on the list."}{" "}
+                          Your {getsAll ? "codes are" : "code is"} dispensed as
+                          soon as you open the redemption steps.
+                        </p>
+                      )
+                    ) : event.claimMessage && !event.claimInstructions ? (
+                      <MarkdownText
+                        value={event.claimMessage}
+                        className="text-base leading-relaxed text-muted-foreground"
+                      />
                     ) : null}
                     {mustChoose ? (
                       <fieldset className="flex flex-col gap-2">

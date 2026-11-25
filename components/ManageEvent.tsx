@@ -2807,6 +2807,7 @@ function EventDetailsForm({
   const [signInMessage, setSignInMessage] = useState(
     event.signInMessage ?? ""
   );
+  const [claimMessage, setClaimMessage] = useState(event.claimMessage ?? "");
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
   const [hasLocalEdits, setHasLocalEdits] = useState(false);
   const editVersionRef = useRef(0);
@@ -2834,6 +2835,7 @@ function EventDetailsForm({
     walkUpSkipsReview !== (event.walkUpSkipsReview ?? false) ||
     identity !== (event.identity ?? "email") ||
     signInMessage.trim() !== (event.signInMessage ?? "") ||
+    claimMessage.trim() !== (event.claimMessage ?? "") ||
     contactEmail.trim().toLowerCase() !== (event.contactEmail ?? "");
 
   const formElRef = useRef<HTMLFormElement>(null);
@@ -2905,6 +2907,7 @@ function EventDetailsForm({
         walkUpSkipsReview: accessMode === "list" ? walkUpSkipsReview : false,
         identity,
         signInMessage,
+        claimMessage,
         contactEmail,
       });
       setAdminNoteDraft((current) =>
@@ -3051,6 +3054,11 @@ function EventDetailsForm({
               onSignInMessageChange={(next) => {
                 markEdited();
                 setSignInMessage(next);
+              }}
+              claimMessage={claimMessage}
+              onClaimMessageChange={(next) => {
+                markEdited();
+                setClaimMessage(next);
               }}
               identity={identity}
               contactEmail={contactEmail}

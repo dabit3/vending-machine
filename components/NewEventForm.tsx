@@ -148,6 +148,7 @@ export default function NewEventForm({
   const [walkUpSkipsReview, setWalkUpSkipsReview] = useState(false);
   const [identity, setIdentity] = useState<AttendeeIdentity>("email");
   const [signInMessage, setSignInMessage] = useState("");
+  const [claimMessage, setClaimMessage] = useState("");
   const [contactEmail, setContactEmail] = useState(DEFAULT_EVENT_SUPPORT_EMAIL);
   const [organizers, setOrganizers] = useState<string[]>([]);
   const [organizerDraft, setOrganizerDraft] = useState("");
@@ -258,6 +259,7 @@ export default function NewEventForm({
           accessMode === "list" && walkUpSkipsReview ? true : undefined,
         identity,
         signInMessage: signInMessage || undefined,
+        claimMessage: claimMessage || undefined,
         contactEmail: contactEmail || undefined,
         adminEmails: adminEmails.length > 0 ? adminEmails : undefined,
         codeBlocks: codeBlocks(generations),
@@ -471,6 +473,8 @@ export default function NewEventForm({
                   instructionsDescription="Attendees must read these before claiming. They can also view them after claiming."
                   signInMessage={signInMessage}
                   onSignInMessageChange={setSignInMessage}
+                  claimMessage={claimMessage}
+                  onClaimMessageChange={setClaimMessage}
                   identity={identity}
                   contactEmail={contactEmail}
                   onContactEmailChange={setContactEmail}
