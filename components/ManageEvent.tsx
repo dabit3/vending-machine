@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -180,6 +180,9 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const detailsFormRef = useRef<EventDetailsFormHandle>(null);
+  const [detailsDirty, setDetailsDirty] = useState(false);
+  const [savingPreview, setSavingPreview] = useState(false);
   const [reclaimTarget, setReclaimTarget] = useState<{
     email: string;
     codes: string[];
@@ -684,6 +687,17 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     }
   }
 
+  async function handleSaveAndPreview() {
+    const form = detailsFormRef.current;
+    if (!form || savingPreview) return;
+    setSavingPreview(true);
+    try {
+      await openSavedPreview(form);
+    } finally {
+      setSavingPreview(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -719,20 +733,12 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               <UserPlus data-icon="inline-start" />
               Walk-up claim
             </Button>
-            <Button
-              variant="outline"
-              render={
-                <Link
-                  href={`/${event.slug}?preview=1`}
-                  target="_blank"
-                  rel="noreferrer"
-                />
-              }
-              nativeButton={false}
-            >
-              <Eye data-icon="inline-start" />
-              Preview claim
-            </Button>
+            <PreviewClaimButton
+              slug={event.slug}
+              dirty={detailsDirty}
+              saving={savingPreview}
+              onSaveAndPreview={handleSaveAndPreview}
+            />
             <Button
               variant="outline"
               size="icon"
@@ -829,8 +835,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
       <EventDetailsForm
         key={event._id}
+        ref={detailsFormRef}
         event={event}
         canDelete={access?.isGlobalAdmin ?? false}
+        onDirtyChange={setDetailsDirty}
       />
 
       {blacklistHits && blacklistHits.length > 0 ? (
@@ -2653,12 +2661,109 @@ function EventTitle({ id, name }: { id: Id<"events">; name: string }) {
   );
 }
 
+export type EventDetailsFormHandle = {
+  validate: () => boolean;
+  save: () => Promise<{ ok: true; slug: string } | { ok: false }>;
+};
+
+type PreviewTab = {
+  opener: unknown;
+  closed: boolean;
+  close: () => void;
+  location: { replace: (url: string) => void };
+};
+
+export async function openSavedPreview(
+  form: EventDetailsFormHandle,
+  openTab: (
+    url: string,
+    target: string,
+    features?: string
+  ) => PreviewTab | null = (url, target, features) =>
+    window.open(url, target, features)
+): Promise<boolean> {
+  if (!form.validate()) return false;
+  // Open the tab synchronously inside the click gesture so popup blockers
+  // allow it once the save mutation finishes.
+  const tab = openTab("", "_blank");
+  if (tab) tab.opener = null;
+  let res: { ok: true; slug: string } | { ok: false };
+  try {
+    res = await form.save();
+  } catch (err) {
+    tab?.close();
+    throw err;
+  }
+  if (!res.ok) {
+    tab?.close();
+    return false;
+  }
+  const url = `/${res.slug}?preview=1`;
+  if (tab && !tab.closed) {
+    tab.location.replace(url);
+  } else {
+    openTab(url, "_blank", "noopener,noreferrer");
+  }
+  return true;
+}
+
+export function PreviewClaimButton({
+  slug,
+  dirty,
+  saving,
+  onSaveAndPreview,
+}: {
+  slug: string;
+  dirty: boolean;
+  saving: boolean;
+  onSaveAndPreview: () => void;
+}) {
+  if (dirty) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        disabled={saving}
+        aria-busy={saving}
+        onClick={onSaveAndPreview}
+      >
+        {saving ? (
+          <Spinner data-icon="inline-start" />
+        ) : (
+          <Eye data-icon="inline-start" />
+        )}
+        {saving ? "Saving..." : "Save & preview"}
+      </Button>
+    );
+  }
+  return (
+    <Button
+      variant="outline"
+      render={
+        <Link
+          href={`/${slug}?preview=1`}
+          target="_blank"
+          rel="noreferrer"
+        />
+      }
+      nativeButton={false}
+    >
+      <Eye data-icon="inline-start" />
+      Preview claim
+    </Button>
+  );
+}
+
 function EventDetailsForm({
   event,
   canDelete,
+  onDirtyChange,
+  ref,
 }: {
   event: Doc<"events">;
   canDelete: boolean;
+  onDirtyChange?: (dirty: boolean) => void;
+  ref?: Ref<EventDetailsFormHandle>;
 }) {
   const updateEvent = useMutation(api.events.update).withOptimisticUpdate(optimistic.updateEventOptimistic);
   const removeEvent = useMutation(api.events.remove).withOptimisticUpdate(optimistic.removeEventOptimistic);
@@ -2703,6 +2808,12 @@ function EventDetailsForm({
     event.signInMessage ?? ""
   );
   const [contactEmail, setContactEmail] = useState(event.contactEmail ?? "");
+  const [hasLocalEdits, setHasLocalEdits] = useState(false);
+  const editVersionRef = useRef(0);
+  function markEdited() {
+    editVersionRef.current += 1;
+    setHasLocalEdits(true);
+  }
   const parsedDomains = parseAllowedDomains(allowedDomainsInput);
   const savedDomains = event.allowedDomains ?? [];
   const domainsDirty =
@@ -2725,33 +2836,65 @@ function EventDetailsForm({
     signInMessage.trim() !== (event.signInMessage ?? "") ||
     contactEmail.trim().toLowerCase() !== (event.contactEmail ?? "");
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
+  const formElRef = useRef<HTMLFormElement>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    onDirtyChange?.(hasLocalEdits && dirty);
+  }, [hasLocalEdits, dirty, onDirtyChange]);
+
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+
+  function validateForm(): boolean {
+    if (formElRef.current && !formElRef.current.reportValidity()) {
+      return false;
+    }
+    if (!name.trim()) {
+      toast.error("Event name is required.");
+      return false;
+    }
+    if (!slugify(slug)) {
+      toast.error("Slug must contain letters or numbers.");
+      return false;
+    }
     if (accessMode === "domain") {
       if (parsedDomains.invalid.length > 0) {
         toast.error(
           `Enter valid email domains (for example, acme.com): ${parsedDomains.invalid.join(", ")}`
         );
-        return;
+        return false;
       }
       if (parsedDomains.domains.length === 0) {
         toast.error("Enter at least one allowed company email domain.");
-        return;
+        return false;
       }
       if (parsedDomains.domains.length > MAX_ALLOWED_DOMAINS) {
         toast.error(
           `Add up to ${MAX_ALLOWED_DOMAINS} allowed email domains per event.`
         );
-        return;
+        return false;
       }
     }
-    setSlug(slugify(slug));
+    return true;
+  }
+
+  async function saveDetails(): Promise<
+    { ok: true; slug: string } | { ok: false }
+  > {
+    if (savingRef.current) return { ok: false };
+    if (!validateForm()) return { ok: false };
+    savingRef.current = true;
+    setSaving(true);
+    const nextSlug = slugify(slug);
+    setSlug(nextSlug);
     const submittedAdminNote = adminNoteDraft;
+    const editVersion = editVersionRef.current;
     try {
       await updateEvent({
         id: event._id,
         name,
-        slug,
+        slug: nextSlug,
         description: description || undefined,
         ...(adminNoteChanged ? { adminNote } : {}),
         eventDate: eventDate || undefined,
@@ -2767,7 +2910,11 @@ function EventDetailsForm({
       setAdminNoteDraft((current) =>
         current === submittedAdminNote ? null : current
       );
+      if (editVersionRef.current === editVersion) {
+        setHasLocalEdits(false);
+      }
       toast.success("Event saved");
+      return { ok: true, slug: nextSlug };
     } catch (err) {
       toast.error(
         mutationError(
@@ -2775,7 +2922,21 @@ function EventDetailsForm({
           err instanceof Error ? err.message : "Failed to save"
         )
       );
+      return { ok: false };
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
+  }
+
+  useImperativeHandle(ref, () => ({
+    validate: validateForm,
+    save: saveDetails,
+  }));
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    await saveDetails();
   }
 
   async function handleArchiveToggle() {
@@ -2816,7 +2977,7 @@ function EventDetailsForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="flex flex-col gap-6">
+        <form ref={formElRef} onSubmit={handleSave} className="flex flex-col gap-6">
           <FieldGroup className="grid gap-5 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor="detail-name">Name</FieldLabel>
@@ -2824,7 +2985,10 @@ function EventDetailsForm({
                 id="detail-name"
                 required
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => {
+                  markEdited();
+                  setName(e.target.value);
+                }}
               />
             </Field>
             <Field>
@@ -2833,7 +2997,10 @@ function EventDetailsForm({
                 id="detail-slug"
                 required
                 value={slug}
-                onChange={setSlug}
+                onChange={(next) => {
+                  markEdited();
+                  setSlug(next);
+                }}
               />
             </Field>
             <EventDatesField
@@ -2841,6 +3008,7 @@ function EventDetailsForm({
               startDate={eventDate}
               endDate={eventEndDate}
               onChange={(dates) => {
+                markEdited();
                 setEventDate(dates.startDate);
                 setEventEndDate(dates.endDate);
               }}
@@ -2852,6 +3020,7 @@ function EventDetailsForm({
                 id="detail-identity"
                 value={identity}
                 onChange={(next) => {
+                  markEdited();
                   setIdentity(next);
                   if (next === "x" && accessMode === "domain") {
                     setAccessMode("list");
@@ -2868,27 +3037,43 @@ function EventDetailsForm({
               className="sm:col-span-2"
               idPrefix="detail"
               description={description}
-              onDescriptionChange={setDescription}
+              onDescriptionChange={(next) => {
+                markEdited();
+                setDescription(next);
+              }}
               instructions={claimInstructions}
-              onInstructionsChange={setClaimInstructions}
+              onInstructionsChange={(next) => {
+                markEdited();
+                setClaimInstructions(next);
+              }}
               instructionsDescription="When set, attendees see a “Redemption steps” button after claiming their code."
               signInMessage={signInMessage}
-              onSignInMessageChange={setSignInMessage}
+              onSignInMessageChange={(next) => {
+                markEdited();
+                setSignInMessage(next);
+              }}
               identity={identity}
               contactEmail={contactEmail}
-              onContactEmailChange={setContactEmail}
+              onContactEmailChange={(next) => {
+                markEdited();
+                setContactEmail(next);
+              }}
             />
             <AdminNoteField
               id="detail-admin-note"
               className="sm:col-span-2"
               value={adminNote}
-              onChange={setAdminNoteDraft}
+              onChange={(next) => {
+                markEdited();
+                setAdminNoteDraft(next);
+              }}
             />
             <ClaimAccessPicker
               id="detail-access"
               className="sm:col-span-2"
               value={accessMode}
               onChange={(next) => {
+                markEdited();
                 setAccessMode(next);
                 if (next !== "list") setWalkUpSkipsReview(false);
               }}
@@ -2899,7 +3084,10 @@ function EventDetailsForm({
                 id="detail-allowed-domains"
                 className="sm:col-span-2"
                 value={allowedDomainsInput}
-                onChange={setAllowedDomainsInput}
+                onChange={(next) => {
+                  markEdited();
+                  setAllowedDomainsInput(next);
+                }}
               />
             ) : accessMode === "dynamic" ? (
               <DynamicEventWarning className="sm:col-span-2" />
@@ -2908,7 +3096,10 @@ function EventDetailsForm({
                 id="detail-walkup-review"
                 className="sm:col-span-2"
                 checked={walkUpSkipsReview}
-                onChange={setWalkUpSkipsReview}
+                onChange={(next) => {
+                  markEdited();
+                  setWalkUpSkipsReview(next);
+                }}
               />
             )}
           </FieldGroup>
@@ -2916,9 +3107,9 @@ function EventDetailsForm({
             <div className="flex items-center gap-3">
               <Button
                 type="submit"
-                disabled={!dirty}
+                disabled={!dirty || saving}
               >
-                Save changes
+                {saving ? "Saving..." : "Save changes"}
               </Button>
               {dirty ? (
                 <span className="text-xs text-muted-foreground">
