@@ -7,6 +7,7 @@ import {
   Building2,
   CalendarDays,
   Link2,
+  Lock,
   Mail,
   Plus,
   Users,
@@ -37,6 +38,8 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { OptionalSettings } from "@/components/OptionalSettings";
 import {
   InputGroup,
   InputGroupAddon,
@@ -496,6 +499,70 @@ export function ClaimAccessPicker({
               : "Only the email addresses you add to this event can claim."}
       </FieldDescription>
     </Field>
+  );
+}
+
+export function AdminNoteField({
+  id,
+  value,
+  onChange,
+  className,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn("flex flex-col gap-3", className)}
+      aria-labelledby={`${id}-heading`}
+    >
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <h3 id={`${id}-heading`} className="text-sm font-medium">
+            Internal notes
+          </h3>
+          <Badge variant="outline">Admins only</Badge>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Private to admins in the admin panel — never shown to attendees.
+        </p>
+      </div>
+      <OptionalSettings
+        className="sm:grid-cols-1"
+        settings={[
+          {
+            key: "adminNote",
+            id,
+            title: "Admin note",
+            addLabel: "Add admin note",
+            description:
+              "Why and how this event was created (e.g. partner request, Slack thread, code source).",
+            icon: Lock,
+            set: value !== "",
+            onClear: () => onChange(""),
+            render: (focus) => (
+              <Field>
+                <Textarea
+                  id={id}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  rows={3}
+                  className="resize-y"
+                  autoFocus={focus}
+                  placeholder="Why and how this event was created (e.g. partner request, Slack thread, code source)..."
+                />
+                <FieldDescription>
+                  Private to admins in the admin panel — never shown to
+                  attendees. Pasted links become clickable; Markdown works too.
+                </FieldDescription>
+              </Field>
+            ),
+          },
+        ]}
+      />
+    </section>
   );
 }
 

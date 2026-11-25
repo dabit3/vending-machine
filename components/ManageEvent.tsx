@@ -15,6 +15,7 @@ import {
   Eye,
   Hourglass,
   Inbox,
+  Lock,
   Mail,
   Plus,
   Pencil,
@@ -112,8 +113,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import EventStripeCodes from "@/components/EventStripeCodes";
+import { MarkdownText } from "@/components/MarkdownText";
 import { EventOptionalSettings } from "@/components/EventOptionalSettings";
 import {
+  AdminNoteField,
   AllowedDomainsField,
   ClaimAccessPicker,
   EventDatesField,
@@ -762,6 +765,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           </Button>
           </div>
         </div>
+        {event.adminNote ? (
+          <div className="mt-4 rounded-lg border bg-muted/40 px-4 py-3">
+            <div className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Lock className="size-3.5" aria-hidden />
+              <span>Admin note</span>
+              <Badge variant="outline" className="text-[11px]">
+                Admins only
+              </Badge>
+            </div>
+            <MarkdownText
+              value={event.adminNote}
+              className="text-sm text-foreground"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
@@ -2657,6 +2675,10 @@ function EventDetailsForm({
   }
   const [slug, setSlug] = useState(event.slug);
   const [description, setDescription] = useState(event.description ?? "");
+  const [adminNoteDraft, setAdminNoteDraft] = useState<string | null>(null);
+  const adminNote = adminNoteDraft ?? event.adminNote ?? "";
+  const adminNoteChanged =
+    adminNoteDraft !== null && adminNoteDraft.trim() !== (event.adminNote ?? "");
   const [eventDate, setEventDate] = useState(event.eventDate ?? "");
   const [eventEndDate, setEventEndDate] = useState(event.eventEndDate ?? "");
   const [claimInstructions, setClaimInstructions] = useState(
@@ -2692,6 +2714,7 @@ function EventDetailsForm({
     name.trim() !== event.name ||
     slugify(slug) !== event.slug ||
     description.trim() !== (event.description ?? "") ||
+    adminNoteChanged ||
     eventDate !== (event.eventDate ?? "") ||
     eventEndDate !== (event.eventEndDate ?? "") ||
     claimInstructions.trim() !== (event.claimInstructions ?? "") ||
@@ -2723,12 +2746,14 @@ function EventDetailsForm({
       }
     }
     setSlug(slugify(slug));
+    const submittedAdminNote = adminNoteDraft;
     try {
       await updateEvent({
         id: event._id,
         name,
         slug,
         description: description || undefined,
+        ...(adminNoteChanged ? { adminNote } : {}),
         eventDate: eventDate || undefined,
         eventEndDate,
         claimInstructions: claimInstructions || undefined,
@@ -2739,6 +2764,9 @@ function EventDetailsForm({
         signInMessage,
         contactEmail,
       });
+      setAdminNoteDraft((current) =>
+        current === submittedAdminNote ? null : current
+      );
       toast.success("Event saved");
     } catch (err) {
       toast.error(
@@ -2849,6 +2877,12 @@ function EventDetailsForm({
               identity={identity}
               contactEmail={contactEmail}
               onContactEmailChange={setContactEmail}
+            />
+            <AdminNoteField
+              id="detail-admin-note"
+              className="sm:col-span-2"
+              value={adminNote}
+              onChange={setAdminNoteDraft}
             />
             <ClaimAccessPicker
               id="detail-access"
