@@ -149,6 +149,7 @@ export const add = mutation({
           await ctx.db.insert("flaggedEmails", {
             eventId: args.eventId,
             email,
+            canonicalEmail: canonical,
             matchedEventIds,
           });
           flagged++;

@@ -190,11 +190,13 @@ export default defineSchema({
   flaggedEmails: defineTable({
     eventId: v.id("events"),
     email: v.string(),
+    canonicalEmail: v.optional(v.string()),
     matchedEventIds: v.array(v.id("events")),
   })
     .index("by_event", ["eventId"])
     .index("by_event_email", ["eventId", "email"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_canonicalEmail", ["canonicalEmail"]),
 
   codes: defineTable({
     eventId: v.id("events"),

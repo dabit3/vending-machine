@@ -92,18 +92,28 @@ export const add = mutation({
       canonicalEmail: canonical,
       addedBy: actorEmail ?? undefined,
     });
-    // Pending duplicate-review flags for the address can never be approved
-    // now, so convert them into per-event blacklist rejections.
+    // Pending duplicate-review flags for the address (or any canonical alias)
+    // can never be approved now, so convert them into per-event blacklist
+    // rejections.
+    const pendingFlags = new Map<Id<"flaggedEmails">, Doc<"flaggedEmails">>();
     const flagKeys = canonical === email ? [email] : [email, canonical];
     for (const flagKey of flagKeys) {
-      const pendingFlags = await ctx.db
+      for (const flag of await ctx.db
         .query("flaggedEmails")
         .withIndex("by_email", (q) => q.eq("email", flagKey))
-        .collect();
-      for (const flag of pendingFlags) {
-        await ctx.db.delete(flag._id);
-        await recordBlacklistHit(ctx, flag.eventId, flag.email);
+        .collect()) {
+        pendingFlags.set(flag._id, flag);
       }
+    }
+    for (const flag of await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_canonicalEmail", (q) => q.eq("canonicalEmail", canonical))
+      .collect()) {
+      pendingFlags.set(flag._id, flag);
+    }
+    for (const flag of pendingFlags.values()) {
+      await ctx.db.delete(flag._id);
+      await recordBlacklistHit(ctx, flag.eventId, flag.email);
     }
     // Release any unclaimed code reservations held for this identity (or its
     // canonical aliases) so codes are not locked away for a blacklisted user.

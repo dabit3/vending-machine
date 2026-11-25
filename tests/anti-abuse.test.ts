@@ -399,4 +399,12 @@ test("uploading an email alias across events flags it for duplicate review", asy
     email: "d.a.v.e+meetup@googlemail.com",
     matchedEvents: [{ id: ev1.id, name: "First" }],
   });
+
+  // Blacklisting the canonical/base address clears pending flags for its aliases too.
+  await admin.mutation(api.blacklist.add, { email: "dave@gmail.com" });
+  expect(
+    (await admin.query(api.emails.listFlagged, { eventId: ev2.id })).entries
+  ).toEqual([]);
+  const hits = await admin.query(api.blacklist.listHits, { eventId: ev2.id });
+  expect(hits.map((h) => h.email)).toEqual(["d.a.v.e+meetup@googlemail.com"]);
 });
