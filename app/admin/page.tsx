@@ -387,12 +387,9 @@ export default function AdminDashboard() {
     (effectiveAttentionOnly && showOlder && older.length > OLDER_PAGE_SIZE);
   const visibleSearchResults = search
     ? effectiveAttentionOnly
-      ? search.results.filter((r) => {
-          const isPast = r.eventDate
-            ? daysSinceEventEnded(r.eventDate, r.eventEndDate) > 0
-            : false;
-          return eventNeedsAttention(statsMap?.[r._id], !isPast);
-        })
+      ? search.results.filter((r) =>
+          eventNeedsAttention(statsMap?.[r._id], allActiveIds.has(r._id)),
+        )
       : search.results
     : [];
   const visibleStarred = effectiveAttentionOnly
