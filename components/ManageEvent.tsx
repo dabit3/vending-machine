@@ -33,23 +33,22 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import * as optimistic from "@/lib/admin-optimistic";
 import { AdminDialogAction as AlertDialogAction } from "@/components/AdminDialogAction";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
-  activeCodeTypes,
   blockKey,
   isArchivedType,
 } from "@/convex/blockValues";
-import { blockTermsSummary, type CodeTerms } from "@/lib/block-value";
+import { blockTermsSummary } from "@/lib/block-value";
 import { downloadCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
 import { mutationError } from "@/lib/stripe-form";
 import {
   EMAIL_STATUS_FILTERS,
-  filterEmails,
   type EmailStatusFilter,
 } from "@/lib/email-search";
 import {
@@ -73,6 +72,13 @@ import { blockExpirySummary } from "@/lib/code-expiry";
 import { cooldownNotice } from "@/lib/claim-cooldown";
 
 const COOLDOWN_PAGE_SIZE = 500;
+const LIST_PAGE_SIZE = 50;
+const FILTERED_EMAIL_SCAN_SIZE = 500;
+const EXPORT_PAGE_SIZE = 100;
+
+type CodeBlockSummary = NonNullable<
+  FunctionReturnType<typeof api.codes.summary>
+>["blocks"][number];
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -134,9 +140,10 @@ import {
 } from "@/lib/allowed-domains";
 
 export default function ManageEvent({ id }: { id: Id<"events"> }) {
+  const convex = useConvex();
   const event = useQuery(api.events.get, { id });
   const setClaimMode = useMutation(api.events.setClaimMode).withOptimisticUpdate(optimistic.setClaimModeOptimistic);
-  const emails = useQuery(api.emails.list, { eventId: id });
+  const emailSummary = useQuery(api.emails.summary, { eventId: id });
   const flagged = useQuery(api.emails.listFlagged, { eventId: id });
   const cooldowns = usePaginatedQuery(
     api.emails.listCooldowns,
@@ -144,8 +151,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     { initialNumItems: COOLDOWN_PAGE_SIZE }
   );
   const blacklistHits = useQuery(api.blacklist.listHits, { eventId: id });
-  const codes = useQuery(api.codes.list, { eventId: id });
-  const codeTerms = useQuery(api.codes.codeTerms, { eventId: id });
+  const codeSummary = useQuery(api.codes.summary, { eventId: id });
   const access = useQuery(api.admins.accessLevel);
   const addEmails = useMutation(api.emails.add);
   const removeEmail = useMutation(api.emails.remove).withOptimisticUpdate(optimistic.removeEmailOptimistic);
@@ -180,6 +186,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [exportingEmails, setExportingEmails] = useState(false);
+  const [exportingCodes, setExportingCodes] = useState(false);
   const detailsFormRef = useRef<EventDetailsFormHandle>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
   const [savingPreview, setSavingPreview] = useState(false);
@@ -193,21 +201,10 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     claimedBy: string;
   } | null>(null);
 
-  // Emails that already claimed, mapped to their claimed code(s), so the
-  // eligible-emails list can offer an "allow re-claim" action per address.
-  const claimedCodesByEmail = new Map<string, string[]>();
-  for (const c of codes ?? []) {
-    if (!c.claimedBy) continue;
-    claimedCodesByEmail.set(c.claimedBy, [
-      ...(claimedCodesByEmail.get(c.claimedBy) ?? []),
-      c.code,
-    ]);
-  }
-
   // Existing code blocks ("" = unnamed) drive the add form: codes go into a
   // selected existing block, or into a new named block when only one exists.
   // Blocks are ordered by when each was first created, not alphabetically.
-  const blockTypes = event ? activeCodeTypes(event, codes ?? []) : [];
+  const blockTypes = codeSummary?.blockTypes ?? event?.codeTypes ?? [];
   // Archived blocks keep their place in the two-block limit but take no new
   // codes, so they are left out of the add form's targets.
   const openBlockTypes = event
@@ -245,13 +242,6 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     (!isNewBlock || !hasBlocks || newBlockName.trim().length > 0) &&
     (!needsFirstBlockName || firstBlockName.trim().length > 0);
 
-  // Computed before the early returns so the count-up hook can run
-  // unconditionally; 0 while the codes query is still in flight.
-  const claimedCount = codes?.filter((c) => c.claimedBy).length ?? 0;
-  const codeCount = codes?.length ?? 0;
-  const claimedDisplay = useCountUp(claimedCount);
-  const unclaimedEmailCount =
-    emails?.filter((e) => !claimedCodesByEmail.has(e.email)).length ?? 0;
   // Dynamic and company-domain events have no participant list to manage;
   // the emails card only shows who has actually claimed a code.
   const isDynamic = event?.dynamic === true;
@@ -260,37 +250,70 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const identity = event?.identity ?? "email";
   const byHandle = identity === "x";
   const labels = identityLabels(identity);
-  const namesByEmail = new Map(
-    emails?.flatMap((e) => (e.name ? [[e.email, e.name] as const] : [])) ?? []
-  );
-  const listedEmails:
-    | {
-        email: string;
-        name?: string;
-        id?: Id<"emails">;
-        claimed: boolean;
-        blocked?: boolean;
-      }[]
-    | undefined = isSelfEnrolling
-    ? codes &&
-      [...claimedCodesByEmail.keys()].map((email) => ({
-        email,
-        name: namesByEmail.get(email),
-        claimed: true,
-      }))
-    : emails?.map((e) => ({
-        email: e.email,
-        name: e.name,
-        id: e._id,
-        claimed: claimedCodesByEmail.has(e.email),
-        blocked: e.blockedAt !== undefined,
-      }));
   const isGlobalAdmin = access?.isGlobalAdmin === true;
   // Self-enrolling lists are claimants only, so the status filter doesn't apply.
   const activeEmailFilter: EmailStatusFilter = isSelfEnrolling ? "all" : emailFilter;
+  const trimmedEmailSearch = emailSearch.trim();
+  const isEmailFiltered =
+    trimmedEmailSearch.length > 0 || activeEmailFilter !== "all";
+
+  const emailsPage = usePaginatedQuery(
+    api.emails.listPage,
+    {
+      eventId: id,
+      ...(trimmedEmailSearch ? { search: trimmedEmailSearch } : {}),
+      ...(activeEmailFilter !== "all" ? { filter: activeEmailFilter } : {}),
+    },
+    {
+      initialNumItems: isEmailFiltered
+        ? FILTERED_EMAIL_SCAN_SIZE
+        : LIST_PAGE_SIZE,
+    }
+  );
+  const codesPage = usePaginatedQuery(
+    api.codes.listPage,
+    {
+      eventId: id,
+      ...(blockTypes.length > 1 && listedType !== undefined
+        ? { codeType: listedType }
+        : {}),
+    },
+    { initialNumItems: LIST_PAGE_SIZE }
+  );
+
+  // Computed before the early returns so the count-up hook can run
+  // unconditionally; 0 while the summary query is still in flight.
+  const claimedCount = codeSummary?.claimed ?? 0;
+  const codeCount = codeSummary?.total ?? 0;
+  const claimedDisplay = useCountUp(claimedCount);
+  const unclaimedCodeCount = codeSummary?.available ?? 0;
+  const emailCount = emailSummary?.total;
+  const unclaimedEmailCount = emailSummary?.unclaimed ?? 0;
+
+  // Dedupe claimants across page boundaries on self-enrolling events where
+  // claimMode === "all" dispenses two codes per attendee.
   const visibleEmails =
-    listedEmails && filterEmails(listedEmails, emailSearch, activeEmailFilter);
-  const unclaimedCodeCount = codeCount - claimedCount;
+    emailsPage.status === "LoadingFirstPage"
+      ? undefined
+      : isSelfEnrolling
+        ? (() => {
+            const merged = new Map<string, (typeof emailsPage.results)[number]>();
+            for (const row of emailsPage.results) {
+              const prev = merged.get(row.email);
+              if (prev) {
+                prev.claimedCodes = [
+                  ...new Set([...prev.claimedCodes, ...row.claimedCodes]),
+                ];
+              } else {
+                merged.set(row.email, {
+                  ...row,
+                  claimedCodes: [...row.claimedCodes],
+                });
+              }
+            }
+            return [...merged.values()];
+          })()
+        : emailsPage.results;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
 
@@ -346,7 +369,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   // The backend clears one chunk per call; keep calling until it reports the
   // list is empty. Shares the email busy flag so adds can't race the clear.
   async function handleRemoveAllEmails() {
-    const total = emails?.length ?? 0;
+    const total = emailSummary?.total ?? 0;
     setEmailBusy(true);
     const toastId = toast.loading(`Removing ${labels.plural}...`);
     let removed = 0;
@@ -495,31 +518,30 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     return newBlockName.trim() || undefined;
   }
 
-  function codeRows(type?: string) {
-    return codes
-      ?.filter((c) => type === undefined || (c.codeType ?? "") === type)
-      .map((c) => ({
-        key: c._id,
-        label: c.code,
-        tag: type === undefined ? (c.codeType ?? undefined) : undefined,
-        claimedBy: c.claimedBy ?? undefined,
-        onRelease: c.claimedBy
-          ? () =>
-              setReleaseTarget({
-                id: c._id,
-                code: c.code,
-                claimedBy: c.claimedBy ?? "",
-              })
-          : undefined,
-        onRemove: c.claimedBy
-          ? undefined
-          : () =>
-              removeCode({ id: c._id }).catch((err) =>
-                toast.error(
-                  err instanceof Error ? err.message : "Failed to remove code"
-                )
-              ),
-      }));
+  function codeRows(showTag: boolean) {
+    if (codesPage.status === "LoadingFirstPage") return undefined;
+    return codesPage.results.map((c) => ({
+      key: c._id,
+      label: c.code,
+      tag: showTag ? (c.codeType ?? undefined) : undefined,
+      claimedBy: c.claimedBy ?? undefined,
+      onRelease: c.claimedBy
+        ? () =>
+            setReleaseTarget({
+              id: c._id,
+              code: c.code,
+              claimedBy: c.claimedBy ?? "",
+            })
+        : undefined,
+      onRemove: c.claimedBy
+        ? undefined
+        : () =>
+            removeCode({ id: c._id }).catch((err) =>
+              toast.error(
+                err instanceof Error ? err.message : "Failed to remove code"
+              )
+            ),
+    }));
   }
 
   function resetBlockForm(codeType: string | undefined) {
@@ -588,25 +610,76 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
     if (resolved) resetBlockForm(codeType);
   }
 
-  function exportEmails() {
-    if (!listedEmails || !event) return;
-    downloadCsv(`${event.slug}-${labels.exportName}.csv`, [
-      [byHandle ? "handle" : "email", "name"],
-      ...listedEmails.map((e) => [e.email, e.name ?? ""]),
-    ]);
+  async function exportEmails() {
+    if (!event || exportingEmails) return;
+    setExportingEmails(true);
+    try {
+      const seen = new Set<string>();
+      const rows: string[][] = [];
+      let cursor: string | null = null;
+      let isDone = false;
+      while (!isDone) {
+        const res: FunctionReturnType<typeof api.emails.listPage> =
+          await convex.query(api.emails.listPage, {
+            eventId: id,
+            paginationOpts: { numItems: EXPORT_PAGE_SIZE, cursor },
+          });
+        for (const e of res.page) {
+          if (isSelfEnrolling) {
+            if (seen.has(e.email)) continue;
+            seen.add(e.email);
+          }
+          rows.push([e.email, e.name ?? ""]);
+        }
+        isDone = res.isDone;
+        cursor = res.continueCursor;
+      }
+      downloadCsv(`${event.slug}-${labels.exportName}.csv`, [
+        [byHandle ? "handle" : "email", "name"],
+        ...rows,
+      ]);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : `Failed to export ${labels.plural}`
+      );
+    } finally {
+      setExportingEmails(false);
+    }
   }
 
-  function exportCodes() {
-    if (!codes || !event) return;
-    downloadCsv(`${event.slug}-codes.csv`, [
-      ["code", "type", "claimed_by", "claimed_at"],
-      ...codes.map((c) => [
-        c.code,
-        c.codeType ?? "",
-        c.claimedBy ?? "",
-        c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
-      ]),
-    ]);
+  async function exportCodes() {
+    if (!event || exportingCodes) return;
+    setExportingCodes(true);
+    try {
+      const rows: string[][] = [];
+      let cursor: string | null = null;
+      let isDone = false;
+      while (!isDone) {
+        const res: FunctionReturnType<typeof api.codes.listPage> =
+          await convex.query(api.codes.listPage, {
+            eventId: id,
+            paginationOpts: { numItems: EXPORT_PAGE_SIZE, cursor },
+          });
+        for (const c of res.page) {
+          rows.push([
+            c.code,
+            c.codeType ?? "",
+            c.claimedBy ?? "",
+            c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
+          ]);
+        }
+        isDone = res.isDone;
+        cursor = res.continueCursor;
+      }
+      downloadCsv(`${event.slug}-codes.csv`, [
+        ["code", "type", "claimed_by", "claimed_at"],
+        ...rows,
+      ]);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to export codes");
+    } finally {
+      setExportingCodes(false);
+    }
   }
 
   async function importFile(
@@ -793,24 +866,24 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           label={
             isSelfEnrolling ? `Claimed ${labels.plural}` : `Eligible ${labels.plural}`
           }
-          value={listedEmails?.length}
+          value={emailCount}
           sub={
-            !isSelfEnrolling && emails && codes
+            !isSelfEnrolling && emailSummary
               ? `${unclaimedEmailCount} yet to claim`
               : undefined
           }
         />
         <StatCard
           label="Codes in pool"
-          value={codes?.length}
-          sub={codes ? `${unclaimedCodeCount} still available` : undefined}
+          value={codeSummary?.total}
+          sub={codeSummary ? `${unclaimedCodeCount} still available` : undefined}
         />
         <div className="flex flex-col gap-3 py-5 sm:px-8 sm:last:pr-0">
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-medium text-muted-foreground">
               Claimed
             </span>
-            {codes ? (
+            {codeSummary ? (
               <span className="font-mono text-xs text-muted-dim tabular-nums">
                 {codeCount > 0
                   ? `${Math.round((claimedCount / codeCount) * 100)}%`
@@ -818,7 +891,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               </span>
             ) : null}
           </div>
-          {codes ? (
+          {codeSummary ? (
             <div className="font-heading text-3xl font-semibold tracking-tight tabular-nums">
               {claimedDisplay}
               <span className="text-base text-muted-dim"> / {codeCount}</span>
@@ -976,8 +1049,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               {isSelfEnrolling
                 ? `Claimed ${labels.plural}`
                 : `Eligible ${labels.plural}`}
-              {listedEmails ? (
-                <Badge variant="secondary">{listedEmails.length}</Badge>
+              {emailCount !== undefined ? (
+                <Badge variant="secondary">{emailCount}</Badge>
               ) : null}
             </CardTitle>
             <CardDescription>
@@ -985,12 +1058,21 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 ? `Anyone who signs in with a verified ${formatAllowedDomains(event.allowedDomains)} email can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
                 : isDynamic
                   ? `This event is dynamic: anyone who signs in${byHandle ? " with X" : ""} can claim, so there's no participant list. These ${labels.addressPlural} have claimed a code.`
-                  : `Only these ${labels.addressPlural} can claim a code.${byHandle ? " Attendees sign in with X." : ""}${emails && codes ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
+                  : `Only these ${labels.addressPlural} can claim a code.${byHandle ? " Attendees sign in with X." : ""}${emailSummary ? ` ${unclaimedEmailCount} yet to claim.` : ""}`}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
-              {listedEmails && listedEmails.length > 0 ? (
-                <Button variant="outline" size="sm" onClick={exportEmails}>
-                  <Download data-icon="inline-start" />
+              {emailCount !== undefined && emailCount > 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportEmails}
+                  disabled={exportingEmails}
+                >
+                  {exportingEmails ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <Download data-icon="inline-start" />
+                  )}
                   Export
                 </Button>
               ) : null}
@@ -1007,7 +1089,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   }
                 />
               )}
-              {isGlobalAdmin && !isSelfEnrolling && emails && emails.length > 0 ? (
+              {isGlobalAdmin && !isSelfEnrolling && emailCount !== undefined && emailCount > 0 ? (
                 <AlertDialog>
                   <AlertDialogTrigger
                     render={
@@ -1025,8 +1107,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>
-                        Remove all {emails.length}{" "}
-                        {emails.length === 1 ? labels.noun : labels.plural}?
+                        Remove all {emailCount}{" "}
+                        {emailCount === 1 ? labels.noun : labels.plural}?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         This clears the eligible list, so no one can claim until
@@ -1089,7 +1171,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 </div>
               </form>
             )}
-            {listedEmails && listedEmails.length > 0 ? (
+            {emailCount !== undefined && emailCount > 0 ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <InputGroup className="sm:flex-1">
                   <InputGroupAddon>
@@ -1130,7 +1212,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                 )}
               </div>
             ) : null}
-            {!isSelfEnrolling && emails && codes && unclaimedEmailCount > 0 ? (
+            {!isSelfEnrolling && emailSummary && unclaimedEmailCount > 0 ? (
               <div className="flex justify-end">
                 <AlertDialog>
                   <AlertDialogTrigger
@@ -1282,7 +1364,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                     ? () =>
                         setReclaimTarget({
                           email: e.email,
-                          codes: claimedCodesByEmail.get(e.email) ?? [],
+                          codes: e.claimedCodes,
                         })
                     : undefined,
                   onRemove:
@@ -1294,10 +1376,20 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
                           ),
                 };
               })}
+              loadMore={{
+                status: emailsPage.status,
+                onLoadMore: () =>
+                  emailsPage.loadMore(
+                    isEmailFiltered ? FILTERED_EMAIL_SCAN_SIZE : LIST_PAGE_SIZE
+                  ),
+                label: isEmailFiltered
+                  ? `Search more ${labels.plural}`
+                  : `Load more ${labels.plural}`,
+              }}
               emptyText={
-                listedEmails && listedEmails.length > 0
-                  ? emailSearch.trim()
-                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}${labels.plural} match "${emailSearch.trim()}".`
+                emailCount !== undefined && emailCount > 0
+                  ? trimmedEmailSearch
+                    ? `No ${activeEmailFilter === "all" ? "" : `${activeEmailFilter} `}${labels.plural} match "${trimmedEmailSearch}".`
                     : `No ${activeEmailFilter} ${labels.plural} yet.`
                   : isSelfEnrolling
                     ? "No one has claimed yet."
@@ -1358,16 +1450,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             <CardTitle className="flex items-center gap-2">
               <Ticket className="size-4 text-muted-dim" aria-hidden />
               Codes
-              {codes ? <Badge variant="secondary">{codeCount}</Badge> : null}
+              {codeSummary ? <Badge variant="secondary">{codeCount}</Badge> : null}
             </CardTitle>
             <CardDescription>
               Each {labels.noun} is assigned one unclaimed code.
-              {codes ? ` ${unclaimedCodeCount} still available.` : ""}
+              {codeSummary ? ` ${unclaimedCodeCount} still available.` : ""}
             </CardDescription>
             <CardAction className="col-span-full col-start-1 row-span-1 row-start-3 mt-2 flex w-full flex-wrap items-center gap-2 justify-self-start sm:col-span-1 sm:col-start-2 sm:row-span-2 sm:row-start-1 sm:mt-0 sm:w-auto sm:flex-nowrap sm:justify-self-end">
-              {codes && codes.length > 0 ? (
-                <Button variant="outline" size="sm" onClick={exportCodes}>
-                  <Download data-icon="inline-start" />
+              {codeSummary && codeCount > 0 ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={exportCodes}
+                  disabled={exportingCodes}
+                >
+                  {exportingCodes ? (
+                    <Spinner data-icon="inline-start" />
+                  ) : (
+                    <Download data-icon="inline-start" />
+                  )}
                   Export
                 </Button>
               ) : null}
@@ -1400,8 +1501,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             ) : null}
             <CodeBlocks
               types={blockTypes}
-              codes={codes}
-              codeTerms={codeTerms}
+              blocks={codeSummary?.blocks}
               values={event.codeTypeValues}
               archived={event.archivedCodeTypes ?? []}
               stripeSync={event.stripeArchiveSync}
@@ -1598,11 +1698,25 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
               // one toggle controls both where codes go and which are shown.
               <RowList
                 mono
-                items={codeRows(listedType)}
+                items={codeRows(false)}
+                loadMore={{
+                  status: codesPage.status,
+                  onLoadMore: () => codesPage.loadMore(LIST_PAGE_SIZE),
+                  label: "Load more codes",
+                }}
                 emptyText="No codes in this block yet."
               />
             ) : (
-              <RowList mono items={codeRows()} emptyText="No codes yet." />
+              <RowList
+                mono
+                items={codeRows(true)}
+                loadMore={{
+                  status: codesPage.status,
+                  onLoadMore: () => codesPage.loadMore(LIST_PAGE_SIZE),
+                  label: "Load more codes",
+                }}
+                emptyText="No codes yet."
+              />
             )}
             <AlertDialog
               open={releaseTarget !== null}
@@ -1667,8 +1781,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
 
 function CodeBlocks({
   types,
-  codes,
-  codeTerms,
+  blocks,
   values,
   archived,
   stripeSync,
@@ -1680,8 +1793,7 @@ function CodeBlocks({
   onDelete,
 }: {
   types: string[];
-  codes: Doc<"codes">[] | undefined;
-  codeTerms: (CodeTerms & { code: string })[] | undefined;
+  blocks: CodeBlockSummary[] | undefined;
   values: Record<string, string> | undefined;
   archived: string[];
   stripeSync: Record<string, StripeSync> | undefined;
@@ -1701,13 +1813,12 @@ function CodeBlocks({
   ) => Promise<{ removed: number; kept: number }>;
 }) {
   if (types.length === 0) return null;
-  const terms = new Map(codeTerms?.map((t) => [t.code, t]));
+  const byType = new Map(blocks?.map((b) => [b.type, b]));
   const row = (type: string, isArchived: boolean) => (
     <CodeBlockRow
       key={type || "__unnamed"}
       type={type}
-      codes={codes?.filter((c) => (c.codeType ?? "") === type) ?? []}
-      terms={terms}
+      block={byType.get(type)}
       value={values?.[blockKey(type)]}
       archived={isArchived}
       stripeSync={stripeSync?.[blockKey(type)]}
@@ -1751,8 +1862,7 @@ function CodeBlocks({
 
 function CodeBlockRow({
   type,
-  codes,
-  terms,
+  block,
   value,
   archived,
   stripeSync,
@@ -1764,8 +1874,7 @@ function CodeBlockRow({
   onDelete,
 }: {
   type: string;
-  codes: Doc<"codes">[];
-  terms: Map<string, CodeTerms>;
+  block: CodeBlockSummary | undefined;
   value?: string;
   archived: boolean;
   stripeSync: StripeSync | undefined;
@@ -1787,17 +1896,27 @@ function CodeBlockRow({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(type);
   const [valueInput, setValueInput] = useState(value ?? "");
-  const count = codes.length;
-  const claimed = codes.filter((c) => c.claimedBy !== undefined).length;
-  const available = count - claimed;
-  const blockTerms = codes.flatMap((c) => terms.get(c.code) ?? []);
+  const count = block?.total ?? 0;
+  const claimed = block?.claimed ?? 0;
+  const available = block?.available ?? 0;
+  const blockTerms = block?.mixedTerms
+    ? [
+        { redemptions: 2, months: 1 },
+        { redemptions: 1, months: 2 },
+      ]
+    : block?.termsKind
+      ? Array.from({ length: block.termsCount }, () => block.termsKind!)
+      : [];
   const valueSummary = value
     ? blockTermsSummary(value, count, blockTerms)
     : null;
-  const unclaimed = codes.filter((c) => c.claimedBy === undefined);
-  const expiry = blockExpirySummary(
-    (unclaimed.length > 0 ? unclaimed : codes).map((c) => c.expiresAt)
-  );
+  const expiryInputs: (number | undefined)[] = [];
+  if (block?.expiryMin !== undefined) expiryInputs.push(block.expiryMin);
+  if (block?.expiryMax !== undefined && block.expiryMax !== block.expiryMin) {
+    expiryInputs.push(block.expiryMax);
+  }
+  if (block?.hasNeverExpire) expiryInputs.push(undefined);
+  const expiry = blockExpirySummary(expiryInputs);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -2429,6 +2548,7 @@ function RowList({
   emptyText,
   mono,
   fill,
+  loadMore,
 }: {
   items?: {
     key: string;
@@ -2448,6 +2568,11 @@ function RowList({
   // Grow to take the remaining height of a flex parent (scrolling inside)
   // instead of capping at a fixed max height.
   fill?: boolean;
+  loadMore?: {
+    status: "CanLoadMore" | "LoadingMore" | "Exhausted" | "LoadingFirstPage";
+    onLoadMore: () => void;
+    label?: string;
+  };
 }) {
   if (!items) {
     return (
@@ -2457,27 +2582,44 @@ function RowList({
       </div>
     );
   }
+  const loadMoreControl =
+    loadMore?.status === "CanLoadMore" ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className="self-start"
+        onClick={loadMore.onLoadMore}
+      >
+        {loadMore.label ?? "Load more"}
+      </Button>
+    ) : loadMore?.status === "LoadingMore" ? (
+      <p className="text-xs text-muted-dim">Loading…</p>
+    ) : null;
   if (items.length === 0) {
     return (
-      <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
-        {emptyText}
-      </p>
+      <div className="flex flex-col gap-2">
+        <p className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-dim">
+          {emptyText}
+        </p>
+        {loadMoreControl}
+      </div>
     );
   }
   return (
-    <ul
-      className={cn(
-        "divide-y divide-border overflow-y-auto border-y border-border",
-        // grow + h-0 (not flex-1) so the list's flex basis is 0 rather than
-        // 0% — a percentage basis in an indefinite-height column falls back
-        // to content size, letting a long list grow the page instead of
-        // scrolling within the space left by the taller sibling card.
-        // Only zero the basis on lg, where the grid row is stretched by the
-        // sibling card; in the single-column stack nothing stretches the row,
-        // so a zero height would collapse the card entirely.
-        fill ? "max-h-72 lg:h-0 lg:max-h-none lg:min-h-56 lg:grow" : "max-h-72"
-      )}
-    >
+    <>
+      <ul
+        className={cn(
+          "divide-y divide-border overflow-y-auto border-y border-border",
+          // grow + h-0 (not flex-1) so the list's flex basis is 0 rather than
+          // 0% — a percentage basis in an indefinite-height column falls back
+          // to content size, letting a long list grow the page instead of
+          // scrolling within the space left by the taller sibling card.
+          // Only zero the basis on lg, where the grid row is stretched by the
+          // sibling card; in the single-column stack nothing stretches the row,
+          // so a zero height would collapse the card entirely.
+          fill ? "max-h-72 lg:h-0 lg:max-h-none lg:min-h-56 lg:grow" : "max-h-72"
+        )}
+      >
       {items.map((item) => (
         <li
           key={item.key}
@@ -2588,7 +2730,9 @@ function RowList({
           </span>
         </li>
       ))}
-    </ul>
+      </ul>
+      {loadMoreControl}
+    </>
   );
 }
 

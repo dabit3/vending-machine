@@ -1,4 +1,10 @@
-import { mutation, query } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+} from "./_generated/server";
+import { internal } from "./_generated/api";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { normalizeEmail, normalizeXHandle } from "../lib/attendee-identity";
@@ -978,50 +984,86 @@ export const setArchived = mutation({
   },
 });
 
+// Rows deleted per transaction when removing an event so large events stay
+// well under Convex's per-mutation read/write limits.
+export const EVENT_DELETE_BATCH_SIZE = 400;
+
+const EVENT_CHILD_TABLES = [
+  "emails",
+  "flaggedEmails",
+  "blacklistHits",
+  "codes",
+  "eventAdmins",
+  "eventFavorites",
+  "accessRequests",
+  "auditLogs",
+] as const;
+
+async function purgeEventBatch(
+  ctx: MutationCtx,
+  eventId: Id<"events">,
+  limit: number
+): Promise<boolean> {
+  let remaining = limit;
+  for (let i = 0; i < EVENT_CHILD_TABLES.length; i++) {
+    const table = EVENT_CHILD_TABLES[i];
+    if (remaining <= 0) {
+      const next = await ctx.db
+        .query(table)
+        .withIndex("by_event", (q) => q.eq("eventId", eventId))
+        .first();
+      if (next) return true;
+      continue;
+    }
+    const rows = await ctx.db
+      .query(table)
+      .withIndex("by_event", (q) => q.eq("eventId", eventId))
+      .take(remaining + 1);
+    const hasMoreInTable = rows.length > remaining;
+    const toDelete = hasMoreInTable ? rows.slice(0, remaining) : rows;
+    for (const row of toDelete) {
+      await ctx.db.delete(row._id);
+    }
+    remaining -= toDelete.length;
+    if (hasMoreInTable) return true;
+  }
+  return false;
+}
+
+export const purgeDeletedEvent = internalMutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    const hasMore = await purgeEventBatch(
+      ctx,
+      args.eventId,
+      EVENT_DELETE_BATCH_SIZE
+    );
+    if (hasMore) {
+      await ctx.scheduler.runAfter(0, internal.events.purgeDeletedEvent, {
+        eventId: args.eventId,
+      });
+    }
+  },
+});
+
 export const remove = mutation({
   args: { id: v.id("events") },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const emails = await ctx.db
-      .query("emails")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const email of emails) await ctx.db.delete(email._id);
-    const flagged = await ctx.db
-      .query("flaggedEmails")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const entry of flagged) await ctx.db.delete(entry._id);
-    const blacklistHits = await ctx.db
-      .query("blacklistHits")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const hit of blacklistHits) await ctx.db.delete(hit._id);
-    const codes = await ctx.db
-      .query("codes")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const code of codes) await ctx.db.delete(code._id);
-    const eventAdmins = await ctx.db
-      .query("eventAdmins")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const admin of eventAdmins) await ctx.db.delete(admin._id);
-    const favorites = await ctx.db
-      .query("eventFavorites")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const favorite of favorites) await ctx.db.delete(favorite._id);
-    const requests = await ctx.db
-      .query("accessRequests")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const request of requests) await ctx.db.delete(request._id);
-    const auditLogs = await ctx.db
-      .query("auditLogs")
-      .withIndex("by_event", (q) => q.eq("eventId", args.id))
-      .collect();
-    for (const entry of auditLogs) await ctx.db.delete(entry._id);
-    await ctx.db.delete(args.id);
+    // Delete the event document first so claims and admin queries stop seeing
+    // it immediately even if child rows finish purging in background batches.
+    if (await ctx.db.get(args.id)) {
+      await ctx.db.delete(args.id);
+    }
+    const hasMore = await purgeEventBatch(
+      ctx,
+      args.id,
+      EVENT_DELETE_BATCH_SIZE
+    );
+    if (hasMore) {
+      await ctx.scheduler.runAfter(0, internal.events.purgeDeletedEvent, {
+        eventId: args.id,
+      });
+    }
   },
 });

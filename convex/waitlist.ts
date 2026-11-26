@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { notExpired } from "./codeExpiry";
@@ -128,17 +129,25 @@ export const myRequest = query({
   },
 });
 
+export const REQUESTS_PAGE_SIZE = 100;
+const FLAGGED_LOOKUP_LIMIT = 500;
+
 export const listRequests = query({
   args: {
     eventId: v.id("events"),
     status: v.optional(
       v.union(v.literal("pending"), v.literal("approved"), v.literal("denied"))
     ),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     await requireEventAdmin(ctx, args.eventId);
+    const paginationOpts = {
+      ...args.paginationOpts,
+      numItems: Math.min(args.paginationOpts.numItems, REQUESTS_PAGE_SIZE),
+    };
     const status = args.status;
-    const requests =
+    const result =
       status !== undefined
         ? await ctx.db
             .query("accessRequests")
@@ -146,25 +155,43 @@ export const listRequests = query({
               q.eq("eventId", args.eventId).eq("status", status)
             )
             .order("desc")
-            .collect()
+            .paginate(paginationOpts)
         : await ctx.db
             .query("accessRequests")
             .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
             .order("desc")
-            .collect();
-    // Surface pending duplicate-review flags so approvers know the address
-    // appears on other events' lists before deciding.
-    return await Promise.all(
-      requests.map(async (r) => {
-        const pendingFlag = await ctx.db
-          .query("flaggedEmails")
-          .withIndex("by_event_email", (q) =>
-            q.eq("eventId", args.eventId).eq("email", r.email)
-          )
-          .unique();
-        return { ...r, flaggedForReview: pendingFlag !== null };
-      })
-    );
+            .paginate(paginationOpts);
+    if (result.page.length === 0) {
+      return { ...result, page: [] };
+    }
+    // Load the event's pending duplicate-review flags once into a Set instead
+    // of running an N+1 flaggedEmails lookup per access request; fall back to
+    // per-page-row lookups only when pending flags exceed the single-query cap.
+    const flaggedRows = await ctx.db
+      .query("flaggedEmails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .take(FLAGGED_LOOKUP_LIMIT + 1);
+    const page =
+      flaggedRows.length <= FLAGGED_LOOKUP_LIMIT
+        ? (() => {
+            const flaggedSet = new Set(flaggedRows.map((f) => f.email));
+            return result.page.map((r) => ({
+              ...r,
+              flaggedForReview: flaggedSet.has(r.email),
+            }));
+          })()
+        : await Promise.all(
+            result.page.map(async (r) => {
+              const pendingFlag = await ctx.db
+                .query("flaggedEmails")
+                .withIndex("by_event_email", (q) =>
+                  q.eq("eventId", args.eventId).eq("email", r.email)
+                )
+                .unique();
+              return { ...r, flaggedForReview: pendingFlag !== null };
+            })
+          );
+    return { ...result, page };
   },
 });
 
