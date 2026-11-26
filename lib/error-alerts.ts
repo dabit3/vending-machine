@@ -79,7 +79,8 @@ export async function sendErrorAlert(
 ): Promise<{ alerted: boolean }> {
   const message = sanitizeText(payload.message, 500) || "Unknown error";
   const digest = sanitizeText(payload.digest, 128) || undefined;
-  const path = sanitizeText(payload.path, 256) || undefined;
+  const rawPath = sanitizeText(payload.path, 256);
+  const path = rawPath ? rawPath.split(/[?#]/, 1)[0] || undefined : undefined;
   const routePath = sanitizeText(payload.routePath, 256) || undefined;
   const routeType = sanitizeText(payload.routeType, 64) || undefined;
   const method = sanitizeText(payload.method, 16) || undefined;

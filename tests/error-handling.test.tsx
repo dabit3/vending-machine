@@ -109,10 +109,10 @@ describe("runtime error alerts", () => {
     const err = Object.assign(new Error("RSC failed"), { digest: "rsc-99" });
     await onRequestError(
       err,
-      { path: "/meetup", method: "GET", headers: {} },
+      { path: "/sign-in?__clerk_ticket=secret_token_123#frag", method: "GET", headers: {} },
       {
         routerKind: "App Router",
-        routePath: "/[slug]",
+        routePath: "/sign-in/[[...sign-in]]",
         routeType: "render",
         renderSource: "react-server-components",
         revalidateReason: undefined,
@@ -125,11 +125,12 @@ describe("runtime error alerts", () => {
       source: "server",
       message: "RSC failed",
       digest: "rsc-99",
-      path: "/meetup",
+      path: "/sign-in",
       method: "GET",
-      routePath: "/[slug]",
+      routePath: "/sign-in/[[...sign-in]]",
       routeType: "render",
     });
+    expect(JSON.stringify(body)).not.toContain("secret_token_123");
   });
 
   test("/api/error-report rejects cross-origin and invalid payloads and logs valid reports", async () => {
