@@ -122,11 +122,28 @@ export const listPage = query({
         )
         .paginate(paginationOpts);
       const grouped = new Map<string, string[]>();
+      let lastEmail: string | undefined;
       for (const code of result.page) {
         if (!code.claimedBy) continue;
+        lastEmail = code.claimedBy;
         const existing = grouped.get(code.claimedBy);
         if (existing) existing.push(code.code);
         else grouped.set(code.claimedBy, [code.code]);
+      }
+      // Since by_event_claimedBy groups codes by claimant, only the last
+      // claimant on an incomplete page can have additional codes on the next
+      // page. Fetch their full set so reclaim confirmation never omits a code.
+      if (!result.isDone && lastEmail !== undefined) {
+        const fullClaimed = await ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.eventId).eq("claimedBy", lastEmail!)
+          )
+          .collect();
+        grouped.set(
+          lastEmail,
+          fullClaimed.map((c) => c.code)
+        );
       }
       const page: AdminEmailRow[] = [];
       for (const [email, claimedCodes] of grouped) {

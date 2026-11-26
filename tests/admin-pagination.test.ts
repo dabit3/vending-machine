@@ -305,16 +305,25 @@ test("emails.listPage and emails.summary support pagination, search, filters, an
   });
   expect(searched.page.map((r) => r.email)).toEqual(["bob@example.com"]);
 
-  // Self-enrolling (dynamic) event paginates claimants from claimed codes.
+  // Self-enrolling (dynamic) event paginates claimants from claimed codes,
+  // and completes claimedCodes for a claimant split across a page boundary.
   const dyn = await setupEvent({ dynamic: true });
   await dyn.t.run(async (ctx) => {
     await ctx.db.insert("codes", {
       eventId: dyn.eventId,
       code: "DYN-1",
+      codeType: "Pro",
       claimedBy: "walkup@example.com",
       claimedAt: 1000,
     });
-    await ctx.db.insert("codes", { eventId: dyn.eventId, code: "DYN-2" });
+    await ctx.db.insert("codes", {
+      eventId: dyn.eventId,
+      code: "DYN-2",
+      codeType: "Max",
+      claimedBy: "walkup@example.com",
+      claimedAt: 1001,
+    });
+    await ctx.db.insert("codes", { eventId: dyn.eventId, code: "DYN-3" });
   });
   expect(await dyn.org.query(api.emails.summary, { eventId: dyn.eventId })).toEqual({
     total: 1,
@@ -323,14 +332,15 @@ test("emails.listPage and emails.summary support pagination, search, filters, an
   });
   const dynPage = await dyn.org.query(api.emails.listPage, {
     eventId: dyn.eventId,
-    paginationOpts: { numItems: 10, cursor: null },
+    paginationOpts: { numItems: 1, cursor: null },
   });
+  expect(dynPage.isDone).toBe(false);
   expect(dynPage.page).toEqual([
     {
       email: "walkup@example.com",
       name: undefined,
       claimed: true,
-      claimedCodes: ["DYN-1"],
+      claimedCodes: ["DYN-1", "DYN-2"],
     },
   ]);
 });
