@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { SignUp } from "@clerk/nextjs";
 import { safeReturnPath } from "@/lib/return-url";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 // Clerk's sign-up pages must live at a real route. Without one, Clerk falls
 // back to the hosted Account Portal for sign-up and the OAuth callback of the

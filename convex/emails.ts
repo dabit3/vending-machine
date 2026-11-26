@@ -16,6 +16,10 @@ import {
 } from "../lib/attendee-identity";
 import { claimHistory } from "./claimCooldown";
 import { paginationOptsValidator } from "convex/server";
+import { hasAllowedDomains } from "../lib/allowed-domains";
+
+export const EMAILS_PAGE_SIZE = 100;
+const EMAILS_FILTERED_SCAN_SIZE = 500;
 
 export const list = query({
   args: { eventId: v.id("events") },
@@ -25,6 +29,175 @@ export const list = query({
       .query("emails")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
+  },
+});
+
+export type AdminEmailRow = {
+  id?: Id<"emails">;
+  email: string;
+  name?: string;
+  claimed: boolean;
+  claimedCodes: string[];
+  blocked?: boolean;
+};
+
+// Compact counts for the admin manage view so open tabs don't subscribe to the
+// entire emails table on every claim or instruction acknowledgement.
+export const summary = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) return null;
+    const isSelfEnrolling = event.dynamic === true || hasAllowedDomains(event);
+    const claimedCodes = await ctx.db
+      .query("codes")
+      .withIndex("by_event_claimedBy", (q) =>
+        q.eq("eventId", args.eventId).gt("claimedBy", "")
+      )
+      .collect();
+    const claimedSet = new Set<string>();
+    for (const c of claimedCodes) {
+      if (c.claimedBy) claimedSet.add(c.claimedBy);
+    }
+    if (isSelfEnrolling) {
+      return {
+        total: claimedSet.size,
+        claimed: claimedSet.size,
+        unclaimed: 0,
+      };
+    }
+    const emails = await ctx.db
+      .query("emails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    let unclaimed = 0;
+    for (const e of emails) {
+      if (!claimedSet.has(e.email)) unclaimed++;
+    }
+    return {
+      total: emails.length,
+      claimed: emails.length - unclaimed,
+      unclaimed,
+    };
+  },
+});
+
+// Paginated participant / claimant list for the admin manage view.
+// Self-enrolling events (dynamic / allowed-domains) paginate claimed codes
+// directly instead of scanning enrollment rows; list-based events paginate
+// `emails` and look up each page row's claimed codes by index.
+export const listPage = query({
+  args: {
+    eventId: v.id("events"),
+    paginationOpts: paginationOptsValidator,
+    search: v.optional(v.string()),
+    filter: v.optional(
+      v.union(v.literal("all"), v.literal("claimed"), v.literal("unclaimed"))
+    ),
+  },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) {
+      return { page: [] as AdminEmailRow[], isDone: true, continueCursor: "" };
+    }
+    const isSelfEnrolling = event.dynamic === true || hasAllowedDomains(event);
+    const needle = args.search?.trim().toLowerCase() ?? "";
+    const filter = isSelfEnrolling ? "all" : (args.filter ?? "all");
+    const cap =
+      needle || filter !== "all"
+        ? EMAILS_FILTERED_SCAN_SIZE
+        : EMAILS_PAGE_SIZE;
+    const paginationOpts = {
+      ...args.paginationOpts,
+      numItems: Math.min(args.paginationOpts.numItems, cap),
+    };
+
+    if (isSelfEnrolling) {
+      const result = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", args.eventId).gt("claimedBy", "")
+        )
+        .paginate(paginationOpts);
+      const grouped = new Map<string, string[]>();
+      let lastEmail: string | undefined;
+      for (const code of result.page) {
+        if (!code.claimedBy) continue;
+        lastEmail = code.claimedBy;
+        const existing = grouped.get(code.claimedBy);
+        if (existing) existing.push(code.code);
+        else grouped.set(code.claimedBy, [code.code]);
+      }
+      // Since by_event_claimedBy groups codes by claimant, only the last
+      // claimant on an incomplete page can have additional codes on the next
+      // page. Fetch their full set so reclaim confirmation never omits a code.
+      if (!result.isDone && lastEmail !== undefined) {
+        const fullClaimed = await ctx.db
+          .query("codes")
+          .withIndex("by_event_claimedBy", (q) =>
+            q.eq("eventId", args.eventId).eq("claimedBy", lastEmail!)
+          )
+          .collect();
+        grouped.set(
+          lastEmail,
+          fullClaimed.map((c) => c.code)
+        );
+      }
+      const page: AdminEmailRow[] = [];
+      for (const [email, claimedCodes] of grouped) {
+        const emailRow = await ctx.db
+          .query("emails")
+          .withIndex("by_event_email", (q) =>
+            q.eq("eventId", args.eventId).eq("email", email)
+          )
+          .unique();
+        const name = emailRow?.name;
+        if (needle && !`${email} ${name ?? ""}`.toLowerCase().includes(needle)) {
+          continue;
+        }
+        page.push({
+          email,
+          name,
+          claimed: true,
+          claimedCodes,
+        });
+      }
+      return { ...result, page };
+    }
+
+    const result = await ctx.db
+      .query("emails")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .paginate(paginationOpts);
+    const page: AdminEmailRow[] = [];
+    for (const row of result.page) {
+      if (
+        needle &&
+        !`${row.email} ${row.name ?? ""}`.toLowerCase().includes(needle)
+      ) {
+        continue;
+      }
+      const claimedRows = await ctx.db
+        .query("codes")
+        .withIndex("by_event_claimedBy", (q) =>
+          q.eq("eventId", args.eventId).eq("claimedBy", row.email)
+        )
+        .collect();
+      const claimed = claimedRows.length > 0;
+      if (filter === "claimed" && !claimed) continue;
+      if (filter === "unclaimed" && claimed) continue;
+      page.push({
+        id: row._id,
+        email: row.email,
+        name: row.name,
+        claimed,
+        claimedCodes: claimedRows.map((c) => c.code),
+        blocked: row.blockedAt !== undefined,
+      });
+    }
+    return { ...result, page };
   },
 });
 

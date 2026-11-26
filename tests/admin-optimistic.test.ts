@@ -9,6 +9,7 @@ import {
   setCooldownOptimistic,
   removeTypeOptimistic,
   renameTypeOptimistic,
+  removeCodeOptimistic,
   releaseCodeOptimistic,
   addBlacklistOptimistic,
   approveFlaggedOptimistic,
@@ -138,4 +139,43 @@ test("pending flagged approvals and rejection compose without duplicates or cros
     .toEqual({ entries: [other], hasMore: false });
   expect(store.getQuery(api.emails.list, { eventId: otherEventId })).toEqual([]);
   expect(entries).toHaveLength(3);
+});
+
+test("paginated and summary caches update optimistically for email and code actions", () => {
+  const store = fakeStore();
+  const pageOpts = { numItems: 50, cursor: null };
+  store.setQuery(api.emails.listPage, { eventId, paginationOpts: pageOpts }, {
+    page: [{ id: emailId, email: email.email, claimed: false, claimedCodes: [], blocked: false }],
+    isDone: true,
+    continueCursor: "",
+  });
+  store.setQuery(api.emails.summary, { eventId }, { total: 1, claimed: 0, unclaimed: 1 });
+  store.setQuery(api.codes.listPage, { eventId, paginationOpts: pageOpts }, {
+    page: [{ ...code, claimedBy: email.email, claimedAt: 1000 }],
+    isDone: true,
+    continueCursor: "",
+  });
+  store.setQuery(api.codes.summary, { eventId }, {
+    total: 1,
+    claimed: 1,
+    available: 0,
+    dispensable: 0,
+    stripeClaimed: 0,
+    stripeSynced: 0,
+    stripeRedeemed: 0,
+    blockTypes: ["Pro"],
+    blocks: [{ type: "Pro", total: 1, claimed: 1, available: 0, expiryMin: undefined, expiryMax: undefined, hasNeverExpire: true, termsCount: 0, termsKind: undefined, mixedTerms: false }],
+  });
+
+  removeEmailOptimistic(store, { id: emailId });
+  expect(store.getQuery(api.emails.listPage, { eventId, paginationOpts: pageOpts })?.page).toEqual([]);
+  expect(store.getQuery(api.emails.summary, { eventId })).toEqual({ total: 0, claimed: 0, unclaimed: 0 });
+
+  releaseCodeOptimistic(store, { id: codeId, claimedBy: email.email });
+  expect(store.getQuery(api.codes.listPage, { eventId, paginationOpts: pageOpts })?.page[0].claimedBy).toBeUndefined();
+  expect(store.getQuery(api.codes.summary, { eventId })).toMatchObject({ total: 1, claimed: 0, available: 1 });
+
+  removeCodeOptimistic(store, { id: codeId });
+  expect(store.getQuery(api.codes.listPage, { eventId, paginationOpts: pageOpts })?.page).toEqual([]);
+  expect(store.getQuery(api.codes.summary, { eventId })).toMatchObject({ total: 0, claimed: 0, available: 0, blockTypes: [] });
 });

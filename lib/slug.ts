@@ -10,3 +10,11 @@ export function slugify(name: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+// Matches every non-empty slug that `slugify` can produce. Rejects crawler
+// probes like `/sitemap.xml` or `/wp-login.php` before hitting Convex.
+const EVENT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function isValidEventSlug(slug: string): boolean {
+  return EVENT_SLUG_PATTERN.test(slug);
+}

@@ -27,6 +27,7 @@ function eventPatch(store: OptimisticLocalStore, id: Id<"events">, patch: Partia
 
 function releaseReservations(store: OptimisticLocalStore, eventId: Id<"events">, emails: string[]) {
   update(store, api.codes.list, (codes, args) => args.eventId === eventId ? codes.map((code) => !code.claimedBy && code.reservedFor && emails.includes(code.reservedFor) ? { ...code, reservedFor: undefined } : code) : codes);
+  update(store, api.codes.listPage, (result, args) => args.eventId === eventId ? { ...result, page: result.page.map((code) => !code.claimedBy && code.reservedFor && emails.includes(code.reservedFor) ? { ...code, reservedFor: undefined } : code) } : result);
 }
 
 function filterCooldowns(store: OptimisticLocalStore, eventId: Id<"events">, keep: (id: Id<"emails">) => boolean) {
@@ -41,6 +42,26 @@ export function removeEmailOptimistic(store: OptimisticLocalStore, { id }: Funct
     filterCooldowns(store, args.eventId, (rowId) => rowId !== id);
     return rows.filter((row) => row._id !== id);
   });
+  const removedByEvent = new Map<Id<"events">, { email: string; claimed: boolean }>();
+  update(store, api.emails.listPage, (result, args) => {
+    const match = result.page.find((row) => row.id === id);
+    if (!match) return result;
+    removedByEvent.set(args.eventId, { email: match.email, claimed: match.claimed });
+    return { ...result, page: result.page.filter((row) => row.id !== id) };
+  });
+  for (const [eventId, removed] of removedByEvent) {
+    releaseReservations(store, eventId, [removed.email]);
+    filterCooldowns(store, eventId, (rowId) => rowId !== id);
+    update(store, api.emails.summary, (s, args) =>
+      args.eventId === eventId && s
+        ? {
+            total: Math.max(0, s.total - 1),
+            claimed: removed.claimed ? Math.max(0, s.claimed - 1) : s.claimed,
+            unclaimed: removed.claimed ? s.unclaimed : Math.max(0, s.unclaimed - 1),
+          }
+        : s
+    );
+  }
 }
 
 export function setBlockedOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.emails.setBlocked>) {
@@ -52,6 +73,19 @@ export function setBlockedOptimistic(store: OptimisticLocalStore, args: Function
     }
     return { ...row, blockedAt: args.blocked ? (row.blockedAt ?? 0) : undefined, blockedBy: undefined };
   }));
+  update(store, api.emails.listPage, (result, queryArgs) => {
+    let changed = false;
+    const page = result.page.map((row) => {
+      if (row.id !== args.id) return row;
+      changed = true;
+      if (args.blocked) {
+        releaseReservations(store, queryArgs.eventId, [row.email]);
+        filterCooldowns(store, queryArgs.eventId, (id) => id !== args.id);
+      }
+      return { ...row, blocked: args.blocked };
+    });
+    return changed ? { ...result, page } : result;
+  });
 }
 
 export function setCooldownOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.emails.setCooldownWaived>) {
@@ -69,18 +103,35 @@ export function removeAllEmailsOptimistic(store: OptimisticLocalStore, args: Fun
     releaseReservations(store, args.eventId, rows.map((row) => row.email));
     return [];
   });
+  update(store, api.emails.listPage, (result, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId) return result;
+    releaseReservations(store, args.eventId, result.page.map((row) => row.email));
+    return { ...result, page: [] };
+  });
+  update(store, api.emails.summary, (s, queryArgs) =>
+    queryArgs.eventId === args.eventId && s ? { total: 0, claimed: 0, unclaimed: 0 } : s
+  );
   filterCooldowns(store, args.eventId, () => false);
 }
 
 export function removeUnclaimedEmailsOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.emails.removeUnclaimed>) {
   const codes = store.getQuery(api.codes.list, { eventId: args.eventId });
-  if (codes === undefined) return;
-  const claimed = new Set(codes.map((code) => code.claimedBy));
-  update(store, api.emails.list, (rows, queryArgs) => {
-    if (queryArgs.eventId !== args.eventId) return rows;
-    releaseReservations(store, args.eventId, rows.filter((row) => !claimed.has(row.email)).map((row) => row.email));
-    return rows.filter((row) => claimed.has(row.email));
+  if (codes !== undefined) {
+    const claimed = new Set(codes.map((code) => code.claimedBy));
+    update(store, api.emails.list, (rows, queryArgs) => {
+      if (queryArgs.eventId !== args.eventId) return rows;
+      releaseReservations(store, args.eventId, rows.filter((row) => !claimed.has(row.email)).map((row) => row.email));
+      return rows.filter((row) => claimed.has(row.email));
+    });
+  }
+  update(store, api.emails.listPage, (result, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId) return result;
+    releaseReservations(store, args.eventId, result.page.filter((row) => !row.claimed).map((row) => row.email));
+    return { ...result, page: result.page.filter((row) => row.claimed) };
   });
+  update(store, api.emails.summary, (s, queryArgs) =>
+    queryArgs.eventId === args.eventId && s ? { total: s.claimed, claimed: s.claimed, unclaimed: 0 } : s
+  );
   filterCooldowns(store, args.eventId, () => false);
 }
 
@@ -93,6 +144,11 @@ export function approveFlaggedOptimistic(store: OptimisticLocalStore, args: Func
     const flagged = value?.entries.find((row) => row._id === args.id);
     if (!flagged) continue;
     update(store, api.emails.list, (rows, emailArgs) => emailArgs.eventId === queryArgs.eventId && !rows.some((row) => row.email === flagged.email) ? [...rows, { _id: `optimistic:${args.id}` as Id<"emails">, _creationTime: 0, eventId: queryArgs.eventId, email: flagged.email }] : rows);
+    update(store, api.emails.summary, (s, emailArgs) =>
+      emailArgs.eventId === queryArgs.eventId && s
+        ? { ...s, total: s.total + 1, unclaimed: s.unclaimed + 1 }
+        : s
+    );
   }
   resolveFlaggedOptimistic(store, args);
 }
@@ -103,15 +159,28 @@ export function rejectFlaggedOptimistic(store: OptimisticLocalStore, args: Funct
     if (!flagged) continue;
     const rows = store.getQuery(api.emails.list, { eventId: queryArgs.eventId });
     for (const row of rows ?? []) if (row.email === flagged.email) removeEmailOptimistic(store, { id: row._id });
+    for (const { args: pageArgs, value: pageVal } of store.getAllQueries(api.emails.listPage)) {
+      if (pageArgs.eventId !== queryArgs.eventId || !pageVal) continue;
+      for (const row of pageVal.page) if (row.email === flagged.email && row.id) removeEmailOptimistic(store, { id: row.id });
+    }
   }
   resolveFlaggedOptimistic(store, args);
 }
 
 function dropEmptyTypes(store: OptimisticLocalStore, eventId: Id<"events">, removedTypes: (string | undefined)[]) {
   const codes = store.getQuery(api.codes.list, { eventId });
+  const summary = store.getQuery(api.codes.summary, { eventId });
   const event = store.getQuery(api.events.get, { id: eventId });
-  if (codes === undefined || !event) return;
-  const empty = removedTypes.map((type) => type ?? "").filter((type) => event.codeTypes?.includes(type) && !codes.some((code) => (code.codeType ?? "") === type));
+  if ((codes === undefined && !summary) || !event) return;
+  const empty = removedTypes
+    .map((type) => type ?? "")
+    .filter((type) => {
+      if (!event.codeTypes?.includes(type)) return false;
+      if (codes !== undefined) return !codes.some((code) => (code.codeType ?? "") === type);
+      const block = summary?.blocks.find((b) => b.type === type);
+      return !block || block.total <= 0;
+    });
+  if (empty.length === 0) return;
   const values = { ...event.codeTypeValues };
   for (const type of empty) delete values[blockKey(type)];
   eventPatch(store, eventId, { codeTypes: event.codeTypes?.filter((type) => !empty.includes(type)), archivedCodeTypes: event.archivedCodeTypes?.filter((type) => !empty.includes(type)), codeTypeValues: values });
@@ -124,29 +193,170 @@ export function removeCodeOptimistic(store: OptimisticLocalStore, args: Function
     removed.push(code);
     return false;
   }));
-  for (const code of removed) dropEmptyTypes(store, code.eventId, [code.codeType]);
+  update(store, api.codes.listPage, (result) => {
+    let changed = false;
+    const page = result.page.filter((code) => {
+      if (code._id !== args.id || code.claimedBy) return true;
+      changed = true;
+      if (!removed.some((r) => r._id === code._id)) removed.push(code);
+      return false;
+    });
+    return changed ? { ...result, page } : result;
+  });
+  for (const code of removed) {
+    const type = code.codeType ?? "";
+    update(store, api.codes.summary, (s, queryArgs) => {
+      if (queryArgs.eventId !== code.eventId || !s) return s;
+      const blocks = s.blocks
+        .map((b) =>
+          b.type === type
+            ? { ...b, total: Math.max(0, b.total - 1), available: Math.max(0, b.available - 1) }
+            : b
+        )
+        .filter((b) => b.total > 0);
+      return {
+        ...s,
+        total: Math.max(0, s.total - 1),
+        available: Math.max(0, s.available - 1),
+        blockTypes: blocks.map((b) => b.type),
+        blocks,
+      };
+    });
+    dropEmptyTypes(store, code.eventId, [code.codeType]);
+  }
 }
 
 export function allowReclaimOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.claims.allowReclaim>) {
+  const targetEmail = args.email.trim().toLowerCase();
   const types: (string | undefined)[] = [];
-  update(store, api.codes.list, (codes, queryArgs) => queryArgs.eventId === args.eventId ? codes.filter((code) => {
-    if (code.claimedBy !== args.email.trim().toLowerCase()) return true;
+  const removedByType = new Map<string, number>();
+  const track = (code: Doc<"codes">) => {
     types.push(code.codeType);
+    const key = code.codeType ?? "";
+    removedByType.set(key, (removedByType.get(key) ?? 0) + 1);
+  };
+  update(store, api.codes.list, (codes, queryArgs) => queryArgs.eventId === args.eventId ? codes.filter((code) => {
+    if (code.claimedBy !== targetEmail) return true;
+    track(code);
     return false;
   }) : codes);
+  const seenIds = new Set<string>();
+  update(store, api.codes.listPage, (result, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId) return result;
+    let changed = false;
+    const page = result.page.filter((code) => {
+      if (code.claimedBy !== targetEmail) return true;
+      changed = true;
+      if (!seenIds.has(code._id)) {
+        seenIds.add(code._id);
+        if (store.getQuery(api.codes.list, { eventId: args.eventId }) === undefined) {
+          track(code);
+        }
+      }
+      return false;
+    });
+    return changed ? { ...result, page } : result;
+  });
+  update(store, api.emails.listPage, (result, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId) return result;
+    const event = store.getQuery(api.events.get, { id: args.eventId });
+    const isSelfEnrolling = event?.dynamic === true || hasAllowedDomains(event);
+    if (isSelfEnrolling) {
+      return { ...result, page: result.page.filter((row) => row.email !== targetEmail) };
+    }
+    return {
+      ...result,
+      page: result.page.map((row) =>
+        row.email === targetEmail ? { ...row, claimed: false, claimedCodes: [] } : row
+      ),
+    };
+  });
+  const totalRemoved = [...removedByType.values()].reduce((a, b) => a + b, 0);
+  if (totalRemoved > 0) {
+    update(store, api.codes.summary, (s, queryArgs) => {
+      if (queryArgs.eventId !== args.eventId || !s) return s;
+      const blocks = s.blocks
+        .map((b) => {
+          const n = removedByType.get(b.type) ?? 0;
+          return n > 0
+            ? { ...b, total: Math.max(0, b.total - n), claimed: Math.max(0, b.claimed - n) }
+            : b;
+        })
+        .filter((b) => b.total > 0);
+      return {
+        ...s,
+        total: Math.max(0, s.total - totalRemoved),
+        claimed: Math.max(0, s.claimed - totalRemoved),
+        blockTypes: blocks.map((b) => b.type),
+        blocks,
+      };
+    });
+  }
+  update(store, api.emails.summary, (s, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId || !s) return s;
+    const event = store.getQuery(api.events.get, { id: args.eventId });
+    const isSelfEnrolling = event?.dynamic === true || hasAllowedDomains(event);
+    return isSelfEnrolling
+      ? { total: Math.max(0, s.total - 1), claimed: Math.max(0, s.claimed - 1), unclaimed: 0 }
+      : { ...s, claimed: Math.max(0, s.claimed - 1), unclaimed: s.unclaimed + 1 };
+  });
   dropEmptyTypes(store, args.eventId, types);
 }
 
 export function releaseCodeOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.codes.release>) {
+  let released: { eventId: Id<"events">; code: Doc<"codes"> } | null = null;
   update(store, api.codes.list, (codes, queryArgs) => {
     const target = codes.find((code) => code._id === args.id);
     if (!target?.claimedBy || (args.claimedBy !== undefined && target.claimedBy !== args.claimedBy)) return codes;
+    released = { eventId: queryArgs.eventId, code: target };
     const event = store.getQuery(api.events.get, { id: queryArgs.eventId });
     if ((event?.dynamic || hasAllowedDomains(event)) && !codes.some((code) => code._id !== target._id && code.claimedBy === target.claimedBy)) {
       update(store, api.emails.list, (rows, emailArgs) => emailArgs.eventId === queryArgs.eventId ? rows.filter((row) => row.email !== target.claimedBy || row.blockedAt !== undefined) : rows);
     }
     return codes.map((code) => code._id === args.id ? { ...code, claimedBy: undefined, claimedAt: undefined } : code);
   });
+  update(store, api.codes.listPage, (result, queryArgs) => {
+    const target = result.page.find((code) => code._id === args.id);
+    if (!target?.claimedBy || (args.claimedBy !== undefined && target.claimedBy !== args.claimedBy)) return result;
+    if (!released) released = { eventId: queryArgs.eventId, code: target };
+    return {
+      ...result,
+      page: result.page.map((code) =>
+        code._id === args.id ? { ...code, claimedBy: undefined, claimedAt: undefined } : code
+      ),
+    };
+  });
+  if (released) {
+    const { eventId, code } = released as { eventId: Id<"events">; code: Doc<"codes"> };
+    const type = code.codeType ?? "";
+    update(store, api.codes.summary, (s, queryArgs) => {
+      if (queryArgs.eventId !== eventId || !s) return s;
+      return {
+        ...s,
+        claimed: Math.max(0, s.claimed - 1),
+        available: s.available + 1,
+        blocks: s.blocks.map((b) =>
+          b.type === type
+            ? { ...b, claimed: Math.max(0, b.claimed - 1), available: b.available + 1 }
+            : b
+        ),
+      };
+    });
+    update(store, api.emails.listPage, (result, queryArgs) => {
+      if (queryArgs.eventId !== eventId) return result;
+      const event = store.getQuery(api.events.get, { id: eventId });
+      const isSelfEnrolling = event?.dynamic === true || hasAllowedDomains(event);
+      return {
+        ...result,
+        page: result.page.flatMap((row) => {
+          if (row.email !== code.claimedBy) return [row];
+          const remaining = row.claimedCodes.filter((c) => c !== code.code);
+          if (remaining.length === 0 && isSelfEnrolling) return [];
+          return [{ ...row, claimed: remaining.length > 0, claimedCodes: remaining }];
+        }),
+      };
+    });
+  }
 }
 
 export function setTypeValueOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.codes.setTypeValue>) {
@@ -169,11 +379,24 @@ export function setTypeArchivedOptimistic(store: OptimisticLocalStore, args: Fun
 export function renameTypeOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.codes.renameType>) {
   const event = store.getQuery(api.events.get, { id: args.eventId });
   const codes = store.getQuery(api.codes.list, { eventId: args.eventId });
-  if (!event || codes === undefined) return;
+  const summary = store.getQuery(api.codes.summary, { eventId: args.eventId });
+  if (!event || (codes === undefined && !summary)) return;
   const from = args.from?.trim() || "";
   const to = args.to.trim();
-  const targets = codes.some((code) => (code.codeType ?? "") === from);
+  const targets =
+    codes !== undefined
+      ? codes.some((code) => (code.codeType ?? "") === from)
+      : (summary?.blocks.some((b) => b.type === from && b.total > 0) ?? false);
   update(store, api.codes.list, (rows, queryArgs) => queryArgs.eventId === args.eventId ? rows.map((code) => (code.codeType ?? "") === from ? { ...code, codeType: to } : code) : rows);
+  update(store, api.codes.listPage, (result, queryArgs) => queryArgs.eventId === args.eventId ? { ...result, page: result.page.map((code) => (code.codeType ?? "") === from ? { ...code, codeType: to } : code) } : result);
+  update(store, api.codes.summary, (s, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId || !s || !targets) return s;
+    return {
+      ...s,
+      blockTypes: s.blockTypes.map((t) => (t === from ? to : t)),
+      blocks: s.blocks.map((b) => (b.type === from ? { ...b, type: to } : b)),
+    };
+  });
   const values = { ...event.codeTypeValues };
   if (targets && blockKey(from) in values && !(blockKey(to) in values)) values[blockKey(to)] = values[blockKey(from)];
   if (blockKey(from) !== blockKey(to)) delete values[blockKey(from)];
@@ -185,10 +408,28 @@ export function renameTypeOptimistic(store: OptimisticLocalStore, args: Function
 export function removeTypeOptimistic(store: OptimisticLocalStore, args: FunctionArgs<typeof api.codes.removeType>) {
   const event = store.getQuery(api.events.get, { id: args.eventId });
   const codes = store.getQuery(api.codes.list, { eventId: args.eventId });
-  if (!event || codes === undefined) return;
+  const summary = store.getQuery(api.codes.summary, { eventId: args.eventId });
+  if (!event || (codes === undefined && !summary)) return;
   const type = args.codeType?.trim() || "";
-  const kept = codes.some((code) => (code.codeType ?? "") === type && code.claimedBy);
+  const kept =
+    codes !== undefined
+      ? codes.some((code) => (code.codeType ?? "") === type && code.claimedBy)
+      : (summary?.blocks.some((b) => b.type === type && b.claimed > 0) ?? false);
   update(store, api.codes.list, (rows, queryArgs) => queryArgs.eventId === args.eventId ? rows.filter((code) => (code.codeType ?? "") !== type || !!code.claimedBy) : rows);
+  update(store, api.codes.listPage, (result, queryArgs) => queryArgs.eventId === args.eventId ? { ...result, page: result.page.filter((code) => (code.codeType ?? "") !== type || !!code.claimedBy) } : result);
+  update(store, api.codes.summary, (s, queryArgs) => {
+    if (queryArgs.eventId !== args.eventId || !s) return s;
+    const removed = s.blocks.find((b) => b.type === type);
+    const removedUnclaimed = removed?.available ?? 0;
+    const blocks = s.blocks.filter((b) => b.type !== type);
+    return {
+      ...s,
+      total: Math.max(0, s.total - removedUnclaimed),
+      available: Math.max(0, s.available - removedUnclaimed),
+      blockTypes: blocks.map((b) => b.type),
+      blocks,
+    };
+  });
   const values = { ...event.codeTypeValues };
   if (!kept) delete values[blockKey(type)];
   eventPatch(store, args.eventId, { codeTypes: event.codeTypes?.filter((value) => value !== type), codeTypeValues: values, archivedCodeTypes: event.archivedCodeTypes?.filter((value) => value !== type) });

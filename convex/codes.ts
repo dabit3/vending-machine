@@ -5,6 +5,7 @@ import {
   query,
   type MutationCtx,
 } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
@@ -51,6 +52,8 @@ export async function dropTypeIfEmpty(
   }
 }
 
+export const CODES_PAGE_SIZE = 100;
+
 export const list = query({
   args: { eventId: v.id("events") },
   handler: async (ctx, args) => {
@@ -59,6 +62,208 @@ export const list = query({
       .query("codes")
       .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
       .collect();
+  },
+});
+
+// Paginated code list for the admin manage view so live drops don't stream the
+// entire pool to every open admin tab on every claim.
+export const listPage = query({
+  args: {
+    eventId: v.id("events"),
+    // Omitted = all blocks; "" = unnamed block; non-empty = that named block.
+    codeType: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const paginationOpts = {
+      ...args.paginationOpts,
+      numItems: Math.min(args.paginationOpts.numItems, CODES_PAGE_SIZE),
+    };
+    if (args.codeType !== undefined) {
+      const typeValue = args.codeType || undefined;
+      return await ctx.db
+        .query("codes")
+        .withIndex("by_event_codeType_claimedBy", (q) =>
+          q.eq("eventId", args.eventId).eq("codeType", typeValue)
+        )
+        .paginate(paginationOpts);
+    }
+    return await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .paginate(paginationOpts);
+  },
+});
+
+// Compact aggregate stats for the admin manage view (counts, per-block totals,
+// expiry ranges, and Stripe terms) so open tabs receive a few hundred bytes
+// instead of the full codes table on every claim.
+export const summary = query({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireEventAdmin(ctx, args.eventId);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) return null;
+
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const batches = await ctx.db
+      .query("stripeBatches")
+      .withIndex("by_target_event", (q) => q.eq("targetEventId", args.eventId))
+      .collect();
+
+    const termsByCode = new Map<string, { redemptions: number; months: number }>();
+    for (const batch of batches) {
+      if (batch.eventId !== args.eventId) continue;
+      const redemptions = batch.redemptionsPerCode ?? 1;
+      const months = batch.durationMonths ?? 1;
+      if (redemptions <= 1 && months <= 1) continue;
+      for (const entry of batch.codes) {
+        termsByCode.set(entry.code, { redemptions, months });
+      }
+    }
+
+    const blockTypes = activeCodeTypes(event, codes);
+    type BlockAcc = {
+      total: number;
+      claimed: number;
+      unclaimedCount: number;
+      unclaimedMinExpiry?: number;
+      unclaimedMaxExpiry?: number;
+      unclaimedHasNeverExpire: boolean;
+      allMinExpiry?: number;
+      allMaxExpiry?: number;
+      allHasNeverExpire: boolean;
+      termsCount: number;
+      termsKind?: { redemptions: number; months: number };
+      mixedTerms: boolean;
+    };
+    const byType = new Map<string, BlockAcc>();
+    const ensure = (type: string): BlockAcc => {
+      let acc = byType.get(type);
+      if (!acc) {
+        acc = {
+          total: 0,
+          claimed: 0,
+          unclaimedCount: 0,
+          unclaimedHasNeverExpire: false,
+          allHasNeverExpire: false,
+          termsCount: 0,
+          mixedTerms: false,
+        };
+        byType.set(type, acc);
+      }
+      return acc;
+    };
+    for (const type of blockTypes) ensure(type);
+
+    let claimed = 0;
+    let dispensable = 0;
+    let stripeClaimed = 0;
+    let stripeSynced = 0;
+    let stripeRedeemed = 0;
+    const now = Date.now();
+    const eventArchived = event.archivedAt !== undefined;
+    for (const code of codes) {
+      const type = code.codeType ?? "";
+      const acc = ensure(type);
+      acc.total++;
+      if (code.claimedBy !== undefined) {
+        claimed++;
+        acc.claimed++;
+        if (code.stripeBatchId !== undefined) {
+          stripeClaimed++;
+          if (code.stripeRedemptionSyncedAt !== undefined) {
+            stripeSynced++;
+          }
+          if ((code.stripeTimesRedeemed ?? 0) > 0) {
+            stripeRedeemed++;
+          }
+        }
+      } else {
+        acc.unclaimedCount++;
+        if (
+          !eventArchived &&
+          !isArchivedType(event, code.codeType) &&
+          (code.expiresAt === undefined || code.expiresAt > now)
+        ) {
+          dispensable++;
+        }
+        if (code.expiresAt === undefined) {
+          acc.unclaimedHasNeverExpire = true;
+        } else {
+          if (
+            acc.unclaimedMinExpiry === undefined ||
+            code.expiresAt < acc.unclaimedMinExpiry
+          ) {
+            acc.unclaimedMinExpiry = code.expiresAt;
+          }
+          if (
+            acc.unclaimedMaxExpiry === undefined ||
+            code.expiresAt > acc.unclaimedMaxExpiry
+          ) {
+            acc.unclaimedMaxExpiry = code.expiresAt;
+          }
+        }
+      }
+      if (code.expiresAt === undefined) {
+        acc.allHasNeverExpire = true;
+      } else {
+        if (acc.allMinExpiry === undefined || code.expiresAt < acc.allMinExpiry) {
+          acc.allMinExpiry = code.expiresAt;
+        }
+        if (acc.allMaxExpiry === undefined || code.expiresAt > acc.allMaxExpiry) {
+          acc.allMaxExpiry = code.expiresAt;
+        }
+      }
+      const term = termsByCode.get(code.code);
+      if (term) {
+        acc.termsCount++;
+        if (!acc.termsKind) {
+          acc.termsKind = term;
+        } else if (
+          acc.termsKind.redemptions !== term.redemptions ||
+          acc.termsKind.months !== term.months
+        ) {
+          acc.mixedTerms = true;
+        }
+      }
+    }
+
+    const total = codes.length;
+    const blocks = blockTypes.map((type) => {
+      const acc = ensure(type);
+      const useUnclaimed = acc.unclaimedCount > 0;
+      return {
+        type,
+        total: acc.total,
+        claimed: acc.claimed,
+        available: acc.total - acc.claimed,
+        expiryMin: useUnclaimed ? acc.unclaimedMinExpiry : acc.allMinExpiry,
+        expiryMax: useUnclaimed ? acc.unclaimedMaxExpiry : acc.allMaxExpiry,
+        hasNeverExpire: useUnclaimed
+          ? acc.unclaimedHasNeverExpire
+          : acc.allHasNeverExpire,
+        termsCount: acc.termsCount,
+        termsKind: acc.mixedTerms ? undefined : acc.termsKind,
+        mixedTerms: acc.mixedTerms,
+      };
+    });
+
+    return {
+      total,
+      claimed,
+      available: total - claimed,
+      dispensable,
+      stripeClaimed,
+      stripeSynced,
+      stripeRedeemed,
+      blockTypes,
+      blocks,
+    };
   },
 });
 

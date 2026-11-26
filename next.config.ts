@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildSecurityHeaders } from "./lib/security-headers";
 
 const nextConfig: NextConfig = {
   env: {
@@ -6,6 +7,30 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: buildSecurityHeaders(),
+      },
+      {
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/privacy",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/terms",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/my-codes/get-started",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
       {
         source: "/sw.js",
         headers: [

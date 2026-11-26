@@ -279,6 +279,8 @@ export default defineSchema({
     note: v.optional(v.string()),
     decidedBy: v.optional(v.string()),
     decidedAt: v.optional(v.number()),
+    emailStatus: v.optional(v.union(v.literal("sent"), v.literal("failed"))),
+    emailError: v.optional(v.string()),
   })
     .index("by_event", ["eventId"])
     .index("by_event_status", ["eventId", "status"])
