@@ -40,7 +40,9 @@ function allowedOrigins(req: Request): Set<string> {
 
 function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
-  if (!origin) return true;
+  if (!origin) {
+    return req.headers.get("sec-fetch-site") === "same-origin";
+  }
   try {
     return allowedOrigins(req).has(new URL(origin).origin);
   } catch {
@@ -132,13 +134,18 @@ export async function POST(req: Request): Promise<Response> {
   const pathname = rawPathname.startsWith("/") ? rawPathname : undefined;
   const boundary = record.boundary === "global" ? "global" : "route";
 
-  await sendErrorAlert({
-    source: "client",
-    message,
-    digest,
-    path: pathname,
-    boundary,
-  });
+  // Unauthenticated client reports are logged structurally to server logs
+  // without forwarding caller-supplied text to the alert webhook.
+  await sendErrorAlert(
+    {
+      source: "client",
+      message,
+      digest,
+      path: pathname,
+      boundary,
+    },
+    { notifyWebhook: false }
+  );
 
   return new Response(null, { status: 204 });
 }

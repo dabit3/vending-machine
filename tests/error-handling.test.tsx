@@ -133,11 +133,22 @@ describe("runtime error alerts", () => {
     expect(JSON.stringify(body)).not.toContain("secret_token_123");
   });
 
-  test("/api/error-report rejects cross-origin and invalid payloads and logs valid reports", async () => {
+  test("/api/error-report rejects cross-origin, missing-origin, and invalid payloads, and logs valid reports without forwarding to webhook", async () => {
     vi.stubEnv("ERROR_ALERT_WEBHOOK_URL", "https://hooks.example.com/alert");
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const fetchMock = vi.fn().mockResolvedValue(new Response("ok", { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
+
+    const missingOrigin = await reportErrorPost(
+      new Request("https://trydevin.ai/api/error-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: "no origin" }),
+      })
+    );
+    expect(missingOrigin.status).toBe(403);
 
     const crossOrigin = await reportErrorPost(
       new Request("https://trydevin.ai/api/error-report", {
@@ -192,9 +203,11 @@ describe("runtime error alerts", () => {
       })
     );
     expect(ok.status).toBe(204);
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
-    expect(body).toMatchObject({
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledOnce();
+    const logged = JSON.parse(String(errorSpy.mock.calls[0][0]));
+    expect(logged).toMatchObject({
+      event: "client_error_report",
       source: "client",
       message: "ChunkLoadError",
       digest: "cli-1",

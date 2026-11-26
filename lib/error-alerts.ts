@@ -75,7 +75,7 @@ function formatAlertText(entry: ErrorAlertPayload): string {
 
 export async function sendErrorAlert(
   payload: ErrorAlertPayload,
-  options: { webhookUrl?: string; now?: number } = {}
+  options: { webhookUrl?: string; now?: number; notifyWebhook?: boolean } = {}
 ): Promise<{ alerted: boolean }> {
   const message = sanitizeText(payload.message, 500) || "Unknown error";
   const digest = sanitizeText(payload.digest, 128) || undefined;
@@ -98,12 +98,17 @@ export async function sendErrorAlert(
 
   console.error(
     JSON.stringify({
-      event: "runtime_error",
+      event:
+        payload.source === "client" ? "client_error_report" : "runtime_error",
       app: getAppName(),
       timestamp: new Date(options.now ?? Date.now()).toISOString(),
       ...entry,
     })
   );
+
+  if (options.notifyWebhook === false) {
+    return { alerted: false };
+  }
 
   const webhookUrl = parseWebhookUrl(
     options.webhookUrl ?? process.env.ERROR_ALERT_WEBHOOK_URL
