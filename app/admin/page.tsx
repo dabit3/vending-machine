@@ -369,7 +369,7 @@ export default function AdminDashboard() {
     })),
   );
   const hasAlerts = alerts.attentionEventIds.size > 0;
-  const effectiveAttentionOnly = attentionOnly && hasAlerts;
+  const effectiveAttentionOnly = attentionOnly;
 
   const filterByAttention = (list: ManagedEventItem[], activeList: boolean) =>
     effectiveAttentionOnly
@@ -462,7 +462,7 @@ export default function AdminDashboard() {
         ) : null}
       </div>
 
-      {hasAlerts ? (
+      {hasAlerts || effectiveAttentionOnly ? (
         <div
           role="status"
           aria-live="polite"
@@ -476,6 +476,11 @@ export default function AdminDashboard() {
               />
               Needs attention
             </span>
+            {!hasAlerts ? (
+              <span className="text-xs text-muted-foreground">
+                No events on this view need attention.
+              </span>
+            ) : null}
             {alerts.outOfStockCount > 0 ? (
               <span className="font-mono text-xs text-destructive tabular-nums">
                 {alerts.outOfStockCount} out of stock
