@@ -395,14 +395,21 @@ export default function AdminDashboard() {
     if (stripeSyncableIds.length === 0) return;
     setSyncingRedemptions(true);
     try {
-      const res = await syncAllStripeRedemptions({
-        eventIds: stripeSyncableIds,
-      });
-      if (res.stripeCodes === 0) {
+      const BATCH_SIZE = 25;
+      let eventsStarted = 0;
+      let stripeCodes = 0;
+      for (let i = 0; i < stripeSyncableIds.length; i += BATCH_SIZE) {
+        const res = await syncAllStripeRedemptions({
+          eventIds: stripeSyncableIds.slice(i, i + BATCH_SIZE),
+        });
+        eventsStarted += res.eventsStarted;
+        stripeCodes += res.stripeCodes;
+      }
+      if (stripeCodes === 0) {
         toast.info("All Stripe redemptions are already syncing.");
       } else {
         toast.success(
-          `Checking ${res.stripeCodes} claimed Stripe code${res.stripeCodes === 1 ? "" : "s"} across ${res.eventsStarted} event${res.eventsStarted === 1 ? "" : "s"}.`,
+          `Checking ${stripeCodes} claimed Stripe code${stripeCodes === 1 ? "" : "s"} across ${eventsStarted} event${eventsStarted === 1 ? "" : "s"}.`,
         );
       }
     } catch (err) {

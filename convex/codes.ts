@@ -643,13 +643,11 @@ export const syncAllStripeRedemptions = mutation({
   args: { eventIds: v.array(v.id("events")) },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    const uniqueIds = [...new Set(args.eventIds)].slice(
-      0,
-      MAX_BULK_REDEMPTION_SYNC_EVENTS
-    );
+    const uniqueIds = [...new Set(args.eventIds)];
     let eventsStarted = 0;
     let stripeCodes = 0;
     for (const eventId of uniqueIds) {
+      if (eventsStarted >= MAX_BULK_REDEMPTION_SYNC_EVENTS) break;
       const event = await ctx.db.get(eventId);
       if (!event) continue;
       if (event.stripeRedemptionSync?.status === "pending") continue;
