@@ -290,6 +290,8 @@ export const approve = mutation({
     // the approval on the claim page instead.
     if (!isXHandleKey(request.email)) {
       await ctx.scheduler.runAfter(0, internal.notifications.sendApprovalEmail, {
+        eventId: request.eventId,
+        requestId: request._id,
         email: request.email,
         eventName: event.name,
         eventSlug: event.slug,
