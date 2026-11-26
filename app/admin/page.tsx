@@ -375,8 +375,21 @@ export default function AdminDashboard() {
   const visiblePast = filterByAttention(past, false);
   const visibleOlder = filterByAttention(older, false);
   const visibleOlderSlice = effectiveAttentionOnly
-    ? visibleOlder
+    ? filterByAttention(olderVisible, false)
     : olderVisible;
+  const showOlderSection =
+    visibleOlder.length > 0 ||
+    (effectiveAttentionOnly && showOlder && older.length > OLDER_PAGE_SIZE);
+  const visibleSearchResults = search
+    ? effectiveAttentionOnly
+      ? search.results.filter((r) => {
+          const isPast = r.eventDate
+            ? daysSinceEventEnded(r.eventDate, r.eventEndDate) > 0
+            : false;
+          return eventNeedsAttention(statsMap?.[r._id], !isPast);
+        })
+      : search.results
+    : [];
   const visibleStarred = effectiveAttentionOnly
     ? starred.filter((e) =>
         eventNeedsAttention(statsMap?.[e._id], allActiveIds.has(e._id)),
@@ -593,9 +606,13 @@ export default function AdminDashboard() {
               No events have this attendee on their list, claims, flagged
               entries or access requests.
             </p>
+          ) : visibleSearchResults.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              None of this attendee&apos;s events need attention.
+            </p>
           ) : (
             <ul className="mt-4 border-t border-border">
-              {search.results.map((result) => (
+              {visibleSearchResults.map((result) => (
                 <AdminEventRow
                   key={result._id}
                   event={{ ...result, favorite: starredIds.has(result._id) }}
@@ -721,7 +738,7 @@ export default function AdminDashboard() {
               </ul>
             </>
           ) : null}
-          {visibleOlder.length > 0 ? (
+          {showOlderSection ? (
             showOlder || nameFilter || effectiveAttentionOnly ? (
               <>
                 <div className="mt-12 flex items-baseline justify-between">
@@ -729,20 +746,30 @@ export default function AdminDashboard() {
                     Older events
                   </h2>
                   <span className="font-mono text-xs text-muted-dim tabular-nums">
-                    {String(visibleOlder.length).padStart(2, "0")}
+                    {String(
+                      effectiveAttentionOnly
+                        ? visibleOlderSlice.length
+                        : visibleOlder.length,
+                    ).padStart(2, "0")}
                   </span>
                 </div>
-                <ul className="mt-4 border-t border-border">
-                  {visibleOlderSlice.map((event) => (
-                    <AdminEventRow
-                      key={event._id}
-                      event={event}
-                      past
-                      stats={statsMap?.[event._id]}
-                    />
-                  ))}
-                </ul>
-                {!effectiveAttentionOnly && older.length > OLDER_PAGE_SIZE ? (
+                {visibleOlderSlice.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    No older events on this page need attention.
+                  </p>
+                ) : (
+                  <ul className="mt-4 border-t border-border">
+                    {visibleOlderSlice.map((event) => (
+                      <AdminEventRow
+                        key={event._id}
+                        event={event}
+                        past
+                        stats={statsMap?.[event._id]}
+                      />
+                    ))}
+                  </ul>
+                )}
+                {older.length > OLDER_PAGE_SIZE ? (
                   <nav
                     aria-label="Older events pages"
                     className="mt-4 flex items-center justify-between gap-4"
