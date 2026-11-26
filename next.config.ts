@@ -12,6 +12,26 @@ const nextConfig: NextConfig = {
         headers: buildSecurityHeaders(),
       },
       {
+        source: "/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
+        source: "/",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/privacy",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/terms",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
+        source: "/my-codes/get-started",
+        headers: [{ key: "X-Robots-Tag", value: "index, follow" }],
+      },
+      {
         source: "/sw.js",
         headers: [
           { key: "Content-Type", value: "application/javascript; charset=utf-8" },

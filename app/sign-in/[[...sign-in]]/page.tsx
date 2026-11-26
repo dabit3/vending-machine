@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { safeReturnPath } from "@/lib/return-url";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 // `redirect_url` is set by the admin route protection in proxy.ts (and by
 // Clerk's own hops between sign-in and sign-up). Passing it as the forced
