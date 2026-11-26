@@ -201,5 +201,22 @@ describe("runtime error alerts", () => {
       path: "/my-codes",
       boundary: "route",
     });
+
+    const networkHost = await reportErrorPost(
+      new Request("http://localhost:3000/api/error-report", {
+        method: "POST",
+        headers: {
+          Host: "192.168.1.25:3000",
+          Origin: "http://192.168.1.25:3000",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "LAN host crash",
+          pathname: "/conference",
+          boundary: "route",
+        }),
+      })
+    );
+    expect(networkHost.status).toBe(204);
   });
 });

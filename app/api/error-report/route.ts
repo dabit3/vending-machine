@@ -2,11 +2,47 @@ import { sanitizeText, sendErrorAlert } from "@/lib/error-alerts";
 
 const MAX_BODY_BYTES = 4_096;
 
+function allowedOrigins(req: Request): Set<string> {
+  const origins = new Set<string>();
+  let fallbackProtocol = "https:";
+  try {
+    const url = new URL(req.url);
+    origins.add(url.origin);
+    fallbackProtocol = url.protocol;
+  } catch {
+    // Ignore malformed request URLs.
+  }
+
+  const forwardedProto = req.headers
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  const proto =
+    forwardedProto === "http" || forwardedProto === "https"
+      ? `${forwardedProto}:`
+      : fallbackProtocol;
+
+  for (const headerName of ["x-forwarded-host", "host"] as const) {
+    const rawHost = req.headers.get(headerName)?.split(",")[0]?.trim();
+    if (!rawHost) continue;
+    for (const scheme of [proto, fallbackProtocol]) {
+      try {
+        origins.add(new URL(`${scheme}//${rawHost}`).origin);
+      } catch {
+        // Ignore invalid host headers.
+      }
+    }
+  }
+
+  return origins;
+}
+
 function isSameOrigin(req: Request): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return true;
   try {
-    return new URL(origin).origin === new URL(req.url).origin;
+    return allowedOrigins(req).has(new URL(origin).origin);
   } catch {
     return false;
   }
