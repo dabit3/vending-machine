@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQueries, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
@@ -306,6 +306,15 @@ export default function AdminDashboard() {
   );
   const statsEventIds = [
     ...new Set([
+      ...(search?.results.map((r) => r._id) ?? []),
+      ...(nameFilter
+        ? [
+            ...starred.map((e) => e._id),
+            ...current.map((e) => e._id),
+            ...past.map((e) => e._id),
+            ...olderVisible.map((e) => e._id),
+          ]
+        : []),
       ...allUnarchived
         .filter(
           (e) =>
@@ -314,14 +323,38 @@ export default function AdminDashboard() {
         )
         .map((e) => e._id),
       ...starred.map((e) => e._id),
-      ...(showOlder || nameFilter ? olderVisible.map((e) => e._id) : []),
-      ...(search?.results.map((r) => r._id) ?? []),
+      ...(showOlder ? olderVisible.map((e) => e._id) : []),
     ]),
   ] as Id<"events">[];
-  const statsMap = useQuery(
-    api.events.dashboardStats,
-    statsEventIds.length > 0 ? { eventIds: statsEventIds } : "skip",
-  ) as Record<string, DashboardEventStats> | undefined;
+
+  // Fetch stats in 5-event chunks so each Convex query transaction stays well
+  // within document read limits even for large inventories, and so dashboards
+  // with > 100 events still receive stats for every visible event.
+  const DASHBOARD_STATS_CHUNK_SIZE = 5;
+  const statsQueries = Object.fromEntries(
+    Array.from(
+      { length: Math.ceil(statsEventIds.length / DASHBOARD_STATS_CHUNK_SIZE) },
+      (_, i) => [
+        `chunk-${i}`,
+        {
+          query: api.events.dashboardStats,
+          args: {
+            eventIds: statsEventIds.slice(
+              i * DASHBOARD_STATS_CHUNK_SIZE,
+              (i + 1) * DASHBOARD_STATS_CHUNK_SIZE,
+            ),
+          },
+        },
+      ],
+    ),
+  );
+  const statsChunks = useQueries(statsQueries);
+  const statsMap: Record<string, DashboardEventStats> = {};
+  for (const chunk of Object.values(statsChunks)) {
+    if (chunk && !(chunk instanceof Error)) {
+      Object.assign(statsMap, chunk as Record<string, DashboardEventStats>);
+    }
+  }
 
   const alerts = summarizeDashboardAlerts(
     allUnarchived.map((e) => ({

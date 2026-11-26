@@ -66,6 +66,28 @@ vi.mock("convex/react", () => ({
       return state.dashboardStats;
     return undefined;
   },
+  useQueries: (
+    queries: Record<
+      string,
+      { query: Parameters<typeof getFunctionName>[0]; args: { eventIds?: string[] } }
+    >,
+  ) =>
+    Object.fromEntries(
+      Object.entries(queries).map(([key, req]) => {
+        if (getFunctionName(req.query) === "events:dashboardStats") {
+          const ids = req.args.eventIds ?? [];
+          return [
+            key,
+            Object.fromEntries(
+              ids
+                .filter((id) => id in state.dashboardStats)
+                .map((id) => [id, state.dashboardStats[id]]),
+            ),
+          ];
+        }
+        return [key, undefined];
+      }),
+    ),
   useMutation: () => Object.assign(vi.fn(), { withOptimisticUpdate: () => vi.fn() }),
   usePaginatedQuery: () => ({
     results: state.history,

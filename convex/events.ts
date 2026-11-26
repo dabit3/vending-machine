@@ -324,7 +324,7 @@ export const listManaged = query({
   },
 });
 
-const MAX_DASHBOARD_STATS_EVENTS = 100;
+const MAX_DASHBOARD_STATS_EVENTS = 5;
 
 // Stock, queue, and Stripe redemption counts for a batch of managed events,
 // used by the /admin dashboard to show remaining codes, pending access
