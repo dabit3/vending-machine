@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import ProfileMenu from "@/components/ProfileMenu";
 import AdminGate from "@/components/AdminGate";
@@ -8,6 +9,10 @@ import HeaderBar from "@/components/HeaderBar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { getAppName } from "@/lib/app-name";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default function AdminLayout({
   children,

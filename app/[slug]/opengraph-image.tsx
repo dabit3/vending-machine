@@ -1,4 +1,4 @@
-import { fetchEventMeta } from "@/lib/event-meta";
+import { lookupEventMeta } from "@/lib/event-meta";
 import { formatEventDateRange } from "@/lib/event-date";
 import {
   OG_CONTENT_TYPE,
@@ -17,8 +17,14 @@ export default async function Image({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const event = await fetchEventMeta(slug);
-  if (!event) return renderOgImage(homeCard());
+  const result = await lookupEventMeta(slug);
+  if (result.status === "not_found") {
+    return new Response("Not Found", { status: 404 });
+  }
+  if (result.status === "error") {
+    return renderOgImage(homeCard());
+  }
+  const { event } = result;
   return renderOgImage({
     eyebrow: event.eventDate
       ? formatEventDateRange(event.eventDate, event.eventEndDate)
