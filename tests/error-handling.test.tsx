@@ -163,6 +163,19 @@ describe("runtime error alerts", () => {
     );
     expect(badJson.status).toBe(400);
 
+    // 2,000 3-byte UTF-8 characters = 2,000 UTF-16 code units, but 6,000 bytes (> 4,096).
+    const multibyteOversized = await reportErrorPost(
+      new Request("https://trydevin.ai/api/error-report", {
+        method: "POST",
+        headers: {
+          Origin: "https://trydevin.ai",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: "€".repeat(2000) }),
+      })
+    );
+    expect(multibyteOversized.status).toBe(413);
+
     const ok = await reportErrorPost(
       new Request("https://trydevin.ai/api/error-report", {
         method: "POST",
