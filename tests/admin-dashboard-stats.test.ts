@@ -343,9 +343,14 @@ test("syncStripeRedemptions falls back to retrieve without couponId and strips e
   expect(globalEvent?.stripeRedemptionSync?.status).toBe("failed");
   expect(globalEvent?.stripeRedemptionSync?.error).toContain("live mode");
 
-  // Event admin sees status but not raw Stripe error text.
+  // Event admin sees status but not raw Stripe error text (neither on the event nor in audit logs).
   const organizer = t.withIdentity(eventAdminIdentity);
   const orgEvent = await organizer.query(api.events.get, { id: ev.id });
   expect(orgEvent?.stripeRedemptionSync?.status).toBe("failed");
   expect(orgEvent?.stripeRedemptionSync?.error).toBeUndefined();
+
+  const auditLogs = await organizer.query(api.auditLog.list, { eventId: ev.id });
+  const syncLog = auditLogs.find((a) => a.action === "stripe_redemptions_synced");
+  expect(syncLog?.details).toContain("1 failed");
+  expect(syncLog?.details).not.toContain("live mode");
 });

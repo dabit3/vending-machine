@@ -752,9 +752,11 @@ export const recordStripeRedemptions = internalMutation({
       action: "stripe_redemptions_synced",
       details:
         `Checked ${checked} claimed Stripe code(s): ${redeemed} redeemed` +
-        (args.failed > 0 || args.error !== undefined
-          ? `, ${args.failed} failed${args.error ? `: ${args.error}` : ""}`
-          : ""),
+        (args.failed > 0
+          ? `, ${args.failed} failed`
+          : args.error !== undefined
+            ? ", sync failed"
+            : ""),
     });
   },
 });
