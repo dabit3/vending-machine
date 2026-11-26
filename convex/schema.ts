@@ -143,6 +143,24 @@ export default defineSchema({
         })
       )
     ),
+    // Progress and summary of the latest Stripe promotion-code redemption
+    // sync for this event's claimed Stripe codes.
+    stripeRedemptionSync: v.optional(
+      v.object({
+        version: v.number(),
+        status: v.union(
+          v.literal("pending"),
+          v.literal("done"),
+          v.literal("failed")
+        ),
+        total: v.number(),
+        checked: v.number(),
+        redeemed: v.number(),
+        failed: v.number(),
+        error: v.optional(v.string()),
+        at: v.number(),
+      })
+    ),
   }).index("by_slug", ["slug"]),
 
   // The X handle Clerk reports for a user, copied server-side from Clerk's
@@ -224,6 +242,10 @@ export default defineSchema({
     reservedFor: v.optional(v.string()),
     // Stripe batch the code came from; missing on manual and older codes.
     stripeBatchId: v.optional(v.id("stripeBatches")),
+    // Number of times this Stripe promotion code has been redeemed in Stripe,
+    // updated when a system admin syncs Stripe redemptions for the event.
+    stripeTimesRedeemed: v.optional(v.number()),
+    stripeRedemptionSyncedAt: v.optional(v.number()),
     // Uniform random key in [0, 1) so concurrent claims seek to disjoint
     // positions instead of colliding on the first unclaimed row.
     claimKey: v.optional(v.number()),

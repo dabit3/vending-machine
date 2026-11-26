@@ -258,6 +258,14 @@ export const get = query({
               })
             )
           : event.stripeArchiveSync,
+      stripeRedemptionSync:
+        event.stripeRedemptionSync && !isAdmin
+          ? (() => {
+              const visible = { ...event.stripeRedemptionSync };
+              delete visible.error;
+              return visible;
+            })()
+          : event.stripeRedemptionSync,
       eventDate: event.eventDate,
       eventEndDate: event.eventEndDate,
       claimInstructions: event.claimInstructions,
@@ -313,6 +321,106 @@ export const listManaged = query({
       createdBy: event.createdBy,
       archived: event.archivedAt !== undefined,
     }));
+  },
+});
+
+const MAX_DASHBOARD_STATS_EVENTS = 100;
+
+// Stock, queue, and Stripe redemption counts for a batch of managed events,
+// used by the /admin dashboard to show remaining codes, pending access
+// requests, flagged entries, low-stock alerts, and Stripe redemptions without
+// opening each event individually.
+export const dashboardStats = query({
+  args: { eventIds: v.array(v.id("events")) },
+  handler: async (ctx, args) => {
+    if (args.eventIds.length === 0) return {};
+    const { email, isAdmin } = await adminEmailStatus(ctx);
+    if (!email) return {};
+
+    let allowedIds: Set<Id<"events">> | null = null;
+    if (!isAdmin) {
+      const memberships = await ctx.db
+        .query("eventAdmins")
+        .withIndex("by_email", (q) => q.eq("email", email))
+        .collect();
+      allowedIds = new Set(memberships.map((m) => m.eventId));
+    }
+
+    const uniqueIds = [...new Set(args.eventIds)]
+      .filter((id) => allowedIds === null || allowedIds.has(id))
+      .slice(0, MAX_DASHBOARD_STATS_EVENTS);
+
+    const now = Date.now();
+    const entries = await Promise.all(
+      uniqueIds.map(async (eventId) => {
+        const event = await ctx.db.get(eventId);
+        if (!event) return null;
+        const [codes, pendingRequests, flagged] = await Promise.all([
+          ctx.db
+            .query("codes")
+            .withIndex("by_event", (q) => q.eq("eventId", eventId))
+            .collect(),
+          ctx.db
+            .query("accessRequests")
+            .withIndex("by_event_status", (q) =>
+              q.eq("eventId", eventId).eq("status", "pending")
+            )
+            .collect(),
+          ctx.db
+            .query("flaggedEmails")
+            .withIndex("by_event", (q) => q.eq("eventId", eventId))
+            .collect(),
+        ]);
+
+        let claimedCodes = 0;
+        let remainingCodes = 0;
+        let stripeClaimedCodes = 0;
+        let stripeRedeemedCodes = 0;
+        let stripeSyncedCodes = 0;
+        const eventArchived = event.archivedAt !== undefined;
+
+        for (const c of codes) {
+          if (c.claimedBy !== undefined) {
+            claimedCodes++;
+            if (c.stripeBatchId !== undefined) {
+              stripeClaimedCodes++;
+              if (c.stripeRedemptionSyncedAt !== undefined) {
+                stripeSyncedCodes++;
+              }
+              if ((c.stripeTimesRedeemed ?? 0) > 0) {
+                stripeRedeemedCodes++;
+              }
+            }
+          } else if (
+            !eventArchived &&
+            !isArchivedType(event, c.codeType) &&
+            (c.expiresAt === undefined || c.expiresAt > now)
+          ) {
+            remainingCodes++;
+          }
+        }
+
+        return [
+          eventId as string,
+          {
+            totalCodes: codes.length,
+            claimedCodes,
+            remainingCodes,
+            pendingRequests: pendingRequests.length,
+            flaggedCount: flagged.length,
+            stripeClaimedCodes,
+            stripeRedeemedCodes,
+            stripeSyncedCodes,
+            stripeRedemptionSyncedAt: event.stripeRedemptionSync?.at,
+            stripeRedemptionSyncStatus: event.stripeRedemptionSync?.status,
+          },
+        ] as const;
+      })
+    );
+
+    return Object.fromEntries(
+      entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    );
   },
 });
 

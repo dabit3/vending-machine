@@ -221,3 +221,109 @@ export const setBlockActive = internalAction({
     }
   },
 });
+
+const MAX_PROMO_LIST_PAGES = 20;
+
+// Checks Stripe for how many times each claimed Stripe-generated code on an
+// event has been redeemed, then records the results on the codes and event.
+export const syncEventRedemptions = internalAction({
+  args: {
+    eventId: v.id("events"),
+    version: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const record = (payload: {
+      results: { codeId: Doc<"codes">["_id"]; timesRedeemed: number }[];
+      failed: number;
+      error?: string;
+    }) =>
+      ctx.runMutation(internal.codes.recordStripeRedemptions, {
+        eventId: args.eventId,
+        version: args.version,
+        ...payload,
+      });
+    try {
+      const plan = await ctx.runQuery(internal.codes.stripeRedemptionPlan, {
+        eventId: args.eventId,
+        version: args.version,
+      });
+      if (!plan) return;
+      const mode = stripeMode();
+      const stripe = new Stripe(process.env.STRIPE_API_KEY ?? "", {
+        apiVersion: "2025-08-27.basil",
+        maxNetworkRetries: 2,
+        timeout: 15_000,
+      });
+
+      const results: { codeId: Doc<"codes">["_id"]; timesRedeemed: number }[] = [];
+      let failed = 0;
+      let error: string | undefined;
+
+      for (const batch of plan.batches) {
+        if (batch.live !== null && batch.live !== mode.live) {
+          failed += batch.items.length;
+          error ??= `Batch was created in Stripe ${batch.live ? "live" : "test"} mode, but this deployment's key is for ${mode.live ? "live" : "test"} mode`;
+          continue;
+        }
+        if (batch.couponId) {
+          try {
+            const byPromoId = new Map<string, number>();
+            const byCode = new Map<string, number>();
+            let startingAfter: string | undefined;
+            for (let pageIndex = 0; pageIndex < MAX_PROMO_LIST_PAGES; pageIndex++) {
+              const page = await stripe.promotionCodes.list({
+                coupon: batch.couponId,
+                limit: 100,
+                ...(startingAfter ? { starting_after: startingAfter } : {}),
+              });
+              for (const promo of page.data) {
+                byPromoId.set(promo.id, promo.times_redeemed);
+                byCode.set(promo.code, promo.times_redeemed);
+              }
+              if (!page.has_more || page.data.length === 0) break;
+              startingAfter = page.data[page.data.length - 1].id;
+            }
+            for (const item of batch.items) {
+              const redeemed =
+                (item.promoId ? byPromoId.get(item.promoId) : undefined) ??
+                byCode.get(item.code);
+              if (redeemed === undefined) {
+                failed++;
+                error ??= `No Stripe promotion code found for ${item.code}`;
+              } else {
+                results.push({ codeId: item.codeId, timesRedeemed: redeemed });
+              }
+            }
+          } catch (err) {
+            failed += batch.items.length;
+            error ??= err instanceof Error ? err.message : String(err);
+          }
+        } else {
+          for (const item of batch.items) {
+            try {
+              if (!item.promoId) {
+                throw new Error(`No Stripe promotion code recorded for ${item.code}`);
+              }
+              const promo = await stripe.promotionCodes.retrieve(item.promoId);
+              results.push({
+                codeId: item.codeId,
+                timesRedeemed: promo.times_redeemed,
+              });
+            } catch (err) {
+              failed++;
+              error ??= err instanceof Error ? err.message : String(err);
+            }
+          }
+        }
+      }
+
+      await record({ results, failed, error });
+    } catch (err) {
+      await record({
+        results: [],
+        failed: 1,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+});

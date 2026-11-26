@@ -82,7 +82,7 @@ test("removing a block keeps claimed codes and their value, and rename moves Uni
     _id: eventId, _creationTime: 1, name: "Event", slug: "event",
     codeTypes: ["Pro"], codeTypeValues: { Pro: "$20" },
     description: undefined, adminNote: undefined, creditAmount: undefined, archivedCodeTypes: undefined,
-    stripeArchiveSync: undefined, eventDate: undefined, eventEndDate: undefined,
+    stripeArchiveSync: undefined, stripeRedemptionSync: undefined, eventDate: undefined, eventEndDate: undefined,
     claimInstructions: undefined, dynamic: undefined, allowedDomains: undefined, walkUpSkipsReview: undefined,
     claimMode: undefined, identity: "email", signInMessage: undefined,
     claimMessage: undefined, contactEmail: undefined, createdBy: undefined, archivedAt: undefined,

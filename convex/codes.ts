@@ -587,6 +587,178 @@ export const stripeSyncProgress = internalMutation({
   },
 });
 
+const MAX_BULK_REDEMPTION_SYNC_EVENTS = 25;
+
+// Starts a background Stripe redemption sync for an event's claimed
+// Stripe-generated codes. Returns how many claimed Stripe codes will be
+// checked. System admins only (Stripe calls stay restricted to system admins).
+async function startStripeRedemptionSync(
+  ctx: MutationCtx,
+  event: Doc<"events">
+) {
+  const codes = await ctx.db
+    .query("codes")
+    .withIndex("by_event", (q) => q.eq("eventId", event._id))
+    .collect();
+  const claimedStripe = codes.filter(
+    (c) => c.claimedBy !== undefined && c.stripeBatchId !== undefined
+  );
+  if (claimedStripe.length === 0) return 0;
+  const version = (event.stripeRedemptionSync?.version ?? 0) + 1;
+  const configured = stripeMode().configured;
+  await ctx.db.patch(event._id, {
+    stripeRedemptionSync: {
+      version,
+      status: configured ? "pending" : "failed",
+      total: claimedStripe.length,
+      checked: 0,
+      redeemed: 0,
+      failed: configured ? 0 : claimedStripe.length,
+      ...(configured
+        ? {}
+        : { error: "Stripe is not configured on this deployment." }),
+      at: Date.now(),
+    },
+  });
+  if (configured) {
+    await ctx.scheduler.runAfter(0, internal.stripeWorker.syncEventRedemptions, {
+      eventId: event._id,
+      version,
+    });
+  }
+  return claimedStripe.length;
+}
+
+export const syncStripeRedemptions = mutation({
+  args: { eventId: v.id("events") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const event = await ctx.db.get(args.eventId);
+    if (!event) throw new Error("Event not found");
+    return { stripeCodes: await startStripeRedemptionSync(ctx, event) };
+  },
+});
+
+export const syncAllStripeRedemptions = mutation({
+  args: { eventIds: v.array(v.id("events")) },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const uniqueIds = [...new Set(args.eventIds)].slice(
+      0,
+      MAX_BULK_REDEMPTION_SYNC_EVENTS
+    );
+    let eventsStarted = 0;
+    let stripeCodes = 0;
+    for (const eventId of uniqueIds) {
+      const event = await ctx.db.get(eventId);
+      if (!event) continue;
+      if (event.stripeRedemptionSync?.status === "pending") continue;
+      const count = await startStripeRedemptionSync(ctx, event);
+      if (count > 0) {
+        eventsStarted++;
+        stripeCodes += count;
+      }
+    }
+    return { eventsStarted, stripeCodes };
+  },
+});
+
+export const stripeRedemptionPlan = internalQuery({
+  args: { eventId: v.id("events"), version: v.number() },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    if (!event || event.stripeRedemptionSync?.version !== args.version) {
+      return null;
+    }
+    const codes = await ctx.db
+      .query("codes")
+      .withIndex("by_event", (q) => q.eq("eventId", args.eventId))
+      .collect();
+    const claimedStripe = codes.filter(
+      (c) => c.claimedBy !== undefined && c.stripeBatchId !== undefined
+    );
+    const byBatch = new Map<Id<"stripeBatches">, Doc<"codes">[]>();
+    for (const code of claimedStripe) {
+      const batchId = code.stripeBatchId!;
+      const group = byBatch.get(batchId);
+      if (group) group.push(code);
+      else byBatch.set(batchId, [code]);
+    }
+    const batches: {
+      batchId: Id<"stripeBatches">;
+      couponId: string | null;
+      live: boolean | null;
+      items: { codeId: Id<"codes">; code: string; promoId: string | null }[];
+    }[] = [];
+    for (const [batchId, group] of byBatch) {
+      const batch = await ctx.db.get(batchId);
+      batches.push({
+        batchId,
+        couponId: batch?.couponId ?? null,
+        live: batch?.live ?? null,
+        items: group.map((c) => ({
+          codeId: c._id,
+          code: c.code,
+          promoId: batch?.codes.find((b) => b.code === c.code)?.id ?? null,
+        })),
+      });
+    }
+    return { batches };
+  },
+});
+
+export const recordStripeRedemptions = internalMutation({
+  args: {
+    eventId: v.id("events"),
+    version: v.number(),
+    results: v.array(
+      v.object({
+        codeId: v.id("codes"),
+        timesRedeemed: v.number(),
+      })
+    ),
+    failed: v.number(),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const event = await ctx.db.get(args.eventId);
+    const sync = event?.stripeRedemptionSync;
+    if (!event || !sync || sync.version !== args.version) return;
+    const now = Date.now();
+    let redeemed = 0;
+    for (const item of args.results) {
+      const code = await ctx.db.get(item.codeId);
+      if (!code || code.eventId !== args.eventId) continue;
+      if (item.timesRedeemed > 0) redeemed++;
+      await ctx.db.patch(item.codeId, {
+        stripeTimesRedeemed: item.timesRedeemed,
+        stripeRedemptionSyncedAt: now,
+      });
+    }
+    const checked = args.results.length;
+    await ctx.db.patch(args.eventId, {
+      stripeRedemptionSync: {
+        ...sync,
+        status: args.failed > 0 || args.error !== undefined ? "failed" : "done",
+        checked,
+        redeemed,
+        failed: args.failed,
+        ...(args.error !== undefined ? { error: args.error } : {}),
+        at: now,
+      },
+    });
+    await logAudit(ctx, {
+      eventId: args.eventId,
+      action: "stripe_redemptions_synced",
+      details:
+        `Checked ${checked} claimed Stripe code(s): ${redeemed} redeemed` +
+        (args.failed > 0 || args.error !== undefined
+          ? `, ${args.failed} failed${args.error ? `: ${args.error}` : ""}`
+          : ""),
+    });
+  },
+});
+
 export const mine = query({
   args: {},
   handler: async (ctx) => {

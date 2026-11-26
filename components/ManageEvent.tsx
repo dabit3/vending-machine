@@ -20,6 +20,7 @@ import {
   Plus,
   Pencil,
   QrCode,
+  RefreshCw,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -71,9 +72,12 @@ import { UPLOAD_CHUNK_SIZE } from "@/lib/upload-limits";
 import { useCountUp } from "@/lib/use-count-up";
 import { blockExpirySummary } from "@/lib/code-expiry";
 import { cooldownNotice } from "@/lib/claim-cooldown";
+import { daysSinceEventEnded } from "@/lib/event-date";
+import { getStockStatus } from "@/lib/event-health";
 
 const COOLDOWN_PAGE_SIZE = 500;
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -164,6 +168,7 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const setTypeValue = useMutation(api.codes.setTypeValue).withOptimisticUpdate(optimistic.setTypeValueOptimistic);
   const setTypeArchived = useMutation(api.codes.setTypeArchived).withOptimisticUpdate(optimistic.setTypeArchivedOptimistic);
   const retryStripeSync = useMutation(api.codes.retryStripeSync);
+  const syncStripeRedemptions = useMutation(api.codes.syncStripeRedemptions);
 
   const [emailInput, setEmailInput] = useState("");
   const [emailSearch, setEmailSearch] = useState("");
@@ -180,6 +185,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const [firstBlockName, setFirstBlockName] = useState("");
   const [emailBusy, setEmailBusy] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
+  const [redemptionSyncBusy, setRedemptionSyncBusy] = useState(false);
+  const [renderTime] = useState(() => Date.now());
   const detailsFormRef = useRef<EventDetailsFormHandle>(null);
   const [detailsDirty, setDetailsDirty] = useState(false);
   const [savingPreview, setSavingPreview] = useState(false);
@@ -291,6 +298,33 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   const visibleEmails =
     listedEmails && filterEmails(listedEmails, emailSearch, activeEmailFilter);
   const unclaimedCodeCount = codeCount - claimedCount;
+  const availableCodeCount = (() => {
+    if (!codes || !event || event.archivedAt !== undefined) return 0;
+    return codes.filter(
+      (c) =>
+        c.claimedBy === undefined &&
+        !isArchivedType(event, c.codeType) &&
+        (c.expiresAt === undefined || c.expiresAt > renderTime),
+    ).length;
+  })();
+  const eventIsActive =
+    event !== undefined &&
+    event !== null &&
+    event.archivedAt === undefined &&
+    (!event.eventDate ||
+      daysSinceEventEnded(event.eventDate, event.eventEndDate) <= 0);
+  const stockStatus = codes
+    ? getStockStatus({ totalCodes: codeCount, remainingCodes: availableCodeCount })
+    : null;
+  const stripeClaimedCodes =
+    codes?.filter((c) => c.claimedBy !== undefined && c.stripeBatchId !== undefined) ?? [];
+  const stripeClaimedCount = stripeClaimedCodes.length;
+  const stripeSyncedCount = stripeClaimedCodes.filter(
+    (c) => c.stripeRedemptionSyncedAt !== undefined,
+  ).length;
+  const stripeRedeemedCount = stripeClaimedCodes.filter(
+    (c) => (c.stripeTimesRedeemed ?? 0) > 0,
+  ).length;
   const pendingEmailCount = countItems(emailInput);
   const pendingCodeCount = countItems(codeInput);
 
@@ -503,6 +537,8 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         label: c.code,
         tag: type === undefined ? (c.codeType ?? undefined) : undefined,
         claimedBy: c.claimedBy ?? undefined,
+        redeemedTimes: c.stripeTimesRedeemed,
+        redemptionSynced: c.stripeRedemptionSyncedAt !== undefined,
         onRelease: c.claimedBy
           ? () =>
               setReleaseTarget({
@@ -599,12 +635,13 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
   function exportCodes() {
     if (!codes || !event) return;
     downloadCsv(`${event.slug}-codes.csv`, [
-      ["code", "type", "claimed_by", "claimed_at"],
+      ["code", "type", "claimed_by", "claimed_at", "stripe_redeemed"],
       ...codes.map((c) => [
         c.code,
         c.codeType ?? "",
         c.claimedBy ?? "",
         c.claimedAt ? new Date(c.claimedAt).toISOString() : "",
+        c.stripeTimesRedeemed !== undefined ? String(c.stripeTimesRedeemed) : "",
       ]),
     ]);
   }
@@ -788,6 +825,22 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
         ) : null}
       </div>
 
+      {eventIsActive && (stockStatus === "empty" || stockStatus === "low") ? (
+        <Alert variant={stockStatus === "empty" ? "destructive" : "default"}>
+          <AlertTriangle aria-hidden />
+          <AlertTitle>
+            {stockStatus === "empty"
+              ? "Out of codes"
+              : `Low stock: ${availableCodeCount} of ${codeCount} codes remaining`}
+          </AlertTitle>
+          <AlertDescription>
+            {stockStatus === "empty"
+              ? "Attendees cannot claim a code until you add or unarchive more codes below."
+              : "Add more codes below before attendees run out."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <StatCard
           label={
@@ -830,6 +883,11 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
             value={codeCount > 0 ? (claimedCount / codeCount) * 100 : 0}
             className="w-full"
           />
+          {stripeClaimedCount > 0 && stripeSyncedCount > 0 ? (
+            <span className="text-xs text-muted-dim tabular-nums">
+              {stripeRedeemedCount} of {stripeClaimedCount} Stripe redeemed
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -1376,6 +1434,70 @@ export default function ManageEvent({ id }: { id: Id<"events"> }) {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {access?.isGlobalAdmin && <EventStripeCodes eventId={id} />}
+            {stripeClaimedCount > 0 ? (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-surface/60 px-3 py-2.5 text-xs">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-medium text-foreground tabular-nums">
+                    {event.stripeRedemptionSync?.status === "pending"
+                      ? `Checking ${event.stripeRedemptionSync.total} claimed Stripe code${event.stripeRedemptionSync.total === 1 ? "" : "s"}…`
+                      : stripeSyncedCount > 0
+                        ? `${stripeRedeemedCount} of ${stripeClaimedCount} claimed Stripe code${stripeClaimedCount === 1 ? "" : "s"} redeemed`
+                        : `${stripeClaimedCount} claimed Stripe code${stripeClaimedCount === 1 ? "" : "s"} · redemptions not checked yet`}
+                  </span>
+                  {event.stripeRedemptionSync?.status === "failed" ? (
+                    <span className="text-destructive">
+                      {event.stripeRedemptionSync.error ??
+                        "Some Stripe codes could not be checked."}
+                    </span>
+                  ) : event.stripeRedemptionSync?.at && stripeSyncedCount > 0 ? (
+                    <span className="text-muted-dim">
+                      Last checked{" "}
+                      {new Date(event.stripeRedemptionSync.at).toLocaleString()}
+                    </span>
+                  ) : null}
+                </div>
+                {isGlobalAdmin ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={
+                      redemptionSyncBusy ||
+                      event.stripeRedemptionSync?.status === "pending"
+                    }
+                    onClick={async () => {
+                      setRedemptionSyncBusy(true);
+                      try {
+                        const res = await syncStripeRedemptions({ eventId: id });
+                        if (res.stripeCodes > 0) {
+                          toast.success(
+                            `Checking ${res.stripeCodes} claimed Stripe code${res.stripeCodes === 1 ? "" : "s"}.`,
+                          );
+                        }
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Could not check Stripe redemptions",
+                        );
+                      } finally {
+                        setRedemptionSyncBusy(false);
+                      }
+                    }}
+                  >
+                    {redemptionSyncBusy ||
+                    event.stripeRedemptionSync?.status === "pending" ? (
+                      <Spinner data-icon="inline-start" />
+                    ) : (
+                      <RefreshCw data-icon="inline-start" />
+                    )}
+                    {stripeSyncedCount > 0
+                      ? "Refresh redemptions"
+                      : "Check Stripe redemptions"}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
             {blockTypes.length > 1 ? (
               <ClaimModeToggle
                 id="manage-claim-mode"
@@ -2438,6 +2560,8 @@ function RowList({
     claimed?: boolean;
     blocked?: boolean;
     claimedBy?: string;
+    redeemedTimes?: number;
+    redemptionSynced?: boolean;
     onReclaim?: () => void;
     onToggleBlock?: () => void;
     onRelease?: () => void;
@@ -2552,6 +2676,15 @@ function RowList({
             ) : null}
             {item.claimedBy ? (
               <>
+                {item.redeemedTimes !== undefined && item.redeemedTimes > 0 ? (
+                  <Badge variant="outline" className="shrink-0 text-[10px]">
+                    Redeemed{item.redeemedTimes > 1 ? ` ×${item.redeemedTimes}` : ""}
+                  </Badge>
+                ) : item.redemptionSynced ? (
+                  <span className="shrink-0 text-[10px] text-muted-dim">
+                    Unredeemed
+                  </span>
+                ) : null}
                 <Badge
                   variant="secondary"
                   className="max-w-32 shrink-0 truncate text-[10px] sm:max-w-48"
