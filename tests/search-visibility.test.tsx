@@ -49,13 +49,13 @@ beforeEach(() => {
   mocks.notFound.mockClear();
 });
 
-test("robots.txt allows only public landing, legal, and get-started routes and disallows everything else", () => {
+test("robots.txt allows crawling event routes so crawlers can read noindex, while disallowing admin and auth", () => {
   const result = robots();
   expect(result).toEqual({
     rules: {
       userAgent: "*",
-      allow: ["/$", "/privacy$", "/terms$", "/my-codes/get-started$"],
-      disallow: "/",
+      allow: "/",
+      disallow: ["/admin", "/sign-in", "/sign-up"],
     },
   });
 });
