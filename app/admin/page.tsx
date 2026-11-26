@@ -304,17 +304,10 @@ export default function AdminDashboard() {
       )
       .map((e) => e._id as string),
   );
-  const statsEventIds = [
+  // Keep base active/recent/starred IDs in a stable order so search keystrokes
+  // never shift chunk boundaries and reload already-loaded event stats.
+  const baseStatsEventIds = [
     ...new Set([
-      ...(search?.results.map((r) => r._id) ?? []),
-      ...(nameFilter
-        ? [
-            ...starred.map((e) => e._id),
-            ...current.map((e) => e._id),
-            ...past.map((e) => e._id),
-            ...olderVisible.map((e) => e._id),
-          ]
-        : []),
       ...allUnarchived
         .filter(
           (e) =>
@@ -322,32 +315,44 @@ export default function AdminDashboard() {
             daysSinceEventEnded(e.eventDate, e.eventEndDate) < RECENT_PAST_DAYS,
         )
         .map((e) => e._id),
-      ...starred.map((e) => e._id),
-      ...(showOlder ? olderVisible.map((e) => e._id) : []),
+      ...allUnarchived
+        .filter((e) => e.favorite)
+        .map((e) => e._id),
     ]),
   ] as Id<"events">[];
+  const baseStatsIdSet = new Set<string>(baseStatsEventIds);
+  const extraStatsEventIds = [
+    ...new Set([
+      ...(showOlder || nameFilter ? olderVisible.map((e) => e._id) : []),
+      ...(search?.results.map((r) => r._id) ?? []),
+    ]),
+  ].filter((id) => !baseStatsIdSet.has(id)) as Id<"events">[];
+  const statsEventIds = [...baseStatsEventIds, ...extraStatsEventIds];
 
   // Fetch stats in 5-event chunks so each Convex query transaction stays well
   // within document read limits even for large inventories, and so dashboards
   // with > 100 events still receive stats for every visible event.
   const DASHBOARD_STATS_CHUNK_SIZE = 5;
-  const statsQueries = Object.fromEntries(
+  const makeChunkEntries = (prefix: string, ids: Id<"events">[]) =>
     Array.from(
-      { length: Math.ceil(statsEventIds.length / DASHBOARD_STATS_CHUNK_SIZE) },
+      { length: Math.ceil(ids.length / DASHBOARD_STATS_CHUNK_SIZE) },
       (_, i) => [
-        `chunk-${i}`,
+        `${prefix}-${i}`,
         {
           query: api.events.dashboardStats,
           args: {
-            eventIds: statsEventIds.slice(
+            eventIds: ids.slice(
               i * DASHBOARD_STATS_CHUNK_SIZE,
               (i + 1) * DASHBOARD_STATS_CHUNK_SIZE,
             ),
           },
         },
       ],
-    ),
-  );
+    );
+  const statsQueries = Object.fromEntries([
+    ...makeChunkEntries("base", baseStatsEventIds),
+    ...makeChunkEntries("extra", extraStatsEventIds),
+  ]);
   const statsChunks = useQueries(statsQueries);
   const statsMap: Record<string, DashboardEventStats> = {};
   for (const chunk of Object.values(statsChunks)) {
