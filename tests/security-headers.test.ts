@@ -50,6 +50,8 @@ describe("security headers", () => {
     expect(csp).toContain("https://clerk.trydevin.ai");
     expect(csp).toContain("https://*.clerk.accounts.dev");
     expect(csp).toContain("https://challenges.cloudflare.com");
+    expect(csp).toContain("https://static.cloudflareinsights.com");
+    expect(csp).toContain("https://cloudflareinsights.com");
     expect(csp).toContain("https://*.convex.cloud");
     expect(csp).toContain("wss://*.convex.cloud");
     expect(csp).toContain("https://api.fontshare.com");
