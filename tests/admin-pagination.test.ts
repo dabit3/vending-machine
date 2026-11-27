@@ -204,6 +204,10 @@ test("codes.listPage paginates and filters by codeType; codes.summary aggregates
     total: 3,
     claimed: 1,
     available: 2,
+    dispensable: 1,
+    stripeClaimed: 0,
+    stripeSynced: 0,
+    stripeRedeemed: 0,
     blockTypes: ["Pro", "Max"],
     blocks: [
       {

@@ -29,6 +29,21 @@ const state = vi.hoisted(() => ({
   detail: undefined as
     FunctionReturnType<typeof api.stripeBatches.get> | undefined,
   events: [] as FunctionReturnType<typeof api.events.listManaged>,
+  dashboardStats: {} as Record<
+    string,
+    {
+      totalCodes: number;
+      claimedCodes: number;
+      remainingCodes: number;
+      pendingRequests: number;
+      flaggedCount: number;
+      stripeClaimedCodes: number;
+      stripeRedeemedCodes: number;
+      stripeSyncedCodes: number;
+      stripeRedemptionSyncedAt?: number;
+      stripeRedemptionSyncStatus?: "pending" | "done" | "failed";
+    }
+  >,
 }));
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin",
@@ -47,8 +62,32 @@ vi.mock("convex/react", () => ({
       return { configured: state.configured, live: false };
     if (getFunctionName(ref) === "stripeBatches:get") return state.detail;
     if (getFunctionName(ref) === "events:listManaged") return state.events;
+    if (getFunctionName(ref) === "events:dashboardStats")
+      return state.dashboardStats;
     return undefined;
   },
+  useQueries: (
+    queries: Record<
+      string,
+      { query: Parameters<typeof getFunctionName>[0]; args: { eventIds?: string[] } }
+    >,
+  ) =>
+    Object.fromEntries(
+      Object.entries(queries).map(([key, req]) => {
+        if (getFunctionName(req.query) === "events:dashboardStats") {
+          const ids = req.args.eventIds ?? [];
+          return [
+            key,
+            Object.fromEntries(
+              ids
+                .filter((id) => id in state.dashboardStats)
+                .map((id) => [id, state.dashboardStats[id]]),
+            ),
+          ];
+        }
+        return [key, undefined];
+      }),
+    ),
   useMutation: () => Object.assign(vi.fn(), { withOptimisticUpdate: () => vi.fn() }),
   usePaginatedQuery: () => ({
     results: state.history,
@@ -67,6 +106,7 @@ beforeEach(() =>
     historyStatus: "Exhausted",
     detail: undefined,
     events: [],
+    dashboardStats: {},
   }),
 );
 
@@ -381,6 +421,113 @@ test("the dashboard shows an event's admin note preview and NewEventForm include
   expect(formHtml).toContain("Add admin note");
   expect(formHtml).toContain("Admins only");
   expect(formHtml).toContain("never shown to attendees");
+});
+
+test("the dashboard shows remaining codes, queues, low-stock alerts, and Stripe redemptions", () => {
+  state.global = true;
+  state.events = [
+    {
+      _id: "ev_empty" as Id<"events">,
+      _creationTime: 0,
+      name: "Sold Out Workshop",
+      slug: "sold-out",
+      description: undefined,
+      adminNote: undefined,
+      eventDate: undefined,
+      eventEndDate: undefined,
+      dynamic: undefined,
+      allowedDomains: undefined,
+      identity: "email" as const,
+      favorite: false,
+      archived: false,
+      createdBy: undefined,
+    },
+    {
+      _id: "ev_low" as Id<"events">,
+      _creationTime: 0,
+      name: "Low Stock Meetup",
+      slug: "low-stock",
+      description: undefined,
+      adminNote: undefined,
+      eventDate: undefined,
+      eventEndDate: undefined,
+      dynamic: undefined,
+      allowedDomains: undefined,
+      identity: "email" as const,
+      favorite: false,
+      archived: false,
+      createdBy: undefined,
+    },
+    {
+      _id: "ev_ok" as Id<"events">,
+      _creationTime: 0,
+      name: "Healthy Conference",
+      slug: "healthy",
+      description: undefined,
+      adminNote: undefined,
+      eventDate: undefined,
+      eventEndDate: undefined,
+      dynamic: undefined,
+      allowedDomains: undefined,
+      identity: "email" as const,
+      favorite: false,
+      archived: false,
+      createdBy: undefined,
+    },
+  ];
+  state.dashboardStats = {
+    ev_empty: {
+      totalCodes: 10,
+      claimedCodes: 10,
+      remainingCodes: 0,
+      pendingRequests: 3,
+      flaggedCount: 0,
+      stripeClaimedCodes: 10,
+      stripeRedeemedCodes: 7,
+      stripeSyncedCodes: 10,
+    },
+    ev_low: {
+      totalCodes: 50,
+      claimedCodes: 47,
+      remainingCodes: 3,
+      pendingRequests: 0,
+      flaggedCount: 2,
+      stripeClaimedCodes: 0,
+      stripeRedeemedCodes: 0,
+      stripeSyncedCodes: 0,
+    },
+    ev_ok: {
+      totalCodes: 40,
+      claimedCodes: 10,
+      remainingCodes: 30,
+      pendingRequests: 0,
+      flaggedCount: 0,
+      stripeClaimedCodes: 0,
+      stripeRedeemedCodes: 0,
+      stripeSyncedCodes: 0,
+    },
+  };
+
+  const html = renderToStaticMarkup(<AdminDashboard />);
+  expect(html).toContain("Needs attention");
+  expect(html).toContain("1 out of stock");
+  expect(html).toContain("1 low stock");
+  expect(html).toContain("3 pending requests");
+  expect(html).toContain("2 flagged");
+  expect(html).toContain("Filter (2)");
+  expect(html).toContain("Out of stock (0/10)");
+  expect(html).toContain("Low · 3/50 left");
+  expect(html).toContain("30/40 left");
+  expect(html).toContain("3 requests");
+  expect(html).toContain("7/10 redeemed");
+  expect(html).toContain("Sync Stripe redemptions");
+
+  // Event admins see stock and queues but not the global Stripe sync button.
+  state.global = false;
+  const eventAdminHtml = renderToStaticMarkup(<AdminDashboard />);
+  expect(eventAdminHtml).toContain("Out of stock (0/10)");
+  expect(eventAdminHtml).toContain("3 requests");
+  expect(eventAdminHtml).not.toContain("Sync Stripe redemptions");
 });
 
 test("the codes page opens a library with an explicit create action", () => {

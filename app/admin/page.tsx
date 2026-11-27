@@ -3,18 +3,29 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   CalendarPlus,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Inbox,
   Lock,
   Plus,
+  RefreshCw,
   Search,
   X,
 } from "lucide-react";
-import { useQuery } from "convex/react";
+import { toast } from "sonner";
+import { useMutation, useQueries, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { looksLikeAttendeeQuery } from "@/lib/attendee-identity";
+import {
+  eventNeedsAttention,
+  getStockStatus,
+  summarizeDashboardAlerts,
+  type EventHealthStats,
+} from "@/lib/event-health";
 import { markdownToPlainText } from "@/lib/markdown-plain";
 import FavoriteButton from "@/components/FavoriteButton";
 import AttendeeMatchBadges, {
@@ -42,6 +53,11 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+
+type DashboardEventStats = EventHealthStats & {
+  stripeRedemptionSyncStatus?: "pending" | "done" | "failed";
+};
 
 // Past events stay in the main listing for this many days after their date;
 // anything older waits behind "View older events" and pages 25 at a time.
@@ -67,12 +83,18 @@ interface ManagedEventItem {
 function AdminEventRow({
   event,
   past,
+  isActive,
   match,
+  stats,
 }: {
   event: ManagedEventItem;
   past?: boolean;
+  isActive?: boolean;
   match?: AttendeeMatch;
+  stats?: DashboardEventStats;
 }) {
+  const stockStatus = stats ? getStockStatus(stats) : null;
+  const activeEvent = isActive ?? (!past && !event.archived);
   return (
     <li className="flex items-center border-b border-border">
       <FavoriteButton
@@ -83,7 +105,7 @@ function AdminEventRow({
       <Link
         href={`/admin/events/${event._id}`}
         className={cn(
-          "group flex min-w-0 flex-1 items-center gap-6 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:px-4",
+          "group flex min-w-0 flex-1 flex-col gap-2 px-2 py-5 transition-colors hover:bg-surface focus-visible:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60 sm:flex-row sm:items-center sm:gap-6 sm:px-4",
           past && "opacity-60 transition-opacity hover:opacity-100",
         )}
       >
@@ -126,6 +148,57 @@ function AdminEventRow({
             </div>
           ) : null}
         </div>
+        {stats ? (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:shrink-0 sm:justify-end">
+            {stats.pendingRequests > 0 ? (
+              <Badge variant="default" className="font-mono tabular-nums">
+                <Inbox aria-hidden />
+                {stats.pendingRequests} request
+                {stats.pendingRequests === 1 ? "" : "s"}
+              </Badge>
+            ) : null}
+            {stats.flaggedCount > 0 ? (
+              <Badge
+                variant="outline"
+                className="font-mono text-amber-700 tabular-nums dark:text-amber-400"
+              >
+                <AlertTriangle aria-hidden />
+                {stats.flaggedCount} flagged
+              </Badge>
+            ) : null}
+            {stockStatus === "empty" && activeEvent ? (
+              <Badge variant="destructive" className="font-mono tabular-nums">
+                <AlertTriangle aria-hidden />
+                Out of stock (0/{stats.totalCodes})
+              </Badge>
+            ) : stockStatus === "low" && activeEvent ? (
+              <Badge
+                variant="outline"
+                className="font-mono text-amber-700 tabular-nums dark:text-amber-400"
+              >
+                <AlertTriangle aria-hidden />
+                Low · {stats.remainingCodes}/{stats.totalCodes} left
+              </Badge>
+            ) : stats.totalCodes > 0 ? (
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                {stats.remainingCodes}/{stats.totalCodes} left
+              </span>
+            ) : (
+              <span className="font-mono text-xs text-muted-dim">No codes</span>
+            )}
+            {stats.stripeClaimedCodes > 0 ? (
+              stats.stripeRedemptionSyncStatus === "pending" ? (
+                <span className="font-mono text-xs text-muted-dim">
+                  Syncing Stripe…
+                </span>
+              ) : stats.stripeSyncedCodes > 0 ? (
+                <span className="font-mono text-xs text-muted-dim tabular-nums">
+                  {stats.stripeRedeemedCodes}/{stats.stripeClaimedCodes} redeemed
+                </span>
+              ) : null
+            ) : null}
+          </div>
+        ) : null}
         {event.eventDate ? (
           <span className="hidden text-xs text-muted-dim tabular-nums md:inline">
             {formatEventDateRange(event.eventDate, event.eventEndDate)}
@@ -144,6 +217,11 @@ export default function AdminDashboard() {
   const [olderPage, setOlderPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [attentionOnly, setAttentionOnly] = useState(false);
+  const [syncingRedemptions, setSyncingRedemptions] = useState(false);
+  const syncAllStripeRedemptions = useMutation(
+    api.codes.syncAllStripeRedemptions,
+  );
   const search = useQuery(
     api.events.searchByAttendee,
     searchQuery ? { query: searchQuery } : "skip"
@@ -214,6 +292,152 @@ export default function AdminDashboard() {
   const olderStart = olderPageIndex * OLDER_PAGE_SIZE;
   const olderVisible = older.slice(olderStart, olderStart + OLDER_PAGE_SIZE);
 
+  // Query stock, queue, and Stripe redemption counts for visible events
+  // (plus all active events so low-stock alerts stay complete even while
+  // filtering). Collapsed older and archived events are skipped until shown.
+  const allUnarchived = events?.filter((e) => !e.archived) ?? [];
+  const allActiveIds = new Set(
+    allUnarchived
+      .filter(
+        (e) =>
+          !e.eventDate || daysSinceEventEnded(e.eventDate, e.eventEndDate) <= 0,
+      )
+      .map((e) => e._id as string),
+  );
+  // Keep base active/recent/starred IDs in a stable order so search keystrokes
+  // never shift chunk boundaries and reload already-loaded event stats.
+  const baseStatsEventIds = [
+    ...new Set([
+      ...allUnarchived
+        .filter(
+          (e) =>
+            !e.eventDate ||
+            daysSinceEventEnded(e.eventDate, e.eventEndDate) < RECENT_PAST_DAYS,
+        )
+        .map((e) => e._id),
+      ...allUnarchived
+        .filter((e) => e.favorite)
+        .map((e) => e._id),
+    ]),
+  ] as Id<"events">[];
+  const baseStatsIdSet = new Set<string>(baseStatsEventIds);
+  const extraStatsEventIds = [
+    ...new Set([
+      ...(showOlder || nameFilter ? olderVisible.map((e) => e._id) : []),
+      ...(search?.results.map((r) => r._id) ?? []),
+    ]),
+  ].filter((id) => !baseStatsIdSet.has(id)) as Id<"events">[];
+  const statsEventIds = [...baseStatsEventIds, ...extraStatsEventIds];
+
+  // Fetch stats in 5-event chunks so each Convex query transaction stays well
+  // within document read limits even for large inventories, and so dashboards
+  // with > 100 events still receive stats for every visible event.
+  const DASHBOARD_STATS_CHUNK_SIZE = 5;
+  const makeChunkEntries = (prefix: string, ids: Id<"events">[]) =>
+    Array.from(
+      { length: Math.ceil(ids.length / DASHBOARD_STATS_CHUNK_SIZE) },
+      (_, i) => [
+        `${prefix}-${i}`,
+        {
+          query: api.events.dashboardStats,
+          args: {
+            eventIds: ids.slice(
+              i * DASHBOARD_STATS_CHUNK_SIZE,
+              (i + 1) * DASHBOARD_STATS_CHUNK_SIZE,
+            ),
+          },
+        },
+      ],
+    );
+  const statsQueries = Object.fromEntries([
+    ...makeChunkEntries("base", baseStatsEventIds),
+    ...makeChunkEntries("extra", extraStatsEventIds),
+  ]);
+  const statsChunks = useQueries(statsQueries);
+  const statsMap: Record<string, DashboardEventStats> = {};
+  for (const chunk of Object.values(statsChunks)) {
+    if (chunk && !(chunk instanceof Error)) {
+      Object.assign(statsMap, chunk as Record<string, DashboardEventStats>);
+    }
+  }
+
+  const alerts = summarizeDashboardAlerts(
+    allUnarchived.map((e) => ({
+      _id: e._id,
+      isActive: allActiveIds.has(e._id),
+      stats: statsMap?.[e._id],
+    })),
+  );
+  const hasAlerts = alerts.attentionEventIds.size > 0;
+  const effectiveAttentionOnly = attentionOnly;
+
+  const filterByAttention = (list: ManagedEventItem[], activeList: boolean) =>
+    effectiveAttentionOnly
+      ? list.filter((e) => eventNeedsAttention(statsMap?.[e._id], activeList))
+      : list;
+
+  const visibleCurrent = filterByAttention(current, true);
+  const visiblePast = filterByAttention(past, false);
+  const visibleOlder = filterByAttention(older, false);
+  const visibleOlderSlice = effectiveAttentionOnly
+    ? filterByAttention(olderVisible, false)
+    : olderVisible;
+  const showOlderSection =
+    visibleOlder.length > 0 ||
+    (effectiveAttentionOnly && showOlder && older.length > OLDER_PAGE_SIZE);
+  const visibleSearchResults = search
+    ? effectiveAttentionOnly
+      ? search.results.filter((r) =>
+          eventNeedsAttention(statsMap?.[r._id], allActiveIds.has(r._id)),
+        )
+      : search.results
+    : [];
+  const visibleStarred = effectiveAttentionOnly
+    ? starred.filter((e) =>
+        eventNeedsAttention(statsMap?.[e._id], allActiveIds.has(e._id)),
+      )
+    : starred;
+  const visibleArchived = effectiveAttentionOnly ? [] : archived;
+
+  const stripeSyncableIds = statsEventIds.filter(
+    (id) => (statsMap?.[id]?.stripeClaimedCodes ?? 0) > 0,
+  );
+  const anyStripeSyncPending = stripeSyncableIds.some(
+    (id) => statsMap?.[id]?.stripeRedemptionSyncStatus === "pending",
+  );
+
+  async function handleSyncAllRedemptions() {
+    if (stripeSyncableIds.length === 0) return;
+    setSyncingRedemptions(true);
+    try {
+      const BATCH_SIZE = 25;
+      let eventsStarted = 0;
+      let stripeCodes = 0;
+      for (let i = 0; i < stripeSyncableIds.length; i += BATCH_SIZE) {
+        const res = await syncAllStripeRedemptions({
+          eventIds: stripeSyncableIds.slice(i, i + BATCH_SIZE),
+        });
+        eventsStarted += res.eventsStarted;
+        stripeCodes += res.stripeCodes;
+      }
+      if (stripeCodes === 0) {
+        toast.info("All Stripe redemptions are already syncing.");
+      } else {
+        toast.success(
+          `Checking ${stripeCodes} claimed Stripe code${stripeCodes === 1 ? "" : "s"} across ${eventsStarted} event${eventsStarted === 1 ? "" : "s"}.`,
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not sync Stripe redemptions",
+      );
+    } finally {
+      setSyncingRedemptions(false);
+    }
+  }
+
   return (
     <div>
       <div className="mb-10 flex flex-col items-start gap-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6">
@@ -235,51 +459,127 @@ export default function AdminDashboard() {
         ) : null}
       </div>
 
-      {events && events.length > 0 ? (
-        <form
-          role="search"
-          className="mb-10"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (attendeeLike) setSearchQuery(searchInput.trim());
-          }}
+      {hasAlerts || effectiveAttentionOnly ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-8 flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
         >
-          <InputGroup className="h-10 sm:max-w-md">
-            <InputGroupAddon>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="search"
-              aria-label="Search events by name, or find an attendee by email or X handle"
-              placeholder="Search events, or find an attendee by email or @handle"
-              value={searchInput}
-              onChange={(e) => {
-                setSearchInput(e.target.value);
-                if (e.target.value.trim() !== searchQuery) setSearchQuery("");
-              }}
-            />
-            {attendeeLike && !searchQuery ? (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton type="submit" variant="secondary" size="xs">
-                  Find attendee
-                </InputGroupButton>
-              </InputGroupAddon>
-            ) : searchInput ? (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-xs"
-                  aria-label="Clear search"
-                  onClick={() => {
-                    setSearchInput("");
-                    setSearchQuery("");
-                  }}
-                >
-                  <X />
-                </InputGroupButton>
-              </InputGroupAddon>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <AlertTriangle
+                className="size-4 text-amber-600 dark:text-amber-400"
+                aria-hidden
+              />
+              Needs attention
+            </span>
+            {!hasAlerts ? (
+              <span className="text-xs text-muted-foreground">
+                No events on this view need attention.
+              </span>
             ) : null}
-          </InputGroup>
-        </form>
+            {alerts.outOfStockCount > 0 ? (
+              <span className="font-mono text-xs text-destructive tabular-nums">
+                {alerts.outOfStockCount} out of stock
+              </span>
+            ) : null}
+            {alerts.lowStockCount > 0 ? (
+              <span className="font-mono text-xs text-amber-700 tabular-nums dark:text-amber-400">
+                {alerts.lowStockCount} low stock
+              </span>
+            ) : null}
+            {alerts.pendingRequestsTotal > 0 ? (
+              <span className="font-mono text-xs text-foreground tabular-nums">
+                {alerts.pendingRequestsTotal} pending request
+                {alerts.pendingRequestsTotal === 1 ? "" : "s"}
+              </span>
+            ) : null}
+            {alerts.flaggedTotal > 0 ? (
+              <span className="font-mono text-xs text-amber-700 tabular-nums dark:text-amber-400">
+                {alerts.flaggedTotal} flagged
+              </span>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            variant={effectiveAttentionOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAttentionOnly((prev) => !prev)}
+            className="self-start sm:self-auto"
+          >
+            {effectiveAttentionOnly
+              ? "Show all events"
+              : `Filter (${alerts.attentionEventIds.size})`}
+          </Button>
+        </div>
+      ) : null}
+
+      {events && events.length > 0 ? (
+        <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <form
+            role="search"
+            className="flex-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (attendeeLike) setSearchQuery(searchInput.trim());
+            }}
+          >
+            <InputGroup className="h-10 sm:max-w-md">
+              <InputGroupAddon>
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                type="search"
+                aria-label="Search events by name, or find an attendee by email or X handle"
+                placeholder="Search events, or find an attendee by email or @handle"
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  if (e.target.value.trim() !== searchQuery) setSearchQuery("");
+                }}
+              />
+              {attendeeLike && !searchQuery ? (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton type="submit" variant="secondary" size="xs">
+                    Find attendee
+                  </InputGroupButton>
+                </InputGroupAddon>
+              ) : searchInput ? (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size="icon-xs"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setSearchInput("");
+                      setSearchQuery("");
+                    }}
+                  >
+                    <X />
+                  </InputGroupButton>
+                </InputGroupAddon>
+              ) : null}
+            </InputGroup>
+          </form>
+          {isGlobalAdmin && stripeSyncableIds.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={syncingRedemptions || anyStripeSyncPending}
+              onClick={handleSyncAllRedemptions}
+              className="self-start sm:self-auto"
+            >
+              {syncingRedemptions || anyStripeSyncPending ? (
+                <Spinner data-icon="inline-start" />
+              ) : (
+                <RefreshCw data-icon="inline-start" />
+              )}
+              {anyStripeSyncPending
+                ? "Syncing Stripe…"
+                : "Sync Stripe redemptions"}
+            </Button>
+          ) : null}
+        </div>
       ) : null}
 
       {searchQuery ? (
@@ -313,13 +613,18 @@ export default function AdminDashboard() {
               No events have this attendee on their list, claims, flagged
               entries or access requests.
             </p>
+          ) : visibleSearchResults.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">
+              None of this attendee&apos;s events need attention.
+            </p>
           ) : (
             <ul className="mt-4 border-t border-border">
-              {search.results.map((result) => (
+              {visibleSearchResults.map((result) => (
                 <AdminEventRow
                   key={result._id}
                   event={{ ...result, favorite: starredIds.has(result._id) }}
                   match={result}
+                  stats={statsMap?.[result._id]}
                   past={
                     result.eventDate
                       ? daysSinceEventEnded(
@@ -365,7 +670,7 @@ export default function AdminDashboard() {
         )
       ) : (
         <>
-          {starred.length > 0 ? (
+          {visibleStarred.length > 0 ? (
             <section aria-labelledby="starred-events" className="mb-10">
               <div className="flex items-baseline justify-between">
                 <h2
@@ -375,72 +680,102 @@ export default function AdminDashboard() {
                   Starred
                 </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(starred.length).padStart(2, "0")}
+                  {String(visibleStarred.length).padStart(2, "0")}
                 </span>
               </div>
               <ul className="mt-4 border-t border-border">
-                {starred.map((event) => (
-                  <AdminEventRow key={event._id} event={event} />
+                {visibleStarred.map((event) => (
+                  <AdminEventRow
+                    key={event._id}
+                    event={event}
+                    isActive={allActiveIds.has(event._id)}
+                    stats={statsMap?.[event._id]}
+                  />
                 ))}
               </ul>
             </section>
           ) : null}
-          {!nameFilter || current.length > 0 ? (
+          {!nameFilter && !effectiveAttentionOnly || visibleCurrent.length > 0 ? (
             <>
               <div className="flex items-baseline justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
                   Active events
                 </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(current.length).padStart(2, "0")}
+                  {String(visibleCurrent.length).padStart(2, "0")}
                 </span>
               </div>
-              {current.length === 0 ? (
+              {visibleCurrent.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">
                   No active events right now.
                 </p>
               ) : (
                 <ul className="mt-4 border-t border-border">
-                  {current.map((event) => (
-                    <AdminEventRow key={event._id} event={event} />
+                  {visibleCurrent.map((event) => (
+                    <AdminEventRow
+                      key={event._id}
+                      event={event}
+                      isActive
+                      stats={statsMap?.[event._id]}
+                    />
                   ))}
                 </ul>
               )}
             </>
           ) : null}
-          {past.length > 0 ? (
+          {visiblePast.length > 0 ? (
             <>
               <div className="mt-12 flex items-baseline justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
                   Past events
                 </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(past.length).padStart(2, "0")}
+                  {String(visiblePast.length).padStart(2, "0")}
                 </span>
               </div>
               <ul className="mt-4 border-t border-border">
-                {past.map((event) => (
-                  <AdminEventRow key={event._id} event={event} past />
+                {visiblePast.map((event) => (
+                  <AdminEventRow
+                    key={event._id}
+                    event={event}
+                    past
+                    stats={statsMap?.[event._id]}
+                  />
                 ))}
               </ul>
             </>
           ) : null}
-          {older.length > 0 ? (
-            showOlder || nameFilter ? (
+          {showOlderSection ? (
+            showOlder || nameFilter || effectiveAttentionOnly ? (
               <>
                 <div className="mt-12 flex items-baseline justify-between">
                   <h2 className="text-sm font-medium text-muted-foreground">
                     Older events
                   </h2>
                   <span className="font-mono text-xs text-muted-dim tabular-nums">
-                    {String(older.length).padStart(2, "0")}
+                    {String(
+                      effectiveAttentionOnly
+                        ? visibleOlderSlice.length
+                        : visibleOlder.length,
+                    ).padStart(2, "0")}
                   </span>
                 </div>
-                <ul className="mt-4 border-t border-border">
-                  {olderVisible.map((event) => (
-                    <AdminEventRow key={event._id} event={event} past />
-                  ))}
-                </ul>
+                {visibleOlderSlice.length === 0 ? (
+                  <p className="mt-4 text-sm text-muted-foreground">
+                    No older events on this page need attention.
+                  </p>
+                ) : (
+                  <ul className="mt-4 border-t border-border">
+                    {visibleOlderSlice.map((event) => (
+                      <AdminEventRow
+                        key={event._id}
+                        event={event}
+                        past
+                        stats={statsMap?.[event._id]}
+                      />
+                    ))}
+                  </ul>
+                )}
                 {older.length > OLDER_PAGE_SIZE ? (
                   <nav
                     aria-label="Older events pages"
@@ -485,18 +820,18 @@ export default function AdminDashboard() {
               </div>
             )
           ) : null}
-          {archived.length > 0 ? (
+          {visibleArchived.length > 0 ? (
             <>
               <div className="mt-12 flex items-baseline justify-between">
                 <h2 className="text-sm font-medium text-muted-foreground">
                   Archived events
                 </h2>
                 <span className="font-mono text-xs text-muted-dim tabular-nums">
-                  {String(archived.length).padStart(2, "0")}
+                  {String(visibleArchived.length).padStart(2, "0")}
                 </span>
               </div>
               <ul className="mt-4 border-t border-border">
-                {archived.map((event) => (
+                {visibleArchived.map((event) => (
                   <AdminEventRow key={event._id} event={event} past />
                 ))}
               </ul>
