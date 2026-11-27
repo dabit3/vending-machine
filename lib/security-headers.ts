@@ -73,6 +73,7 @@ export function buildContentSecurityPolicy(
       "https://clerk.trydevin.ai",
       "https://*.clerk.accounts.dev",
       "https://challenges.cloudflare.com",
+      "https://static.cloudflareinsights.com",
       clerkOrigin,
     ]).join(" ")}`,
     `style-src ${unique([
@@ -98,6 +99,7 @@ export function buildContentSecurityPolicy(
       "https://clerk-telemetry.com",
       "https://*.clerk-telemetry.com",
       "https://challenges.cloudflare.com",
+      "https://cloudflareinsights.com",
       "https://*.convex.cloud",
       "wss://*.convex.cloud",
       clerkOrigin,
