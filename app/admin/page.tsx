@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -63,6 +63,50 @@ type DashboardEventStats = EventHealthStats & {
 // anything older waits behind "View older events" and pages 25 at a time.
 const RECENT_PAST_DAYS = 14;
 const OLDER_PAGE_SIZE = 25;
+const DASHBOARD_STATS_CHUNK_SIZE = 5;
+
+function buildDashboardStatsQueries(
+  baseStatsKey: string,
+  extraStatsKey: string,
+) {
+  const baseIds = JSON.parse(baseStatsKey) as Id<"events">[];
+  const extraIds = JSON.parse(extraStatsKey) as Id<"events">[];
+  const makeChunkEntries = (prefix: string, ids: Id<"events">[]) =>
+    Array.from(
+      { length: Math.ceil(ids.length / DASHBOARD_STATS_CHUNK_SIZE) },
+      (_, i) => [
+        `${prefix}-${i}`,
+        {
+          query: api.events.dashboardStats,
+          args: {
+            eventIds: ids.slice(
+              i * DASHBOARD_STATS_CHUNK_SIZE,
+              (i + 1) * DASHBOARD_STATS_CHUNK_SIZE,
+            ),
+          },
+        },
+      ],
+    );
+  return Object.fromEntries([
+    ...makeChunkEntries("base", baseIds),
+    ...makeChunkEntries("extra", extraIds),
+  ]);
+}
+
+function useDashboardStats(baseStatsKey: string, extraStatsKey: string) {
+  const statsQueries = useMemo(
+    () => buildDashboardStatsQueries(baseStatsKey, extraStatsKey),
+    [baseStatsKey, extraStatsKey],
+  );
+  const statsChunks = useQueries(statsQueries);
+  const statsMap: Record<string, DashboardEventStats> = {};
+  for (const chunk of Object.values(statsChunks)) {
+    if (chunk && !(chunk instanceof Error)) {
+      Object.assign(statsMap, chunk as Record<string, DashboardEventStats>);
+    }
+  }
+  return statsMap;
+}
 
 interface ManagedEventItem {
   _id: string;
@@ -331,35 +375,13 @@ export default function AdminDashboard() {
 
   // Fetch stats in 5-event chunks so each Convex query transaction stays well
   // within document read limits even for large inventories, and so dashboards
-  // with > 100 events still receive stats for every visible event.
-  const DASHBOARD_STATS_CHUNK_SIZE = 5;
-  const makeChunkEntries = (prefix: string, ids: Id<"events">[]) =>
-    Array.from(
-      { length: Math.ceil(ids.length / DASHBOARD_STATS_CHUNK_SIZE) },
-      (_, i) => [
-        `${prefix}-${i}`,
-        {
-          query: api.events.dashboardStats,
-          args: {
-            eventIds: ids.slice(
-              i * DASHBOARD_STATS_CHUNK_SIZE,
-              (i + 1) * DASHBOARD_STATS_CHUNK_SIZE,
-            ),
-          },
-        },
-      ],
-    );
-  const statsQueries = Object.fromEntries([
-    ...makeChunkEntries("base", baseStatsEventIds),
-    ...makeChunkEntries("extra", extraStatsEventIds),
-  ]);
-  const statsChunks = useQueries(statsQueries);
-  const statsMap: Record<string, DashboardEventStats> = {};
-  for (const chunk of Object.values(statsChunks)) {
-    if (chunk && !(chunk instanceof Error)) {
-      Object.assign(statsMap, chunk as Record<string, DashboardEventStats>);
-    }
-  }
+  // with > 100 events still receive stats for every visible event. Memoize by
+  // serialized IDs because Convex's useQueries compares the queries object by
+  // reference inside useSubscription; passing a fresh object every render
+  // causes an infinite re-render loop.
+  const baseStatsKey = JSON.stringify(baseStatsEventIds);
+  const extraStatsKey = JSON.stringify(extraStatsEventIds);
+  const statsMap = useDashboardStats(baseStatsKey, extraStatsKey);
 
   const alerts = summarizeDashboardAlerts(
     allUnarchived.map((e) => ({

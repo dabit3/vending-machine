@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { getFunctionName, type FunctionReturnType } from "convex/server";
 import { api } from "../convex/_generated/api";
@@ -71,8 +72,15 @@ vi.mock("convex/react", () => ({
       string,
       { query: Parameters<typeof getFunctionName>[0]; args: { eventIds?: string[] } }
     >,
-  ) =>
-    Object.fromEntries(
+  ) => {
+    // Mirror Convex's useQueries/useSubscription reference-equality check:
+    // force one re-render and fail with "Too many re-renders" if the caller
+    // passes an unmemoized `queries` object reference.
+    const [tick, setTick] = useState(0);
+    const [lastQueries, setLastQueries] = useState(queries);
+    if (tick === 0) setTick(1);
+    if (lastQueries !== queries) setLastQueries(queries);
+    return Object.fromEntries(
       Object.entries(queries).map(([key, req]) => {
         if (getFunctionName(req.query) === "events:dashboardStats") {
           const ids = req.args.eventIds ?? [];
@@ -87,7 +95,8 @@ vi.mock("convex/react", () => ({
         }
         return [key, undefined];
       }),
-    ),
+    );
+  },
   useMutation: () => Object.assign(vi.fn(), { withOptimisticUpdate: () => vi.fn() }),
   usePaginatedQuery: () => ({
     results: state.history,
